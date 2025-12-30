@@ -1,0 +1,47 @@
+---
+const currentPath = Astro.url.pathname;
+---
+
+<header class="fixed top-0 left-0 right-0 z-50 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
+  <div class="container mx-auto px-4 py-4">
+    <div class="flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 group">
+        <div class="relative flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
+           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" class="text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">
+              <path d="M5 3.868v16.264c0 .882.991 1.405 1.715.908l13.011-8.132a1.06 1.06 0 0 0 0-1.816L6.715 2.96C5.991 2.463 5 2.986 5 3.868z" />
+           </svg>
+        </div>
+        <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 tracking-tight group-hover:from-white group-hover:to-white transition-all duration-500">
+          Drama<span class="text-red-600 font-extrabold">Ku</span>
+        </span>
+      </a>
+
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="/" class={`text-sm font-medium transition-colors duration-300 ${currentPath === '/' ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          Beranda
+        </a>
+        <a href="/category/trending" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/trending') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          Trending
+        </a>
+        <a href="/category/terbaru" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/terbaru') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          Terbaru
+        </a>
+        <a href="/category/vip" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/vip') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          VIP
+        </a>
+        <a href="/category/dub-indo" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/dub-indo') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          Dub Indo
+        </a>
+      </nav>
+
+      <div class="hidden md:flex items-center gap-4">
+        <a href="/search" class="p-2.5 hover:bg-white/10 rounded-full transition-all duration-300 text-zinc-400 hover:text-white" aria-label="Cari drama">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>

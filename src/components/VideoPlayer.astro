@@ -1,0 +1,69 @@
+---
+interface Props {
+  videoUrl: string;
+  title: string;
+}
+
+const { videoUrl, title } = Astro.props;
+const isHLS = videoUrl.includes('.m3u8');
+---
+
+<div class="relative bg-black w-full h-full" id="video-container">
+  <video
+    id="video-player"
+    class="w-full aspect-video"
+    controls
+    preload="metadata"
+    data-video-url={videoUrl}
+    data-is-hls={isHLS}
+  >
+    <source src={videoUrl} type="video/mp4" />
+    Browser Anda tidak mendukung video player.
+  </video>
+</div>
+
+<script>
+  import Hls from 'hls.js';
+
+  const videoElement = document.getElementById('video-player') as HTMLVideoElement;
+  const videoUrl = videoElement?.getAttribute('data-video-url');
+  const isHLS = videoElement?.getAttribute('data-is-hls') === 'true';
+
+  if (videoElement && videoUrl) {
+    if (isHLS) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+
+        hls.loadSource(videoUrl);
+        hls.attachMedia(videoElement);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('HLS manifest loaded');
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = videoUrl;
+      }
+    } else {
+      videoElement.src = videoUrl;
+    }
+  }
+</script>

@@ -1,0 +1,132 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import EpisodeList from '../../components/EpisodeList.astro';
+
+const { bookId } = Astro.params;
+const API_BASE = 'https://api.sansekai.my.id/api';
+
+async function fetchDramaDetail(id: string) {
+  try {
+    const response = await fetch(`${API_BASE}/dramabox/detail?bookId=${id}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.data?.book || null;
+  } catch (error) {
+    console.error('Error fetching drama detail:', error);
+    return null;
+  }
+}
+
+async function fetchEpisodes(id: string) {
+  try {
+    const response = await fetch(`${API_BASE}/dramabox/detail?bookId=${id}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.data?.chapterList || [];
+  } catch (error) {
+    console.error('Error fetching episodes:', error);
+    return [];
+  }
+}
+
+const [drama, episodes] = await Promise.all([
+  fetchDramaDetail(bookId!),
+  fetchEpisodes(bookId!)
+]);
+
+if (!drama) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title={`${drama.bookName} - DramaKu`} description={drama.introduction}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-1">
+        <div class="sticky top-24">
+          <div class="rounded-2xl overflow-hidden shadow-2xl">
+            <img
+              src={drama.cover}
+              alt={drama.bookName}
+              class="w-full aspect-[2/3] object-cover"
+            />
+          </div>
+
+          {episodes.length > 0 && (
+            <a
+              href={`/watch/${bookId}/${episodes[0].id}`}
+              class="mt-6 w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-4 rounded-lg transition-colors duration-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Mulai Menonton
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div class="lg:col-span-2">
+        <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">
+          {drama.bookName}
+        </h1>
+
+        <div class="flex flex-wrap items-center gap-4 mb-6">
+          {drama.chapterCount && (
+            <span class="px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full text-sm">
+              {drama.chapterCount} Episode
+            </span>
+          )}
+          {drama.viewCount && (
+            <span class="text-zinc-400 text-sm">
+              {drama.viewCount.toLocaleString()} tayangan
+            </span>
+          )}
+        </div>
+
+        {drama.labels && drama.labels.length > 0 && (
+          <div class="mb-6">
+            <div class="flex flex-wrap gap-2">
+              {drama.labels.map((label: string) => (
+                <span class="px-4 py-2 bg-zinc-900 text-zinc-300 rounded-lg text-sm">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {drama.introduction && (
+          <div class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-3">Sinopsis</h2>
+            <p class="text-zinc-300 leading-relaxed">
+              {drama.introduction}
+            </p>
+          </div>
+        )}
+
+        {drama.performerList && drama.performerList.length > 0 && (
+          <div class="mb-8">
+            <h2 class="text-xl font-bold text-white mb-3">Pemain</h2>
+            <div class="flex flex-wrap gap-2">
+              {drama.performerList.map((performer: any) => (
+                <span class="px-4 py-2 bg-zinc-900 text-zinc-300 rounded-lg text-sm">
+                  {performer.performerName}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {episodes.length > 0 && (
+          <div>
+            <h2 class="text-xl font-bold text-white mb-4">
+              Episode ({episodes.length})
+            </h2>
+            <EpisodeList episodes={episodes} bookId={bookId!} />
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</Layout>

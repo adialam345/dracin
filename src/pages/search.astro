@@ -1,0 +1,113 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MovieCard from '../components/MovieCard.astro';
+
+const query = Astro.url.searchParams.get('q') || '';
+const API_BASE = 'https://api.sansekai.my.id/api';
+
+let searchResults: any[] = [];
+
+if (query) {
+  try {
+    const response = await fetch(`${API_BASE}/dramabox/search?query=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      const data = await response.json();
+      searchResults = Array.isArray(data) ? data : [];
+    }
+  } catch (error) {
+    console.error('Error searching dramas:', error);
+  }
+}
+---
+
+<Layout title={query ? `Hasil pencarian: ${query} - DramaKu` : 'Cari Drama - DramaKu'}>
+  {/* Ambient Background */}
+  <div class="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-zinc-950 to-zinc-950 -z-10"></div>
+
+  <div class="container mx-auto px-4 py-12 md:py-20">
+    <div class="max-w-2xl mx-auto mb-16 animate-fade-in-up">
+      <h1 class="text-3xl md:text-5xl font-bold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500 tracking-tight">
+        Cari Drama
+      </h1>
+
+      <form method="get" action="/search" class="relative group">
+        <div class="absolute inset-0 bg-gradient-to-r from-red-600 to-indigo-600 rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+        <div class="relative">
+          <input
+            type="text"
+            name="q"
+            value={query}
+            placeholder="Ketik judul drama..."
+            class="w-full pl-6 pr-14 py-4 md:py-5 bg-zinc-900/80 backdrop-blur-xl text-white rounded-2xl border border-white/10 focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 focus:outline-none transition-all duration-300 placeholder:text-zinc-600 text-lg shadow-xl"
+            autofocus
+            autocomplete="off"
+          />
+          <button
+            type="submit"
+            class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-300 hover:scale-105 shadow-lg shadow-red-900/20"
+            aria-label="Cari"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {query && (
+      <div class="mb-8 text-center animate-fade-in-up delay-100">
+        <p class="text-zinc-400 text-lg">
+          {searchResults.length > 0
+            ? <span>Ditemukan <span class="text-white font-semibold">{searchResults.length}</span> drama untuk "<span class="text-white italic">{query}</span>"</span>
+            : <span>Tidak ada hasil untuk "<span class="text-white italic">{query}</span>"</span>}
+        </p>
+      </div>
+    )}
+
+    {searchResults.length > 0 ? (
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10 animate-fade-in-up delay-200 fill-mode-forwards opacity-0">
+        {searchResults.map((drama: any) => (
+          <MovieCard
+            bookId={drama.bookId}
+            title={drama.bookName}
+            posterUrl={drama.cover || drama.coverWap}
+            description={drama.introduction}
+          />
+        ))}
+      </div>
+    ) : query ? (
+      <div class="text-center py-24 animate-fade-in-up delay-200">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-zinc-900/50 border border-white/5 mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-600">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-semibold text-white mb-2">Tidak Ada Hasil</h2>
+        <p class="text-zinc-500 mb-8 max-w-md mx-auto">
+          Kami tidak dapat menemukan drama yang Anda cari. Coba kata kunci lain atau lihat rekomendasi kami.
+        </p>
+        <a href="/" class="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors duration-300 border-b border-transparent hover:border-white pb-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+          Kembali ke Beranda
+        </a>
+      </div>
+    ) : (
+      <div class="text-center py-24 animate-fade-in-up delay-200 opacity-60">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-b from-zinc-800 to-transparent mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </div>
+        <p class="text-zinc-500 text-lg">
+          Ketik judul drama di atas untuk mulai mencari
+        </p>
+      </div>
+    )}
+  </div>
+</Layout>

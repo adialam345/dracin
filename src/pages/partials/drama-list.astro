@@ -1,0 +1,63 @@
+---
+import MovieCard from '../../components/MovieCard.astro';
+
+export const partial = true;
+
+const API_BASE = 'https://api.sansekai.my.id/api';
+const endpoint = Astro.url.searchParams.get('endpoint');
+const page = Astro.url.searchParams.get('page') || '1';
+// Some APIs use 'page', some 'pageNo'. Let's try to append accordingly if needed, 
+// but for now we assume standard REST style or we handle specific cases.
+// Actually, looking at previous curls, we just appended `?page=X`.
+
+if (!endpoint) {
+  return new Response('Endpoint required', { status: 400 });
+}
+
+// Construct URL properly handling existing query params
+const separator = endpoint.includes('?') ? '&' : '?';
+const fetchUrl = `${API_BASE}${endpoint}${separator}page=${page}`;
+
+let dramas: any[] = [];
+
+try {
+  console.log(`Fetching partial: ${fetchUrl}`);
+  const response = await fetch(fetchUrl);
+  if (response.ok) {
+    const data = await response.json();
+    
+    // Normalize Data (Same logic as index.astro)
+    if (Array.isArray(data)) {
+        dramas = data;
+    } else if (data.data && Array.isArray(data.data)) {
+        dramas = data.data;
+    } else if (data.columnVoList && Array.isArray(data.columnVoList)) {
+        const allBooks: any[] = [];
+        data.columnVoList.forEach((column: any) => {
+            if (column.bookList && Array.isArray(column.bookList)) {
+                allBooks.push(...column.bookList);
+            }
+        });
+        dramas = allBooks;
+    } else if (data.bookList && Array.isArray(data.bookList)) {
+        dramas = data.bookList;
+    }
+  }
+} catch (error) {
+  console.error('Error fetching partial:', error);
+}
+
+// Add animation delay base on index to stagger them? 
+// Or just let them fade in via CSS class we will add.
+---
+
+{dramas.map((drama: any, index: number) => (
+  <div class="animate-fade-in-up" style={`animation-delay: ${index * 50}ms`}>
+    <MovieCard
+      bookId={drama.bookId}
+      title={drama.bookName}
+      posterUrl={drama.coverWap || drama.cover || drama.bookCover}
+      description={drama.introduction}
+    />
+  </div>
+))}
