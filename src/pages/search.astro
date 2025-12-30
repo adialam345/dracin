@@ -2,21 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import MovieCard from '../components/MovieCard.astro';
 
-const query = Astro.url.searchParams.get('q') || '';
-const API_BASE = 'https://api.sansekai.my.id/api';
+import { fetchAggregatedSearch } from '../services/aggregator';
 
+const query = Astro.url.searchParams.get('q') || '';
 let searchResults: any[] = [];
 
 if (query) {
-  try {
-    const response = await fetch(`${API_BASE}/dramabox/search?query=${encodeURIComponent(query)}`);
-    if (response.ok) {
-      const data = await response.json();
-      searchResults = Array.isArray(data) ? data : [];
-    }
-  } catch (error) {
-    console.error('Error searching dramas:', error);
-  }
+  searchResults = await fetchAggregatedSearch(query);
 }
 ---
 
@@ -70,10 +62,11 @@ if (query) {
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10 animate-fade-in-up delay-200 fill-mode-forwards opacity-0">
         {searchResults.map((drama: any) => (
           <MovieCard
-            bookId={drama.bookId}
-            title={drama.bookName}
-            posterUrl={drama.cover || drama.coverWap}
-            description={drama.introduction}
+            bookId={drama.id}
+            title={drama.title}
+            posterUrl={drama.cover}
+            description={drama.description}
+            source={drama.source}
           />
         ))}
       </div>

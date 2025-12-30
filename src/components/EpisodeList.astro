@@ -10,9 +10,10 @@ interface Episode {
 interface Props {
   episodes: Episode[];
   bookId: string;
+  source: string;
 }
 
-const { episodes, bookId } = Astro.props;
+const { episodes, bookId, source } = Astro.props;
 
 function formatDuration(ms?: number) {
   if (!ms) return '';
@@ -26,7 +27,7 @@ function formatDuration(ms?: number) {
 <div class="space-y-3">
   {episodes.map((episode) => (
     <a
-      href={`/watch/${bookId}/${episode.id}`}
+      href={`/watch/${source}/${bookId}/${episode.id}`}
       class="block p-4 bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors duration-300 group relative"
     >
       <div class="flex items-center justify-between">

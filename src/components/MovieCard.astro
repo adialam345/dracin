@@ -4,12 +4,21 @@ interface Props {
   title: string;
   posterUrl: string;
   description?: string;
+  source?: 'dramabox' | 'netshort' | 'melolo';
 }
 
-const { bookId, title, posterUrl, description } = Astro.props;
+const { bookId, title, posterUrl, description, source } = Astro.props;
+
+const sourceLabels = {
+  dramabox: { label: 'DB', color: 'bg-red-500/80' },
+  netshort: { label: 'NS', color: 'bg-blue-500/80' },
+  melolo: { label: 'ML', color: 'bg-green-500/80' },
+};
+
+const badge = source ? sourceLabels[source] : null;
 ---
 
-<a href={`/movie/${bookId}`} class="group block relative">
+<a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative">
   <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] transition-all duration-500 ease-out group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
     <img
       src={posterUrl}
@@ -17,9 +26,17 @@ const { bookId, title, posterUrl, description } = Astro.props;
       loading="lazy"
       class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 opacity-0"
       onload="this.classList.remove('opacity-0')"
+      onerror="handleImageError(this)"
     />
 
     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+
+    {/* Source Badge */}
+    {badge && (
+      <div class={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase backdrop-blur-sm ${badge.color}`}>
+        {badge.label}
+      </div>
+    )}
 
     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 scale-90 group-hover:scale-100">
       <div class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-lg">
@@ -41,3 +58,25 @@ const { bookId, title, posterUrl, description } = Astro.props;
     </div>
   </div>
 </a>
+
+<script>
+  // Handle image load errors (e.g., HEIC format not supported)
+  window.handleImageError = function(img) {
+    img.style.display = 'none';
+    const container = img.parentElement;
+    if (container) {
+      container.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'absolute inset-0 flex items-center justify-center';
+      placeholder.innerHTML = `
+        <div class="text-center p-4">
+          <svg class="w-16 h-16 mx-auto mb-2 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <p class="text-xs text-white/70">${img.alt}</p>
+        </div>
+      `;
+      container.appendChild(placeholder);
+    }
+  };
+</script>

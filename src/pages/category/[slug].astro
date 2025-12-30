@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import MovieCard from '../../components/MovieCard.astro';
-import InfiniteScrollGrid from '../../components/InfiniteScrollGrid.astro';
+import { fetchAggregatedCategory } from '../../services/aggregator';
 
 export function getStaticPaths() {
   return [
@@ -15,45 +15,24 @@ export function getStaticPaths() {
 
 const { slug } = Astro.params;
 
-const CATEGORY_CONFIG: Record<string, { title: string; endpoint: string }> = {
-  'trending': { title: 'Drama Trending', endpoint: '/dramabox/trending' },
-  'terbaru': { title: 'Drama Terbaru', endpoint: '/dramabox/latest' },
-  'vip': { title: 'Drama VIP', endpoint: '/dramabox/vip' },
-  'dub-indo': { title: 'Dubbing Indonesia', endpoint: '/dramabox/dubindo?classify=terpopuler&page=1' },
-  'recomendasi': { title: 'Rekomendasi Untukmu', endpoint: '/dramabox/foryou' },
+const CATEGORY_TITLES: Record<string, string> = {
+  'trending': 'Drama Trending',
+  'terbaru': 'Drama Terbaru',
+  'vip': 'Drama VIP',
+  'dub-indo': 'Dubbing Indonesia',
+  'recomendasi': 'Rekomendasi Untukmu',
 };
 
-const config = CATEGORY_CONFIG[slug || ''] || { title: 'Kategori Tidak Ditemukan', endpoint: '' };
-const { title, endpoint } = config;
+const title = CATEGORY_TITLES[slug || ''] || 'Kategori';
+let dramas: any[] = [];
 
-const API_BASE = 'https://api.sansekai.my.id/api';
-
-let dramas = [];
-try {
-  const response = await fetch(`${API_BASE}${endpoint}`);
-  if (response.ok) {
-    const data = await response.json();
-    
-    // Helper to extract array from various response formats
-    if (Array.isArray(data)) {
-        dramas = data;
-    } else if (data.data && Array.isArray(data.data)) {
-        dramas = data.data;
-    } else if (data.columnVoList && Array.isArray(data.columnVoList)) {
-        const allBooks = [];
-        data.columnVoList.forEach((column: any) => {
-            if (column.bookList && Array.isArray(column.bookList)) {
-                allBooks.push(...column.bookList);
-            }
-        });
-        dramas = allBooks;
-    } else if (data.bookList && Array.isArray(data.bookList)) {
-        dramas = data.bookList;
-    }
-  }
-} catch (error) {
-  console.error('Error fetching category:', error);
+if (slug) {
+    dramas = await fetchAggregatedCategory(slug);
 }
+
+// Note: Infinite Scroll is temporarily disabled for aggregated categories 
+// because pagination across multiple merged APIs requires a dedicated backend state.
+// We will display the initial aggregated batch.
 ---
 
 <Layout title={`${title} - DramaKu`}>
@@ -64,16 +43,17 @@ try {
     </div>
 
     {dramas.length > 0 ? (
-      <InfiniteScrollGrid endpoint={endpoint}>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
         {dramas.map((drama: any) => (
           <MovieCard
-            bookId={drama.bookId}
-            title={drama.bookName}
-            posterUrl={drama.coverWap || drama.cover || drama.bookCover}
-            description={drama.introduction}
+            bookId={drama.id}
+            title={drama.title}
+            posterUrl={drama.cover}
+            description={drama.description}
+            source={drama.source}
           />
         ))}
-      </InfiniteScrollGrid>
+      </div>
     ) : (
       <div class="text-center py-20 bg-zinc-900 rounded-xl">
         <p class="text-zinc-500 text-lg">Tidak ada drama ditemukan untuk kategori ini.</p>

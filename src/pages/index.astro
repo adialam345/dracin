@@ -1,60 +1,24 @@
 ---
+import { fetchAggregatedHome } from '../services/aggregator';
 import Layout from '../layouts/Layout.astro';
 import MovieCard from '../components/MovieCard.astro';
 
+// Fetch Aggregated Data
+const { forYou, trending } = await fetchAggregatedHome();
+
 const API_BASE = 'https://api.sansekai.my.id/api';
 
-async function fetchDramas(endpoint: string) {
+// Popular Search still separate for now
+async function fetchPopularSearch() {
   try {
-    const response = await fetch(`${API_BASE}${endpoint}`);
-    if (!response.ok) return [];
-    const data = await response.json();
-
-    // Handle direct array response (e.g., trending, random)
-    if (Array.isArray(data)) {
-      return data;
-    }
-
-    // Handle nested data property (common in some APIs)
-    if (data.data && Array.isArray(data.data)) {
-      return data.data;
-    }
-
-    // Handle columnVoList structure (e.g., VIP page maybe?)
-    if (data.columnVoList && Array.isArray(data.columnVoList)) {
-      const allBooks: any[] = [];
-      data.columnVoList.forEach((column: any) => {
-        if (column.bookList && Array.isArray(column.bookList)) {
-          allBooks.push(...column.bookList);
-        }
-      });
-      return allBooks;
-    }
-    
-    // Fallback for object with direct bookList
-    if (data.bookList && Array.isArray(data.bookList)) {
-      return data.bookList;
-    }
-
-    return [];
-  } catch (error) {
-    console.error(`Error fetching ${endpoint}:`, error);
-    return [];
-  }
+    const response = await fetch(`${API_BASE}/dramabox/populersearch`);
+    return response.ok ? await response.json() : [];
+  } catch (e) { return []; }
 }
 
-const [forYouDramas, popularSearch] = await Promise.all([
-  fetchDramas('/dramabox/foryou'),
-  fetchDramas('/dramabox/populersearch'),
-]);
+const popularSearch = await fetchPopularSearch();
 
-// Define unused variables as empty to satisfy any lingering checks if expanding later, 
-// though we will remove the sections below.
-const vipDramas: any[] = [];
-const latestDramas: any[] = [];
-const trendingDramas: any[] = [];
-const dubIndoDramas: any[] = [];
-const randomDramas: any[] = [];
+const forYouDramas = forYou;
 ---
 
 <Layout title="DramaKu - Tonton Drama & Film Terbaik">
@@ -110,10 +74,11 @@ const randomDramas: any[] = [];
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
           {forYouDramas.map((drama: any) => (
             <MovieCard
-              bookId={drama.bookId}
-              title={drama.bookName}
-              posterUrl={drama.coverWap || drama.bookCover}
-              description={drama.introduction}
+              bookId={drama.id}
+              title={drama.title}
+              posterUrl={drama.cover}
+              description={drama.description}
+              source={drama.source}
             />
           ))}
         </div>

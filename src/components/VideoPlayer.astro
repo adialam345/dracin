@@ -2,22 +2,25 @@
 interface Props {
   videoUrl: string;
   title: string;
+  poster?: string;
 }
 
-const { videoUrl, title } = Astro.props;
-const isHLS = videoUrl.includes('.m3u8');
+const { videoUrl, title, poster } = Astro.props;
+const isHLS = videoUrl.includes('.m3u8') || videoUrl.includes('playlist.m3u8');
 ---
 
-<div class="relative bg-black w-full h-full" id="video-container">
+<div class="relative bg-black w-full h-full group" id="video-container">
   <video
     id="video-player"
-    class="w-full aspect-video"
+    class="w-full h-full object-contain"
     controls
-    preload="metadata"
+    preload="auto"
+    poster={poster}
     data-video-url={videoUrl}
     data-is-hls={isHLS}
+    playsinline
+    crossorigin="anonymous"
   >
-    <source src={videoUrl} type="video/mp4" />
     Browser Anda tidak mendukung video player.
   </video>
 </div>
@@ -30,6 +33,8 @@ const isHLS = videoUrl.includes('.m3u8');
   const isHLS = videoElement?.getAttribute('data-is-hls') === 'true';
 
   if (videoElement && videoUrl) {
+    console.log(`[VideoPlayer] Initializing for ${isHLS ? 'HLS' : 'MP4'}: ${videoUrl}`);
+    
     if (isHLS) {
       if (Hls.isSupported()) {
         const hls = new Hls({
@@ -41,16 +46,18 @@ const isHLS = videoUrl.includes('.m3u8');
         hls.attachMedia(videoElement);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('HLS manifest loaded');
+          console.log('[VideoPlayer] HLS manifest loaded');
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
+                console.error('[VideoPlayer] Network error', data);
                 hls.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
+                console.error('[VideoPlayer] Media error', data);
                 hls.recoverMediaError();
                 break;
               default:
@@ -63,7 +70,9 @@ const isHLS = videoUrl.includes('.m3u8');
         videoElement.src = videoUrl;
       }
     } else {
+      // Normal MP4 playback
       videoElement.src = videoUrl;
+      videoElement.load();
     }
   }
 </script>
