@@ -1,12 +1,11 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import EpisodeList from '../../../components/EpisodeList.astro';
-import { fetchUnifiedDetail, fetchUnifiedEpisodes } from '../../../services/aggregator';
+import { fetchUnifiedDramaData } from '../../../services/aggregator';
 
 const { source, bookId } = Astro.params;
 
-const drama = await fetchUnifiedDetail(source!, bookId!);
-const episodes = await fetchUnifiedEpisodes(source!, bookId!);
+const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 
 if (!drama) {
   return Astro.redirect('/');
@@ -30,6 +29,7 @@ if (!drama) {
             <a
               href={`/watch/${source}/${bookId}/${episodes[0].id}`}
               class="mt-6 w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-4 rounded-lg transition-colors duration-300"
+              data-astro-prefetch
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>

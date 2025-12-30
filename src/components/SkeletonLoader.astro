@@ -1,0 +1,47 @@
+---
+// Skeleton loader for movie cards
+interface Props {
+  count?: number;
+}
+
+const { count = 6 } = Astro.props;
+---
+
+{Array.from({ length: count }).map(() => (
+  <div class="skeleton-card group block relative">
+    <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] animate-pulse">
+      {/* Image placeholder */}
+      <div class="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900"></div>
+      
+      {/* Shimmer effect */}
+      <div class="absolute inset-0 shimmer"></div>
+      
+      {/* Content placeholder */}
+      <div class="absolute bottom-0 left-0 right-0 p-5">
+        <div class="h-4 bg-zinc-700 rounded mb-2 w-3/4"></div>
+        <div class="h-3 bg-zinc-700 rounded w-1/2"></div>
+      </div>
+    </div>
+  </div>
+))}
+
+<style>
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+</style>

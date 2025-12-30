@@ -49,3 +49,34 @@
     transform: translateY(0);
   }
 }
+
+/* Page Transition Loading Bar */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #ef4444, #f87171, transparent);
+  z-index: 9999;
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.loading-bar-animate {
+  animation: loadingProgress 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes loadingProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}

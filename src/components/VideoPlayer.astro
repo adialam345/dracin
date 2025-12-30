@@ -1,78 +1,211 @@
 ---
 interface Props {
-  videoUrl: string;
+  videoUrl?: string;
   title: string;
   poster?: string;
+  source?: string;
+  bookId?: string;
+  episodeId?: string;
+  nextEpisodeUrl?: string;
+  episodes?: any[];
 }
 
-const { videoUrl, title, poster } = Astro.props;
-const isHLS = videoUrl.includes('.m3u8') || videoUrl.includes('playlist.m3u8');
+const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nextEpisodeUrl, episodes = [] } = Astro.props;
 ---
 
-<div class="relative bg-black w-full h-full group" id="video-container">
+<div class="relative bg-black w-full h-full group overflow-hidden" id="video-container">
+  {/* Data store for episodes */}
+  <script type="application/json" id="episode-data" set:html={JSON.stringify(episodes.map(e => ({ id: e.id, index: e.index })))}></script>
+  {/* Loading Spinner overlay */}
+  <div id="player-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 z-20 transition-opacity duration-500">
+    <div class="relative">
+      <div class="w-16 h-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin"></div>
+      <div class="absolute inset-0 flex items-center justify-center">
+         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-red-600 animate-pulse">
+            <path d="M5 3.868v16.264c0 .882.991 1.405 1.715.908l13.011-8.132a1.06 1.06 0 0 0 0-1.816L6.715 2.96C5.991 2.463 5 2.986 5 3.868z" />
+         </svg>
+      </div>
+    </div>
+    <p class="mt-4 text-zinc-400 text-sm font-medium animate-pulse">Menyiapkan Putar Video...</p>
+  </div>
+
   <video
     id="video-player"
-    class="w-full h-full object-contain"
+    class="w-full h-full object-contain opacity-0 transition-opacity duration-700"
     controls
     preload="auto"
     poster={poster}
-    data-video-url={videoUrl}
-    data-is-hls={isHLS}
+    data-video-url={initialVideoUrl}
+    data-source={source}
+    data-book-id={bookId}
+    data-episode-id={episodeId}
+    data-next-episode-url={nextEpisodeUrl}
     playsinline
-    crossorigin="anonymous"
   >
     Browser Anda tidak mendukung video player.
   </video>
+
+  {/* Error State */}
+  <div id="player-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 z-20 p-6 text-center">
+    <div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <h3 class="text-white font-bold mb-2">Video Tidak Dapat Dimuat</h3>
+    <p class="text-zinc-400 text-sm mb-6">Maaf, terjadi kesalahan saat menyiapkan streaming video ini.</p>
+    <button onclick="window.location.reload()" class="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full text-sm font-medium transition-colors">
+      Coba Lagi
+    </button>
+  </div>
 </div>
 
 <script>
   import Hls from 'hls.js';
 
-  const videoElement = document.getElementById('video-player') as HTMLVideoElement;
-  const videoUrl = videoElement?.getAttribute('data-video-url');
-  const isHLS = videoElement?.getAttribute('data-is-hls') === 'true';
-
-  if (videoElement && videoUrl) {
-    console.log(`[VideoPlayer] Initializing for ${isHLS ? 'HLS' : 'MP4'}: ${videoUrl}`);
+  async function initPlayer() {
+    const videoElement = document.getElementById('video-player') as HTMLVideoElement;
+    const loader = document.getElementById('player-loader');
+    const errorState = document.getElementById('player-error');
+    const episodeDataScript = document.getElementById('episode-data');
     
-    if (isHLS) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-        });
+    if (!videoElement) return;
 
-        hls.loadSource(videoUrl);
-        hls.attachMedia(videoElement);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('[VideoPlayer] HLS manifest loaded');
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.error('[VideoPlayer] Network error', data);
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.error('[VideoPlayer] Media error', data);
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                break;
-            }
-          }
-        });
-      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = videoUrl;
+    // State
+    const episodes = JSON.parse(episodeDataScript?.textContent || '[]');
+    let currentEpisodeId = videoElement.getAttribute('data-episode-id');
+    const source = videoElement.getAttribute('data-source');
+    const bookId = videoElement.getAttribute('data-book-id');
+    let videoUrl = videoElement.getAttribute('data-video-url');
+    
+    // Helper to find next episode ID
+    const getNextEpisodeId = (currentId) => {
+      const idx = episodes.findIndex(e => e.id === currentId);
+      if (idx !== -1 && idx < episodes.length - 1) {
+        return episodes[idx + 1].id;
       }
+      return null;
+    };
+
+    // Load and Play Video Logic
+    const loadAndPlay = async (url, isAutoNext = false) => {
+       console.log(`[VideoPlayer] Loading: ${url}`);
+       const isHLS = url.includes('.m3u8') || url.includes('playlist.m3u8');
+       
+       if (loader) {
+         loader.style.display = 'flex';
+         loader.style.opacity = '1';
+       }
+
+       const onReady = () => {
+         videoElement.classList.remove('opacity-0');
+         if (loader) {
+           loader.style.opacity = '0';
+           setTimeout(() => loader.style.display = 'none', 500);
+         }
+         videoElement.play().catch(e => console.log('Autoplay blocked:', e));
+       };
+
+       if (isHLS) {
+         if (Hls.isSupported()) {
+           // Destroy previous HLS instance if exists
+           if (window.hlsInstance) {
+              window.hlsInstance.destroy();
+           }
+           const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+           window.hlsInstance = hls; // Keep track globally
+           
+           hls.loadSource(url);
+           hls.attachMedia(videoElement);
+           hls.on(Hls.Events.MANIFEST_PARSED, onReady);
+           hls.on(Hls.Events.ERROR, (event, data) => {
+             if (data.fatal) console.error('HLS Fatal Error', data);
+           });
+         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+           videoElement.src = url;
+           videoElement.onloadedmetadata = onReady;
+         }
+       } else {
+         videoElement.src = url;
+         videoElement.load();
+         videoElement.onloadeddata = onReady;
+       }
+    };
+
+    // Handle Auto Play Next Episode
+    videoElement.onended = async () => {
+      const nextId = getNextEpisodeId(currentEpisodeId);
+      
+      if (nextId) {
+        console.log('[VideoPlayer] Video ended. Next episode:', nextId);
+        
+        // CHECK FULLSCREEN STATUS
+        if (document.fullscreenElement) {
+           console.log('[VideoPlayer] In Fullscreen. Seamless transition...');
+           // 1. Fetch next video URL
+           try {
+             // Show loader inside fullscreen
+             if (loader) {
+                loader.style.display = 'flex';
+                loader.style.opacity = '1';
+             }
+             
+             const res = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${nextId}`);
+             const data = await res.json();
+             
+             if (data.videoUrl) {
+                // 2. Play next video
+                await loadAndPlay(data.videoUrl, true);
+                
+                // 3. Update State & URL
+                currentEpisodeId = nextId;
+                const newUrl = `/watch/${source}/${bookId}/${nextId}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+                
+                // 4. Mark that we drifted from initial page
+                videoElement.setAttribute('data-drifted', 'true');
+             }
+           } catch (e) {
+             console.error('Failed seamless next:', e);
+             window.location.href = `/watch/${source}/${bookId}/${nextId}`;
+           }
+        } else {
+           // Normal Navigation
+           window.location.href = `/watch/${source}/${bookId}/${nextId}`;
+        }
+      }
+    };
+    
+    // Listener for exiting fullscreen -> Reload to sync UI if we drifted
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && videoElement.getAttribute('data-drifted') === 'true') {
+        console.log('[VideoPlayer] Exited fullscreen after seamless play. Reloading UI...');
+        window.location.reload();
+      }
+    });
+
+    // Initial Load
+    if (!videoUrl && source && bookId && currentEpisodeId) {
+      try {
+        const response = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${currentEpisodeId}`);
+        const data = await response.json();
+        videoUrl = data.videoUrl;
+      } catch (e) {
+        console.error('[VideoPlayer] Client-side fetch failed:', e);
+      }
+    }
+
+    if (videoUrl) {
+      loadAndPlay(videoUrl);
     } else {
-      // Normal MP4 playback
-      videoElement.src = videoUrl;
-      videoElement.load();
+      if (loader) loader.style.display = 'none';
+      if (errorState) errorState.classList.remove('hidden');
     }
   }
+
+  // Initialize on load and on Astro view transitions
+  initPlayer();
+  document.addEventListener('astro:page-load', initPlayer);
 </script>

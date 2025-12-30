@@ -1,13 +1,13 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
 import VideoPlayer from '../../../../components/VideoPlayer.astro';
-import { fetchUnifiedDetail, fetchUnifiedEpisodes, fetchVideoUrl } from '../../../../services/aggregator';
+import { fetchUnifiedDramaData, fetchVideoUrl } from '../../../../services/aggregator';
 
 const { source, bookId, episodeId } = Astro.params;
 
-const drama = await fetchUnifiedDetail(source!, bookId!);
-const episodes = await fetchUnifiedEpisodes(source!, bookId!);
-const videoUrl = await fetchVideoUrl(source!, bookId!, episodeId!);
+// ONLY fetch drama metadata on the server (it's fast/cached)
+// DO NOT wait for video URL here, let the client fetch it for faster page shell load
+const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 
 if (!drama || episodes.length === 0) {
   return Astro.redirect('/');
@@ -16,9 +16,8 @@ if (!drama || episodes.length === 0) {
 const currentEpisode = episodes.find((ep: any) => ep.id === episodeId);
 const currentEpisodeIndex = episodes.findIndex((ep: any) => ep.id === episodeId);
 
-if (!currentEpisode) {
-  return Astro.redirect(`/movie/${source}/${bookId}`);
-}
+const nextEpisode = episodes[currentEpisodeIndex + 1];
+const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.id}` : undefined;
 ---
 
 <Layout title={`Nonton ${drama.title} - Episode ${currentEpisodeIndex + 1} - DramaKu`}>
@@ -42,110 +41,67 @@ if (!currentEpisode) {
         </a>
       </nav>
 
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div class="max-w-5xl mx-auto">
         
         {/* Main Content: Video Player */}
-        <div class="lg:col-span-3 space-y-6">
+        <div class="space-y-6">
           <div class="relative group">
             {/* Player Container */}
             <div class="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 bg-zinc-900 border border-white/5 aspect-video md:aspect-[21/9] lg:aspect-video">
-              {videoUrl ? (
-                <VideoPlayer videoUrl={videoUrl} title={drama.title} poster={drama.cover} />
-              ) : (
-                <div class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/90 gap-4">
-                  <div class="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-600">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                  </div>
-                  <p class="text-zinc-400 font-medium">Video tidak tersedia untuk episode ini</p>
-                </div>
-              )}
+              <VideoPlayer 
+                title={drama.title} 
+                poster={drama.cover} 
+                source={source}
+                bookId={bookId}
+                episodeId={episodeId}
+                nextEpisodeUrl={nextEpisodeUrl}
+                episodes={episodes}
+              />
             </div>
           </div>
 
           {/* Episode Info */}
-          <div class="bg-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/5">
+          <div class="bg-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/10">
             <h1 class="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
               {drama.title}
             </h1>
-            <div class="flex items-center gap-2 text-zinc-400 text-sm md:text-base mb-6">
-              <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-zinc-300">
-                Episode {currentEpisodeIndex + 1}
-              </span>
-              {currentEpisode.name && (
-                <>
-                  <span class="w-1 h-1 rounded-full bg-zinc-600"></span>
-                  <span>{currentEpisode.name}</span>
-                </>
-              )}
-            </div>
-
+            
             {drama.description && (
-              <div class="space-y-3">
-                <h3 class="text-sm uppercase tracking-wider text-zinc-500 font-semibold">Sinopsis</h3>
-                <p class="text-zinc-300 leading-relaxed text-sm md:text-base">
-                  {drama.description}
-                </p>
-              </div>
+              <p class="text-zinc-400 leading-relaxed text-sm md:text-base mt-2 line-clamp-2">
+                {drama.description}
+              </p>
             )}
           </div>
-        </div>
 
-        {/* Sidebar: Episode List */}
-        <div class="lg:col-span-1">
-          <div class="sticky top-24 bg-zinc-900/40 backdrop-blur-md rounded-2xl border border-white/5 overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
-            <div class="p-4 border-b border-white/5 bg-zinc-900/50 backdrop-blur-xl z-20">
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500">
-                  <path d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
+          {/* Episode Grid List */}
+          <div class="bg-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/10">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span class="w-1 h-6 bg-red-600 rounded-full"></span>
                 Daftar Episode
               </h2>
+              <span class="text-zinc-400 text-sm">
+                Episode {currentEpisodeIndex + 1} / {episodes.length}
+              </span>
             </div>
             
-            <div class="overflow-y-auto p-2 space-y-1 custom-scrollbar flex-1">
+            <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
               {episodes.map((episode: any, index: number) => {
                 const isActive = episode.id === episodeId;
                 return (
                   <a
                     href={`/watch/${source}/${bookId}/${episode.id}`}
-                    class={`group relative flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${
+                    class={`group relative flex items-center justify-center aspect-square rounded-lg text-sm font-semibold transition-all duration-300 border ${
                       isActive
-                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-900/20 z-10 scale-[1.02]'
-                        : 'bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white'
+                        ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-105 z-10'
+                        : 'bg-zinc-800/50 border-white/5 text-zinc-400 hover:bg-zinc-700/80 hover:text-white hover:border-white/20'
                     }`}
                   >
-                    <div class={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                      isActive 
-                        ? 'bg-white/20 text-white backdrop-blur-sm' 
-                        : 'bg-zinc-800/80 group-hover:bg-zinc-700 text-zinc-500 group-hover:text-zinc-300'
-                    }`}>
-                      {isActive ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0" stroke-linecap="round" stroke-linejoin="round">
-                          <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                      ) : (
-                        index + 1
-                      )}
-                    </div>
+                    {index + 1}
                     
-                    <div class="flex-1 min-w-0">
-                      <p class={`text-sm font-medium truncate ${isActive ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}>
-                        Episode {episode.index + 1}
-                      </p>
-                      {episode.name && (
-                        <p class={`text-xs truncate transition-colors ${isActive ? 'text-red-100/80' : 'text-zinc-500 group-hover:text-zinc-400'}`}>
-                          {episode.name}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Active Indicator Line (Optional aesthetic touch) */}
-                    {isActive && (
-                      <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/20 rounded-l-full"></div>
+                    {/* VIP/Lock Indicator if needed in future */}
+                    {!episode.unlock && !isActive && (
+                      <div class="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
                     )}
                   </a>
                 );

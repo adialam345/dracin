@@ -1,0 +1,163 @@
+---
+// Progressive data loading utility
+// Handles fetching all data from multiple APIs and caching
+---
+
+<script>
+  interface CachedSearchData {
+    query: string;
+    timestamp: number;
+    allResults: any[];
+    sources: {
+      dramabox: { loaded: boolean; hasMore: boolean };
+      netshort: { loaded: boolean };
+      melolo: { loaded: boolean };
+    };
+  }
+
+  class ProgressiveDataLoader {
+    private cache: Map<string, CachedSearchData> = new Map();
+    private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    private readonly API_BASE = '/api';
+
+    async loadSearchResults(query: string, page: number, size: number = 12) {
+      const cacheKey = query.toLowerCase();
+      const cached = this.getFromCache(cacheKey);
+
+      // If we have cached data and it's not expired
+      if (cached && this.isCacheValid(cached)) {
+        return this.paginateResults(cached.allResults, page, size);
+      }
+
+      // Load fresh data
+      return await this.loadFreshData(query, page, size);
+    }
+
+    private async loadFreshData(query: string, page: number, size: number) {
+      const cacheKey = query.toLowerCase();
+      
+      try {
+        // Fetch all sources in parallel on first page
+        if (page === 1) {
+          const [dramabox, netshort, melolo] = await Promise.allSettled([
+            this.fetchDramabox(query, 1),
+            this.fetchNetshort(query),
+            this.fetchMelolo(query)
+          ]);
+
+          const allResults = [
+            ...(dramabox.status === 'fulfilled' ? dramabox.value : []),
+            ...(netshort.status === 'fulfilled' ? netshort.value : []),
+            ...(melolo.status === 'fulfilled' ? melolo.value : [])
+          ];
+
+          // Cache the results
+          this.cache.set(cacheKey, {
+            query,
+            timestamp: Date.now(),
+            allResults,
+            sources: {
+              dramabox: { loaded: true, hasMore: dramabox.status === 'fulfilled' },
+              netshort: { loaded: netshort.status === 'fulfilled' },
+              melolo: { loaded: melolo.status === 'fulfilled' }
+            }
+          });
+
+          return this.paginateResults(allResults, page, size);
+        } else {
+          // For subsequent pages, use cached data or fetch more from DramaBox
+          const cached = this.cache.get(cacheKey);
+          if (cached) {
+            // Check if we need more DramaBox data
+            const currentDramaboxCount = cached.allResults.filter(r => r.source === 'dramabox').length;
+            const neededCount = page * size;
+
+            if (currentDramaboxCount < neededCount && cached.sources.dramabox.hasMore) {
+              const moreDramabox = await this.fetchDramabox(query, Math.ceil(currentDramaboxCount / size) + 1);
+              cached.allResults.push(...moreDramabox);
+            }
+
+            return this.paginateResults(cached.allResults, page, size);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        return { results: [], hasMore: false, total: 0 };
+      }
+    }
+
+    private async fetchDramabox(query: string, page: number) {
+      const res = await fetch(`https://api.sansekai.my.id/api/dramabox/search?keyword=${encodeURIComponent(query)}&page=${page}`);
+      const data = await res.json();
+      return (data.data?.bookList || []).map((item: any) => ({
+        id: item.bookId,
+        title: item.bookName,
+        cover: item.coverWap || item.cover,
+        description: item.introduction,
+        source: 'dramabox'
+      }));
+    }
+
+    private async fetchNetshort(query: string) {
+      const res = await fetch(`https://api.sansekai.my.id/api/netshort/search?keyword=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      return (data.data?.shortPlayList || []).map((item: any) => ({
+        id: item.shortPlayId,
+        title: (item.shortPlayName || '').replace(/<[^>]*>/g, ''),
+        cover: item.shortPlayCover,
+        description: item.shotIntroduce,
+        source: 'netshort'
+      }));
+    }
+
+    private async fetchMelolo(query: string) {
+      const res = await fetch(`https://api.sansekai.my.id/api/melolo/search?keyword=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      return (data.data?.books || []).map((item: any) => {
+        let cover = item.cover_url || item.thumb_url || '';
+        if (cover.includes('.heic')) {
+          cover = `https://images.weserv.nl/?url=${encodeURIComponent(cover)}&output=webp&q=85`;
+        }
+        return {
+          id: item.book_id,
+          title: item.book_name,
+          cover: cover,
+          description: item.abstract,
+          source: 'melolo'
+        };
+      });
+    }
+
+    private paginateResults(allResults: any[], page: number, size: number) {
+      const startIndex = (page - 1) * size;
+      const endIndex = startIndex + size;
+      const results = allResults.slice(startIndex, endIndex);
+      const hasMore = endIndex < allResults.length;
+
+      return {
+        results,
+        hasMore,
+        total: allResults.length,
+        page,
+        size
+      };
+    }
+
+    private getFromCache(key: string): CachedSearchData | null {
+      return this.cache.get(key) || null;
+    }
+
+    private isCacheValid(cached: CachedSearchData): boolean {
+      return Date.now() - cached.timestamp < this.CACHE_DURATION;
+    }
+
+    clearCache() {
+      this.cache.clear();
+    }
+  }
+
+  // Export global instance
+  if (typeof window !== 'undefined') {
+    (window as any).progressiveLoader = new ProgressiveDataLoader();
+  }
+</script>

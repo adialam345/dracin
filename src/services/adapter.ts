@@ -7,6 +7,12 @@ export interface UnifiedDrama {
     raw?: any;
 }
 
+// Helper function to strip HTML tags from text
+function stripHtml(html: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, '');
+}
+
 export function normalizeDramabox(data: any): UnifiedDrama {
     return {
         id: data.bookId || data.book_id,
@@ -19,9 +25,10 @@ export function normalizeDramabox(data: any): UnifiedDrama {
 }
 
 export function normalizeNetshort(data: any): UnifiedDrama {
+    const rawTitle = data.shortPlayName || data.title || data.name;
     return {
         id: data.shortPlayId || data.id,
-        title: data.shortPlayName || data.title || data.name,
+        title: stripHtml(rawTitle), // Remove HTML tags like <em>
         cover: data.shortPlayCover || data.cover || data.coverUrl,
         description: data.introduction || data.desc || '',
         source: 'netshort',
@@ -33,33 +40,29 @@ export function normalizeMelolo(data: any): UnifiedDrama {
     let cover = data.cover_url || data.cover || data.thumb_url || '';
 
     // Use images.weserv.nl to convert HEIC to WebP automatically
-    // This is a free CDN service that handles format conversion
     if (cover && cover.includes('.heic')) {
-        // Encode the original URL and use weserv.nl to convert it
         cover = `https://images.weserv.nl/?url=${encodeURIComponent(cover)}&output=webp&q=85`;
     }
 
     return {
-        id: data.book_id || data.id,
-        title: data.book_name || data.name,
+        id: data.book_id || data.id || data.series_id,
+        title: data.book_name || data.name || data.title,
         cover: cover,
-        description: data.abstract || data.summary || '',
+        description: data.abstract || data.summary || data.series_intro || '',
         source: 'melolo',
         raw: data,
     };
 }
 
 export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' = 'dramabox'): UnifiedDrama {
-    // Melolo specific fields
-    if (data.book_id && data.book_name && data.abstract) {
-        return normalizeMelolo(data);
-    }
+    // If source is explicitly known, try that normalizer first
+    if (defaultSource === 'melolo') return normalizeMelolo(data);
+    if (defaultSource === 'netshort') return normalizeNetshort(data);
+    if (defaultSource === 'dramabox') return normalizeDramabox(data);
 
-    // NetShort specific fields
-    if (data.shortPlayId && data.shortPlayName) {
-        return normalizeNetshort(data);
-    }
+    // Fallback detection (legacy)
+    if (data.book_id && data.book_name) return normalizeMelolo(data);
+    if (data.shortPlayId) return normalizeNetshort(data);
 
-    // Dramabox fallback
     return normalizeDramabox(data);
 }

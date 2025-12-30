@@ -18,7 +18,7 @@ const sourceLabels = {
 const badge = source ? sourceLabels[source] : null;
 ---
 
-<a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative">
+<a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative" data-astro-prefetch>
   <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] transition-all duration-500 ease-out group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
     <img
       src={posterUrl}
