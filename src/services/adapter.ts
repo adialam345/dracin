@@ -3,7 +3,7 @@ export interface UnifiedDrama {
     title: string;
     cover: string;
     description?: string;
-    source: 'dramabox' | 'netshort' | 'melolo';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel';
     raw?: any;
 }
 
@@ -54,13 +54,37 @@ export function normalizeMelolo(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' = 'dramabox'): UnifiedDrama {
+export function normalizeRadReel(data: any): UnifiedDrama {
+    // ID format: fakeId_compilationsId
+    // If coming from search or list, we might have videoUrl directly
+    const id = (data.fakeId && data.compilationsId)
+        ? `${data.fakeId}_${data.compilationsId}`
+        : (data.compilationsFakeId && data.compilationsId)
+            ? `${data.compilationsFakeId}_${data.compilationsId}`
+            : (data.id || '');
+
+    return {
+        id: id,
+        title: stripHtml(data.title || ''),
+        cover: data.coverImgUrl || '',
+        description: stripHtml(data.introduction || data.introduce || ''),
+        source: 'radreel',
+        raw: {
+            ...data,
+            videoUrl: data.videoUrl || '' // IMPORTANT: Save videoUrl if present
+        },
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
     if (defaultSource === 'dramabox') return normalizeDramabox(data);
+    if (defaultSource === 'radreel') return normalizeRadReel(data);
 
     // Fallback detection (legacy)
+    if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
     if (data.book_id && data.book_name) return normalizeMelolo(data);
     if (data.shortPlayId) return normalizeNetshort(data);
 
