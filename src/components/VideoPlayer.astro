@@ -79,6 +79,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     const source = videoElement.getAttribute('data-source');
     const bookId = videoElement.getAttribute('data-book-id');
     let videoUrl = videoElement.getAttribute('data-video-url');
+    let currentFetchController: AbortController | null = null;
     
     // Helper to find next episode ID
     const getNextEpisodeId = (currentId) => {
@@ -147,6 +148,13 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
         
         if (isFullscreen) {
            console.log('[VideoPlayer] In Fullscreen. Seamless transition...');
+           
+           // Abort previous pending requests if any
+           if (currentFetchController) {
+               currentFetchController.abort();
+           }
+           currentFetchController = new AbortController();
+
            // 1. Fetch next video URL
            try {
              // Show loader inside fullscreen
@@ -155,7 +163,9 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                 loader.style.opacity = '1';
              }
              
-             const res = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${nextId}`);
+             const res = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${nextId}`, {
+                 signal: currentFetchController.signal
+             });
              const data = await res.json();
              
              if (data.videoUrl) {
@@ -170,9 +180,16 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                 // 4. Mark that we drifted from initial page
                 videoElement.setAttribute('data-drifted', 'true');
              }
-           } catch (e) {
+           } catch (e: any) {
+             if (e.name === 'AbortError') {
+                 console.log('[VideoPlayer] Fetch aborted');
+                 return;
+             }
              console.error('Failed seamless next:', e);
+             // Fallback to normal navigation
              window.location.href = `/watch/${source}/${bookId}/${nextId}`;
+           } finally {
+             currentFetchController = null;
            }
         } else {
            // Normal Navigation
