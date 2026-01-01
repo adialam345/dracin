@@ -142,7 +142,10 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
         console.log('[VideoPlayer] Video ended. Next episode:', nextId);
         
         // CHECK FULLSCREEN STATUS
-        if (document.fullscreenElement) {
+        // iOS Safari uses webkitDisplayingFullscreen
+        const isFullscreen = document.fullscreenElement || (videoElement as any).webkitDisplayingFullscreen;
+        
+        if (isFullscreen) {
            console.log('[VideoPlayer] In Fullscreen. Seamless transition...');
            // 1. Fetch next video URL
            try {
@@ -179,12 +182,17 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     };
     
     // Listener for exiting fullscreen -> Reload to sync UI if we drifted
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && videoElement.getAttribute('data-drifted') === 'true') {
-        console.log('[VideoPlayer] Exited fullscreen after seamless play. Reloading UI...');
-        window.location.reload();
-      }
-    });
+    // Listener for exiting fullscreen -> Reload to sync UI if we drifted
+    const onFullscreenExit = () => {
+       const isFullscreen = document.fullscreenElement || (videoElement as any).webkitDisplayingFullscreen;
+       if (!isFullscreen && videoElement.getAttribute('data-drifted') === 'true') {
+         console.log('[VideoPlayer] Exited fullscreen after seamless play. Reloading UI...');
+         window.location.reload();
+       }
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenExit);
+    videoElement.addEventListener('webkitendfullscreen', onFullscreenExit); // iOS specific
 
     // Initial Load
     if (!videoUrl && source && bookId && currentEpisodeId) {
