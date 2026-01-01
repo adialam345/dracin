@@ -33,7 +33,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     id="video-player"
     class="w-full h-full object-contain opacity-0 transition-opacity duration-700"
     controls
-    preload="auto"
+    preload="metadata"
     poster={poster}
     data-video-url={initialVideoUrl}
     data-source={source}
@@ -41,6 +41,8 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     data-episode-id={episodeId}
     data-next-episode-url={nextEpisodeUrl}
     playsinline
+    disablePictureInPicture={false}
+    controlsList="nodownload"
   >
     Browser Anda tidak mendukung video player.
   </video>
@@ -61,6 +63,38 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     </button>
   </div>
 </div>
+
+<style>
+  /* Custom Subtitle Styling */
+  #video-player::cue {
+    background-color: transparent !important;
+    background: transparent !important;
+    color: white;
+    font-size: 1.2em;
+    font-weight: 600;
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.9),
+      -1px -1px 2px rgba(0, 0, 0, 0.9),
+      1px -1px 2px rgba(0, 0, 0, 0.9),
+      -1px 1px 2px rgba(0, 0, 0, 0.9);
+    line-height: 1.4;
+  }
+
+  /* Position subtitles higher (closer to center) */
+  #video-player::cue {
+    position: relative;
+    bottom: 15% !important;
+  }
+
+  /* Remove any default background from video text tracks */
+  #video-player::-webkit-media-text-track-container {
+    bottom: 15% !important;
+  }
+
+  #video-player::-webkit-media-text-track-display {
+    background: transparent !important;
+  }
+</style>
 
 <script>
   import Hls from 'hls.js';
@@ -91,10 +125,44 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     };
 
     // Load and Play Video Logic
-    const loadAndPlay = async (url, isAutoNext = false) => {
+    const loadAndPlay = async (urlPayload, isAutoNext = false) => {
+       let url = urlPayload;
+       // Parse JSON payload if sent (containing subtitles or error)
+       if (typeof urlPayload === 'string' && urlPayload.trim().startsWith('{')) {
+           try {
+               const data = JSON.parse(urlPayload);
+               
+               // Check if this is a premium/locked episode error
+               if (data.error === 'premium') {
+                   console.error('[VideoPlayer] Premium episode:', data.message);
+                   if (loader) loader.style.display = 'none';
+                   if (errorState) {
+                       errorState.querySelector('h3').textContent = '🔒 Episode Premium';
+                       errorState.querySelector('p').textContent = data.message || 'Episode ini memerlukan akun premium';
+                       errorState.classList.remove('hidden');
+                   }
+                   return; // Stop loading
+               }
+               
+               url = data.videoUrl;
+               // Wait for player to be ready before adding tracks? No, HLS needs init first.
+               // We'll set a global/scoped variable to add them after attach
+               window.pendingSubtitles = data.subtitles; 
+           } catch(e) {
+               console.error('[VideoPlayer] Failed to parse payload:', e);
+           }
+       }
+
+       // --- PROXY LOGIC FOR DRAMAWAVE ---
+       if (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) {
+           url = '/api/proxy?url=' + encodeURIComponent(url);
+           console.log('[VideoPlayer] Using Proxy:', url);
+       }
+       // ---------------------------------
+
        console.log(`[VideoPlayer] Loading: ${url}`);
-       const isHLS = url.includes('.m3u8') || url.includes('playlist.m3u8');
-       
+       const isHLS = url.includes('.m3u8') || url.includes('playlist.m3u8') || url.includes('/api/proxy');
+
        if (loader) {
          loader.style.display = 'flex';
          loader.style.opacity = '1';
@@ -115,15 +183,156 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            if (window.hlsInstance) {
               window.hlsInstance.destroy();
            }
-           const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-           window.hlsInstance = hls; // Keep track globally
+           
+           // OPTIMIZED HLS CONFIG for smooth & efficient streaming
+           const hlsConfig = {
+             // Performance & Bandwidth Optimization
+             enableWorker: true,
+             lowLatencyMode: false, // Disable for better buffering
+             
+             // Buffer Management (Hemat RAM & Bandwidth)
+             maxBufferLength: 20,        // Max 20 detik buffer (default: 30)
+             maxMaxBufferLength: 40,     // Max total buffer 40 detik
+             maxBufferSize: 30 * 1000 * 1000, // 30 MB max buffer size
+             maxBufferHole: 0.5,         // Toleransi gap kecil
+             
+             // Loading Optimization
+             manifestLoadingTimeOut: 10000,
+             manifestLoadingMaxRetry: 3,
+             manifestLoadingRetryDelay: 500,
+             levelLoadingTimeOut: 10000,
+             levelLoadingMaxRetry: 3,
+             fragLoadingTimeOut: 20000,
+             fragLoadingMaxRetry: 3,
+             
+             // Adaptive Bitrate (Auto pilih kualitas terbaik)
+             startLevel: -1,             // Auto-select best quality for connection
+             capLevelToPlayerSize: true, // Jangan load kualitas lebih tinggi dari ukuran player
+             
+             // Network Optimization
+             abrEwmaDefaultEstimate: 500000, // Conservative bandwidth estimate (500kbps)
+             abrBandWidthFactor: 0.8,    // Use 80% of detected bandwidth (safety margin)
+             abrBandWidthUpFactor: 0.7,  // Conservative upgrade to higher quality
+             
+             // Fragment Loading
+             backBufferLength: 10,       // Keep only 10s of back buffer (hemat memory)
+             
+             // Debug (set false for production)
+             debug: false
+           };
+           
+           const hls = new Hls(hlsConfig);
+           window.hlsInstance = hls;
            
            hls.loadSource(url);
            hls.attachMedia(videoElement);
-           hls.on(Hls.Events.MANIFEST_PARSED, onReady);
-           hls.on(Hls.Events.ERROR, (event, data) => {
-             if (data.fatal) console.error('HLS Fatal Error', data);
+           hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+             // Auto-select Indonesian Audio if available
+             if (hls.audioTracks && hls.audioTracks.length > 0) {
+               const idTrack = hls.audioTracks.findIndex(t => 
+                 (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) || 
+                 (t.name && t.name.toLowerCase().includes('indo'))
+               );
+               if (idTrack !== -1) {
+                 console.log('[VideoPlayer] Auto-selecting Audio:', hls.audioTracks[idTrack].name);
+                 hls.audioTrack = idTrack;
+               }
+             }
+             
+             // --- EXTERNAL SUBTITLES LOGIC ---
+             if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
+                 // Remove existing subtitle tracks if needed, but HLS.js handles this mostly internally
+                 // We can't easily "add" tracks to existing HLS instance without side-loading
+                 // BUT: Since these are external SRT/VTT, we can add them to the video element OR
+                 // Use HLS.js subtitle APIs if we construct the manifest properly.
+                 // EASIER FOR NOW: Add <track> elements to video tag directly, but HLS.js might conflict.
+                 // ALTERNATIVELY: Use the Video Element textual tracks if native or use HLS.js caption display.
+                 
+                 // Since HLS.js owns the video, adding track tags is the safest generic way 
+                 // if HLS.js allows native text tracks.
+                 
+                 // Clear old tracks
+                 const oldTracks = videoElement.querySelectorAll('track');
+                 oldTracks.forEach(t => t.remove());
+
+                 let defaultSet = false;
+                 window.pendingSubtitles.forEach(sub => {
+                     const track = document.createElement('track');
+                     track.kind = 'subtitles';
+                     track.label = sub.label;
+                     track.srclang = sub.lang;
+                     track.src = source === 'dramawave' ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                     
+                     // Auto-select ID
+                     if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+                         track.default = true;
+                         defaultSet = true;
+                         console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
+                     }
+                     videoElement.appendChild(track);
+                     
+                     // Force track to show if it is default (needed for some browsers)
+                     if (track.default) {
+                        track.mode = 'showing';
+                     }
+                 });
+             }
+             // -------------------------------
+
+
+             // Auto-select Indonesian Subtitle if available
+             if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+                const idSub = hls.subtitleTracks.findIndex(t => 
+                  (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) || 
+                  (t.name && t.name.toLowerCase().includes('indo'))
+                );
+                if (idSub !== -1) {
+                  console.log('[VideoPlayer] Auto-selecting Subtitle:', hls.subtitleTracks[idSub].name);
+                  hls.subtitleTrack = idSub;
+                }
+             }
+             
+             onReady();
            });
+           
+           // PERFORMANCE MONITORING & AUTO-ADJUSTMENT
+           hls.on(Hls.Events.ERROR, (event, data) => {
+             if (data.fatal) {
+               console.error('HLS Fatal Error', data);
+               
+               switch(data.type) {
+                 case Hls.ErrorTypes.NETWORK_ERROR:
+                   console.log('Network error, attempting recovery...');
+                   hls.startLoad();
+                   break;
+                 case Hls.ErrorTypes.MEDIA_ERROR:
+                   console.log('Media error, attempting recovery...');
+                   hls.recoverMediaError();
+                   break;
+                 default:
+                   console.error('Unrecoverable error');
+                   if (errorState) errorState.classList.remove('hidden');
+                   break;
+               }
+             } else if (data.details === 'bufferStalledError') {
+               // Auto-downgrade quality on buffer stall
+               console.log('Buffer stalled, reducing quality...');
+               if (hls.currentLevel > 0) {
+                 hls.currentLevel = Math.max(0, hls.currentLevel - 1);
+               }
+             }
+           });
+           
+           // Monitor bandwidth and adjust quality
+           hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+             const bandwidth = data.stats.bw || 0;
+             // If bandwidth drops below 300kbps, force lowest quality
+             if (bandwidth > 0 && bandwidth < 300000 && hls.currentLevel > 0) {
+               console.log('Low bandwidth detected, switching to lowest quality');
+               hls.currentLevel = 0;
+             }
+           });
+           
          } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
            videoElement.src = url;
            videoElement.onloadedmetadata = onReady;
@@ -216,13 +425,17 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
       try {
         const response = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${currentEpisodeId}`);
         const data = await response.json();
-        videoUrl = data.videoUrl;
+        const payload = data.videoUrl; // Can be JSON string
+
+        loadAndPlay(payload);
+        return; // loadAndPlay handles parsing
       } catch (e) {
         console.error('[VideoPlayer] Client-side fetch failed:', e);
       }
     }
 
     if (videoUrl) {
+      // Check if videoUrl needs parsing (passed via props)
       loadAndPlay(videoUrl);
     } else {
       if (loader) loader.style.display = 'none';

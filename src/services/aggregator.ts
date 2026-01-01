@@ -1,4 +1,4 @@
-import { normalizeAny, normalizeRadReel, type UnifiedDrama } from './adapter';
+import { normalizeAny, normalizeRadReel, normalizeDramaWave, type UnifiedDrama } from './adapter';
 
 const API_BASE = 'https://api.sansekai.my.id/api';
 
@@ -110,13 +110,132 @@ async function fetchRadReel(endpoint: string): Promise<any> {
     return null;
 }
 
+const DRAMAWAVE_BASE_AUTH = {
+    // OLD TOKEN (Validation passes)
+    oauth_signature: 'cca7cf0fb4c05ec354e08b59993360d9',
+    oauth_token: 'uqLUbfoAbgOpjSqXaWzq41b27czoEYag'
+};
+
+function getDramaWaveHeaders(): Record<string, string> {
+    // timestamp from old successful capture
+    const timestamp = '1767280565428';
+    return {
+        // VIP IDENTITY (Session & Device)
+        'session-id': '1bf35e42-4f79-4ff9-a9de-689316ccf138',
+        'device-id': 'af25a4fb-5739-4b3b-bee5-068add56cac3',
+
+        // AUTH (Using old known-good token)
+        'Authorization': `oauth_signature=${DRAMAWAVE_BASE_AUTH.oauth_signature},oauth_token=${DRAMAWAVE_BASE_AUTH.oauth_token},ts=${timestamp}`,
+
+        // IDENTITY METADATA (From VIP request)
+        'app-name': 'com.freereels.app',
+        'app-version': '2.1.00',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0.1 Mobile/15E148 Safari/604.1',
+        'x-device-brand': 'Samsung',
+        'x-device-manufacturer': 'Samsung',
+        'x-device-model': 'Galaxy A52',
+        'x-appsflyer_id': '1767286674238-964377822658472300',
+        'appsflyer-id': '1767286674238-964377822658472300',
+
+        // STANDARD HEADERS
+        'language': 'id-ID',
+        'country': 'ID',
+        'timezone': '+7',
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive'
+    };
+}
+
+import https from 'https';
+import zlib from 'zlib';
+
+function fetchDramaWave(endpoint: string, method: string = 'GET', body: any = null): Promise<any> {
+    return new Promise((resolve) => {
+        try {
+            const urlObj = new URL(endpoint);
+            const headers = getDramaWaveHeaders();
+            headers['Accept-Encoding'] = 'gzip, deflate, br';
+            headers['Connection'] = 'keep-alive';
+
+            if (body) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            const options: https.RequestOptions = {
+                method: method,
+                headers: headers,
+                hostname: urlObj.hostname,
+                path: urlObj.pathname + urlObj.search,
+                port: 443
+            };
+
+            const req = https.request(options, (res) => {
+                let chunks: any[] = [];
+                res.on('data', (chunk) => chunks.push(chunk));
+                res.on('end', () => {
+                    if (res.statusCode !== 200) {
+                        console.warn('[fetchDramaWave] HTTP Error:', res.statusCode);
+                        resolve(null);
+                        return;
+                    }
+
+                    try {
+                        let buffer = Buffer.concat(chunks);
+
+                        // Handle compression
+                        const encoding = res.headers['content-encoding'];
+                        if (encoding === 'gzip') {
+                            buffer = zlib.gunzipSync(buffer);
+                        } else if (encoding === 'deflate') {
+                            buffer = zlib.inflateSync(buffer);
+                        } else if (encoding === 'br') {
+                            buffer = zlib.brotliDecompressSync(buffer);
+                        }
+
+                        const text = buffer.toString();
+                        const data = JSON.parse(text);
+
+                        if (data.code && data.code !== 200) {
+                            console.warn('[fetchDramaWave] API Error: ' + JSON.stringify(data));
+                            resolve(null);
+                            return;
+                        }
+
+                        console.log('[fetchDramaWave] Success. Keys:', Object.keys(data.data || {}));
+                        resolve(data.data || null);
+                    } catch (e) {
+                        console.error('[fetchDramaWave] Parse Error:', e);
+                        resolve(null);
+                    }
+                });
+            });
+
+            req.on('error', (e) => {
+                console.error('[fetchDramaWave] Req Error:', e);
+                resolve(null);
+            });
+
+            if (body) {
+                req.write(JSON.stringify(body));
+            }
+            req.end();
+
+        } catch (e) {
+            console.error('[fetchDramaWave] Setup Error:', e);
+            resolve(null);
+        }
+    });
+}
+
 export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], trending: UnifiedDrama[], latest: UnifiedDrama[] }> {
     // Parallel cached fetch from all providers
     const [
         dbForYou, dbTrending, dbLatest,
         nsForYou,
         mlTrending, mlLatest,
-        rrForYou
+        rrForYou,
+        dwForYou
     ] = await Promise.all([
         fetchCached(API_BASE + '/dramabox/foryou'),
         fetchCached(API_BASE + '/dramabox/trending'),
@@ -125,6 +244,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         fetchCached(API_BASE + '/melolo/trending'),
         fetchCached(API_BASE + '/melolo/latest'),
         fetchRadReel('https://cdp.wolftv.online/cdp/compilations_recommend_slot/for_you_recommended?index=0'),
+        fetchDramaWave('https://api.mydramawave.com/dm-api/foryou/feed?next='),
     ]);
 
     // Mix and Match Logic
@@ -132,6 +252,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         ...extractList(dbForYou, 'dramabox'),
         ...extractList(nsForYou, 'netshort').slice(0, 5),
         ...extractList(rrForYou, 'radreel'),
+        ...extractList(dwForYou, 'dramawave'),
     ];
 
     const allTrending = [
@@ -155,13 +276,19 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 }
 
 // Helper to extract items from different API structures
-function extractList(data: any, provider: 'dramabox' | 'netshort' | 'melolo' | 'radreel'): UnifiedDrama[] {
+function extractList(data: any, provider: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave'): UnifiedDrama[] {
     if (!data) return [];
     let items: any[] = [];
 
     // RadReel Structure Detection
     if (provider === 'radreel') {
         if (data.forYoucompilationsList) items = data.forYoucompilationsList;
+        else if (Array.isArray(data)) items = data;
+    }
+    // DramaWave Structure
+    else if (provider === 'dramawave') {
+        if (data && data.items) items = data.items;
+        else if (data && data.list) items = data.list;
         else if (Array.isArray(data)) items = data;
     }
     // NetShort Structure Detection
@@ -222,18 +349,25 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
     if (!query) return [];
 
     // Use cached search with larger size for Dramabox to get more candidates
-    const [dbSearch, nsSearch, mlSearch, rrSearch] = await Promise.all([
+    const [dbSearch, nsSearch, mlSearch, rrSearch, dwSearch] = await Promise.all([
         fetchCached(API_BASE + '/dramabox/search?query=' + encodeURIComponent(query) + '&page=1&size=30'),
         fetchCached(API_BASE + '/netshort/search?query=' + encodeURIComponent(query)),
         fetchCached(API_BASE + '/melolo/search?query=' + encodeURIComponent(query)),
         // RadReel has internal fetcher
         fetchRadReel('https://cdp.wolftv.online/cdp/server_api/compilations/search_detail/v2?keyword=' + encodeURIComponent(query) + '&pageNumber=1&pageSize=20'),
+        // DramaWave internal fetcher (Corrected Endpoint: /dm-api/search/drama)
+        fetchDramaWave('https://api.mydramawave.com/dm-api/search/drama', 'POST', {
+            keyword: query,
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            next: ''
+        }),
     ]);
 
     const dbList = extractList(dbSearch, 'dramabox');
     const nsList = extractList(nsSearch, 'netshort');
     const mlList = extractList(mlSearch, 'melolo');
     const rrList = extractList(rrSearch, 'radreel');
+    const dwList = extractList(dwSearch, 'dramawave');
 
     // Combine all raw candidates
     let candidates: UnifiedDrama[] = [];
@@ -245,6 +379,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (nsList[i]) candidates.push(nsList[i]);
         if (mlList[i]) candidates.push(mlList[i]);
         if (rrList[i]) candidates.push(rrList[i]);
+        if (dwList[i]) candidates.push(dwList[i]);
     }
 
     // Deduplicate by id
@@ -404,6 +539,65 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
                 }
 
                 return { drama: dramaInfo, episodes };
+            }
+
+            return { drama: null, episodes: [] };
+        }
+
+        // DramaWave Special Case
+        if (source === 'dramawave') {
+            // Try to get from cache first (populated from Home/Search)
+            const cached = dramaDetailsCache.get('dramawave_' + id);
+
+            // Fetch detail from API
+            const detailUrl = `https://api.mydramawave.com/dm-api/drama/info_v2?campaign=&series_id=${id}`;
+            const detailData = await fetchDramaWave(detailUrl, 'GET', null);
+
+            console.log('[DramaWave] Detail data keys:', detailData ? Object.keys(detailData) : 'null');
+            console.log('[DramaWave] Episode list length:', detailData?.info?.episode_list?.length || 0);
+
+            if (detailData && detailData.info) {
+                const info = detailData.info;
+                const dramaInfo = {
+                    title: info.name || cached?.title || '',
+                    cover: info.cover || cached?.cover || '',
+                    description: info.desc || cached?.description || '',
+                    chapterCount: info.episode_count || info.episode_list?.length || 0,
+                    labels: info.series_tag || [],
+                    source: 'dramawave'
+                };
+
+                // Map episodes - episodes already contain h265_m3u8 and h264_m3u8 fields
+                const episodes = (info.episode_list || []).map((ep: any, index: number) => ({
+                    id: ep.id, // Episode ID (e.g., "C8UVELMLTm")
+                    name: ep.name || `Episode ${index + 1}`,
+                    index: index,
+                    unlock: true,
+                    raw: ep // Keep full episode data including h265_m3u8, h264_m3u8
+                }));
+
+                return { drama: dramaInfo, episodes };
+            }
+
+            // Fallback to cache if API fails
+            if (cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: 1,
+                        labels: [],
+                        source: 'dramawave'
+                    },
+                    episodes: [{
+                        id: id,
+                        name: 'Putar Video',
+                        index: 0,
+                        unlock: true,
+                        raw: cached.raw
+                    }]
+                };
             }
 
             return { drama: null, episodes: [] };
@@ -628,6 +822,48 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                         }
                     }
                 }
+            }
+        } else if (source === 'dramawave') {
+            // DramaWave episodes contain video URLs directly in their raw data
+            // We need to fetch the episode list and find the matching episode
+            const detailUrl = `https://api.mydramawave.com/dm-api/drama/info_v2?campaign=&series_id=${bookId}`;
+            const detailData = await fetchDramaWave(detailUrl, 'GET', null);
+
+            // Handle nesting in info object
+            const epList = detailData?.info?.episode_list || detailData?.episode_list;
+
+            if (epList && Array.isArray(epList)) {
+                // Ensure type safety when finding ID (API returns number, URL param is string)
+                const episode = epList.find((ep: any) => String(ep.id) === String(episodeId));
+
+                if (episode) {
+                    // With VIP headers, premium episodes now have video URLs even if video_type is 'charge'
+                    videoUrl = episode.h265_m3u8 ||
+                        episode.h264_m3u8 ||
+                        episode.external_audio_h265_m3u8 ||
+                        episode.external_audio_h264_m3u8 ||
+                        '';
+
+
+                    // NEW: Pass subtitle list if available
+                    if (episode.subtitle_list && Array.isArray(episode.subtitle_list)) {
+                        // We return a JSON stringified object to pass both videoUrl and subtitles
+                        return JSON.stringify({
+                            videoUrl: videoUrl,
+                            subtitles: episode.subtitle_list.map((sub: any) => ({
+                                label: sub.display_name,
+                                lang: sub.language,
+                                url: sub.subtitle
+                            }))
+                        });
+                    }
+
+                    console.log(`[DramaWave] Found playback URL for ${episodeId}: ${videoUrl ? 'YES' : 'NO'}`);
+                } else {
+                    console.log(`[DramaWave] Episode ${episodeId} not found in list of ${epList.length}`);
+                }
+            } else {
+                console.log(`[DramaWave] Playback failed: No episode list found`);
             }
         }
 

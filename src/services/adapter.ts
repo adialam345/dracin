@@ -3,7 +3,7 @@ export interface UnifiedDrama {
     title: string;
     cover: string;
     description?: string;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave';
     raw?: any;
 }
 
@@ -76,17 +76,49 @@ export function normalizeRadReel(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' = 'dramabox'): UnifiedDrama {
+export function normalizeDramaWave(data: any): UnifiedDrama {
+    // DramaWave has different structures for feed vs search:
+    // Feed: { key, title, cover, intro, h265_m3u8, h264_m3u8, next_episode }
+    // Search: { id, name, desc, cover, labels, series_tag }
+
+    const id = data.key || data.id || '';
+    const title = data.title || data.name || '';
+    const description = data.intro || data.introduction || data.desc || '';
+
+    // Video URL: Only available in feed items, not in search results
+    let videoUrl = data.h265_m3u8 || data.h264_m3u8 || '';
+
+    // Next Episode Logic (only in feed)
+    const nextEpisode = data.next_episode || null;
+
+    return {
+        id: id,
+        title: stripHtml(title),
+        cover: data.cover || '',
+        description: stripHtml(description),
+        source: 'dramawave',
+        raw: {
+            ...data,
+            videoUrl: videoUrl,
+            nextEpisode: nextEpisode
+        }
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
     if (defaultSource === 'dramabox') return normalizeDramabox(data);
     if (defaultSource === 'radreel') return normalizeRadReel(data);
+    if (defaultSource === 'dramawave') return normalizeDramaWave(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
     if (data.book_id && data.book_name) return normalizeMelolo(data);
     if (data.shortPlayId) return normalizeNetshort(data);
+    if (data.key && data.h265_m3u8) return normalizeDramaWave(data); // Feed format
+    if (data.id && data.name && data.series_tag) return normalizeDramaWave(data); // Search format
 
     return normalizeDramabox(data);
 }

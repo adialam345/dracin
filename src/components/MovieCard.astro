@@ -4,7 +4,7 @@ interface Props {
   title: string;
   posterUrl: string;
   description?: string;
-  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel';
+  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave';
 }
 
 const { bookId, title, posterUrl, description, source } = Astro.props;
@@ -14,6 +14,7 @@ const sourceLabels = {
   netshort: { label: 'NS', color: 'bg-blue-500/80' },
   melolo: { label: 'ML', color: 'bg-green-500/80' },
   radreel: { label: 'RR', color: 'bg-purple-500/80' },
+  dramawave: { label: 'DW', color: 'bg-orange-500/80' },
 };
 
 const badge = source ? sourceLabels[source] : null;
