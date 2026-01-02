@@ -259,11 +259,17 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             const episode = episodes.find(e => String(e.id) === String(episodeId));
 
             if (episode && episode.raw) {
+                console.log('[Aggregator] DramaWave episode raw data:', JSON.stringify(episode.raw, null, 2));
+
                 videoUrl = episode.raw.h265_m3u8 ||
                     episode.raw.h264_m3u8 ||
                     episode.raw.external_audio_h265_m3u8 ||
                     episode.raw.external_audio_h264_m3u8 ||
+                    episode.raw.video_url ||
+                    episode.raw.videoUrl ||
                     '';
+
+                console.log('[Aggregator] DramaWave video URL found:', videoUrl ? 'YES' : 'NO', videoUrl.substring(0, 100));
 
                 if (episode.raw.subtitle_list && Array.isArray(episode.raw.subtitle_list)) {
                     return JSON.stringify({
@@ -275,6 +281,8 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                         }))
                     });
                 }
+            } else {
+                console.error('[Aggregator] DramaWave episode not found or has no raw data. Episode ID:', episodeId, 'Available episodes:', episodes.map(e => e.id));
             }
         }
 

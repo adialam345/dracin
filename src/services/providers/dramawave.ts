@@ -172,8 +172,17 @@ export async function searchDramaWave(query: string, maxPages: number = 20): Pro
 
 export async function getDramaWaveDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
     const detailUrl = `https://api.mydramawave.com/dm-api/drama/info_v2?campaign=&series_id=${id}`;
-    // USE VIP MODE HERE (true) to unlock videos!
-    const detailData = await fetchDramaWave(detailUrl, 'GET', null, true);
+
+    // TRY VIP MODE FIRST (for VIP library dramas)
+    let detailData = await fetchDramaWave(detailUrl, 'GET', null, true);
+    let usedVipMode = true;
+
+    // If VIP mode fails or returns no episodes, try Library mode
+    if (!detailData || !detailData.info || !detailData.info.episode_list || detailData.info.episode_list.length === 0) {
+        console.log('[DramaWave] VIP mode failed, trying Library mode...');
+        detailData = await fetchDramaWave(detailUrl, 'GET', null, false);
+        usedVipMode = false;
+    }
 
     if (detailData && detailData.info) {
         const info = detailData.info;
@@ -194,6 +203,7 @@ export async function getDramaWaveDetail(id: string): Promise<{ drama: any, epis
             raw: ep
         }));
 
+        console.log(`[DramaWave] Successfully fetched detail using ${usedVipMode ? 'VIP' : 'Library'} mode`);
         return { drama: dramaInfo, episodes };
     }
     return { drama: null, episodes: [] };
