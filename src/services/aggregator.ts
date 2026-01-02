@@ -283,10 +283,10 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             if (episode && episode.raw) {
                 console.log('[Aggregator] DramaWave episode raw data:', JSON.stringify(episode.raw, null, 2));
 
-                videoUrl = episode.raw.h265_m3u8 ||
-                    episode.raw.h264_m3u8 ||
-                    episode.raw.external_audio_h265_m3u8 ||
+                videoUrl = episode.raw.h264_m3u8 ||
+                    episode.raw.h265_m3u8 ||
                     episode.raw.external_audio_h264_m3u8 ||
+                    episode.raw.external_audio_h265_m3u8 ||
                     episode.raw.video_url ||
                     episode.raw.videoUrl ||
                     '';
