@@ -213,7 +213,8 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
        // --- PROXY LOGIC FOR DRAMAWAVE & FLICKREELS ---
        if (
            (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
-           (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy'))
+           (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy')) ||
+           (source === 'dramabox' && !url.includes('/api/proxy'))
        ) {
            url = '/api/proxy?url=' + encodeURIComponent(url);
            console.log('[VideoPlayer] Using Proxy:', url);

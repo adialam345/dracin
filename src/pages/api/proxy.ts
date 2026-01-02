@@ -118,9 +118,8 @@ export const GET: APIRoute = async ({ url, request }) => {
 
 
         // Handle TS segments or other binary data
-        const bodyBuffer = await response.arrayBuffer();
-
-        return new Response(bodyBuffer, {
+        // Stream the response body directly to avoid buffering large files in memory
+        return new Response(response.body, {
             status: response.status,
             headers: {
                 'Content-Type': contentType || 'application/octet-stream',
