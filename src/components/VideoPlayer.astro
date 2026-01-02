@@ -396,8 +396,38 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            });
            
          } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-           videoElement.src = url;
-           videoElement.onloadedmetadata = onReady;
+            // Native HLS support (Safari iOS/macOS)
+            videoElement.src = url;
+            
+            // Add external subtitles for native player
+            if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
+              const oldTracks = videoElement.querySelectorAll('track');
+              oldTracks.forEach(t => t.remove());
+
+              let defaultSet = false;
+              window.pendingSubtitles.forEach(sub => {
+                const track = document.createElement('track');
+                track.kind = 'subtitles';
+                track.label = sub.label;
+                track.srclang = sub.lang;
+                track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                
+                if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+                  track.default = true;
+                  defaultSet = true;
+                  console.log('[VideoPlayer] Auto-selecting External Subtitle (Native):', sub.label);
+                }
+                videoElement.appendChild(track);
+                
+                if (track.default) {
+                  track.mode = 'showing';
+                }
+              });
+              
+              window.pendingSubtitles = null;
+            }
+            
+            videoElement.onloadedmetadata = onReady;
          }
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
