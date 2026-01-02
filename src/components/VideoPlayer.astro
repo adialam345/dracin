@@ -41,6 +41,8 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     data-episode-id={episodeId}
     data-next-episode-url={nextEpisodeUrl}
     playsinline
+    webkit-playsinline
+    x5-playsinline
     disablePictureInPicture={false}
     controlsList="nodownload"
     crossorigin="anonymous"
@@ -124,6 +126,18 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
       }
       return null;
     };
+
+    // Log device and browser info for debugging
+    console.log('[VideoPlayer] Device Info:', {
+      userAgent: navigator.userAgent,
+      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+      isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
+      isAndroid: /Android/.test(navigator.userAgent),
+      isChrome: /Chrome/.test(navigator.userAgent),
+      canPlayHLS: videoElement.canPlayType('application/vnd.apple.mpegurl'),
+      hlsJsSupported: Hls.isSupported(),
+      source: source
+    });
 
     // Helper to add subtitle tracks
     const addSubtitleTracks = () => {
@@ -240,195 +254,202 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
        };
 
        if (isHLS) {
-         if (Hls.isSupported()) {
-           // Destroy previous HLS instance if exists
-           if (window.hlsInstance) {
-              window.hlsInstance.destroy();
-           }
-           
-           // OPTIMIZED HLS CONFIG for smooth & efficient streaming
-           const hlsConfig = {
-             // Performance & Bandwidth Optimization
-             enableWorker: true,
-             lowLatencyMode: false, // Disable for better buffering
+          // Detect iOS/Safari for native HLS support
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          const useNativeHLS = isIOS || isSafari || videoElement.canPlayType('application/vnd.apple.mpegurl');
+          
+          if (useNativeHLS && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+             // Native HLS support (Safari iOS/macOS, some Android browsers)
+             console.log('[VideoPlayer] Using Native HLS Player');
+             videoElement.src = url;
              
-             // Buffer Management (Hemat RAM & Bandwidth)
-             maxBufferLength: 20,        // Max 20 detik buffer (default: 30)
-             maxMaxBufferLength: 40,     // Max total buffer 40 detik
-             maxBufferSize: 30 * 1000 * 1000, // 30 MB max buffer size
-             maxBufferHole: 0.5,         // Toleransi gap kecil
-             
-             // Loading Optimization
-             manifestLoadingTimeOut: 10000,
-             manifestLoadingMaxRetry: 3,
-             manifestLoadingRetryDelay: 500,
-             levelLoadingTimeOut: 10000,
-             levelLoadingMaxRetry: 3,
-             fragLoadingTimeOut: 20000,
-             fragLoadingMaxRetry: 3,
-             
-             // Adaptive Bitrate (Auto pilih kualitas terbaik)
-             startLevel: -1,             // Auto-select best quality for connection
-             capLevelToPlayerSize: true, // Jangan load kualitas lebih tinggi dari ukuran player
-             
-             // Network Optimization
-             abrEwmaDefaultEstimate: 500000, // Conservative bandwidth estimate (500kbps)
-             abrBandWidthFactor: 0.8,    // Use 80% of detected bandwidth (safety margin)
-             abrBandWidthUpFactor: 0.7,  // Conservative upgrade to higher quality
-             
-             // Fragment Loading
-             backBufferLength: 10,       // Keep only 10s of back buffer (hemat memory)
-             
-             // Debug (set false for production)
-             debug: false
-           };
-           
-           const hls = new Hls(hlsConfig);
-           window.hlsInstance = hls;
-           
-           hls.loadSource(url);
-           hls.attachMedia(videoElement);
-           hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-             // Auto-select Indonesian Audio if available
-             if (hls.audioTracks && hls.audioTracks.length > 0) {
-               const idTrack = hls.audioTracks.findIndex(t => 
-                 (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) || 
-                 (t.name && t.name.toLowerCase().includes('indo'))
-               );
-               if (idTrack !== -1) {
-                 console.log('[VideoPlayer] Auto-selecting Audio:', hls.audioTracks[idTrack].name);
-                 hls.audioTrack = idTrack;
-               }
-             }
-             
-             // --- EXTERNAL SUBTITLES LOGIC ---
+             // Add external subtitles for native player
              if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
-                 // Remove existing subtitle tracks if needed, but HLS.js handles this mostly internally
-                 // We can't easily "add" tracks to existing HLS instance without side-loading
-                 // BUT: Since these are external SRT/VTT, we can add them to the video element OR
-                 // Use HLS.js subtitle APIs if we construct the manifest properly.
-                 // EASIER FOR NOW: Add <track> elements to video tag directly, but HLS.js might conflict.
-                 // ALTERNATIVELY: Use the Video Element textual tracks if native or use HLS.js caption display.
-                 
-                 // Since HLS.js owns the video, adding track tags is the safest generic way 
-                 // if HLS.js allows native text tracks.
-                 
-                 // Clear old tracks
-                 const oldTracks = videoElement.querySelectorAll('track');
-                 oldTracks.forEach(t => t.remove());
+               const oldTracks = videoElement.querySelectorAll('track');
+               oldTracks.forEach(t => t.remove());
 
-                 let defaultSet = false;
-                 window.pendingSubtitles.forEach(sub => {
-                     const track = document.createElement('track');
-                     track.kind = 'subtitles';
-                     track.label = sub.label;
-                     track.srclang = sub.lang;
-                     track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
-                     
-                     // Auto-select ID
-                     if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
-                         track.default = true;
-                         defaultSet = true;
-                         console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
-                     }
-                     videoElement.appendChild(track);
-                     
-                     // Force track to show if it is default (needed for some browsers)
-                     if (track.default) {
-                        track.mode = 'showing';
-                     }
-                 });
+               let defaultSet = false;
+               window.pendingSubtitles.forEach(sub => {
+                 const track = document.createElement('track');
+                 track.kind = 'subtitles';
+                 track.label = sub.label;
+                 track.srclang = sub.lang;
+                 track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                 
+                 if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+                   track.default = true;
+                   defaultSet = true;
+                   console.log('[VideoPlayer] Auto-selecting External Subtitle (Native):', sub.label);
+                 }
+                 videoElement.appendChild(track);
+                 
+                 if (track.default) {
+                   track.mode = 'showing';
+                 }
+               });
+               
+               window.pendingSubtitles = null;
              }
-             // -------------------------------
-
-
-             // Auto-select Indonesian Subtitle if available
-             if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
-                const idSub = hls.subtitleTracks.findIndex(t => 
+             
+             videoElement.onloadedmetadata = onReady;
+             
+          } else if (Hls.isSupported()) {
+            // HLS.js for browsers without native HLS support (mostly Android Chrome)
+            console.log('[VideoPlayer] Using HLS.js Player');
+            
+            // Destroy previous HLS instance if exists
+            if (window.hlsInstance) {
+               window.hlsInstance.destroy();
+            }
+            
+            // SIMPLIFIED HLS CONFIG for better mobile compatibility
+            const hlsConfig = {
+              // Core settings
+              enableWorker: true,
+              lowLatencyMode: false,
+              
+              // Buffer settings - more conservative for mobile
+              maxBufferLength: 15,        // Reduced from 20
+              maxMaxBufferLength: 30,     // Reduced from 40
+              maxBufferSize: 20 * 1000 * 1000, // 20 MB (reduced from 30)
+              maxBufferHole: 0.5,
+              
+              // Loading timeouts - more lenient for slower connections
+              manifestLoadingTimeOut: 15000,  // Increased from 10s
+              manifestLoadingMaxRetry: 4,     // Increased retries
+              manifestLoadingRetryDelay: 1000, // Increased delay
+              levelLoadingTimeOut: 15000,
+              levelLoadingMaxRetry: 4,
+              fragLoadingTimeOut: 30000,      // Increased from 20s
+              fragLoadingMaxRetry: 6,         // More retries for mobile
+              
+              // Adaptive Bitrate - start with lower quality on mobile
+              startLevel: -1,
+              capLevelToPlayerSize: true,
+              
+              // Network - more conservative for mobile
+              abrEwmaDefaultEstimate: 500000,
+              abrBandWidthFactor: 0.95,      // Increased from 0.8
+              abrBandWidthUpFactor: 0.7,
+              
+              // Fragment Loading
+              backBufferLength: 10,
+              
+              // XHR setup for better mobile compatibility
+              xhrSetup: function(xhr, url) {
+                // Ensure proper headers for mobile
+                xhr.withCredentials = false;
+              },
+              
+              // Debug
+              debug: false
+            };
+            
+            const hls = new Hls(hlsConfig);
+            window.hlsInstance = hls;
+            
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+              console.log('[VideoPlayer] HLS Manifest parsed, levels:', data.levels.length);
+              
+              // Auto-select Indonesian Audio if available
+              if (hls.audioTracks && hls.audioTracks.length > 0) {
+                const idTrack = hls.audioTracks.findIndex(t => 
                   (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) || 
                   (t.name && t.name.toLowerCase().includes('indo'))
                 );
-                if (idSub !== -1) {
-                  console.log('[VideoPlayer] Auto-selecting Subtitle:', hls.subtitleTracks[idSub].name);
-                  hls.subtitleTrack = idSub;
+                if (idTrack !== -1) {
+                  console.log('[VideoPlayer] Auto-selecting Audio:', hls.audioTracks[idTrack].name);
+                  hls.audioTrack = idTrack;
                 }
-             }
-             
-             onReady();
-           });
-           
-           // PERFORMANCE MONITORING & AUTO-ADJUSTMENT
-           hls.on(Hls.Events.ERROR, (event, data) => {
-             if (data.fatal) {
-               console.error('HLS Fatal Error', data);
-               
-               switch(data.type) {
-                 case Hls.ErrorTypes.NETWORK_ERROR:
-                   console.log('Network error, attempting recovery...');
-                   hls.startLoad();
-                   break;
-                 case Hls.ErrorTypes.MEDIA_ERROR:
-                   console.log('Media error, attempting recovery...');
-                   hls.recoverMediaError();
-                   break;
-                 default:
-                   console.error('Unrecoverable error');
-                   if (errorState) errorState.classList.remove('hidden');
-                   break;
-               }
-             } else if (data.details === 'bufferStalledError') {
-               // Auto-downgrade quality on buffer stall
-               console.log('Buffer stalled, reducing quality...');
-               if (hls.currentLevel > 0) {
-                 hls.currentLevel = Math.max(0, hls.currentLevel - 1);
-               }
-             }
-           });
-           
-           // Monitor bandwidth and adjust quality
-           hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
-             const bandwidth = data.stats.bw || 0;
-             // If bandwidth drops below 300kbps, force lowest quality
-             if (bandwidth > 0 && bandwidth < 300000 && hls.currentLevel > 0) {
-               console.log('Low bandwidth detected, switching to lowest quality');
-               hls.currentLevel = 0;
-             }
-           });
-           
-         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari iOS/macOS)
-            videoElement.src = url;
-            
-            // Add external subtitles for native player
-            if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
-              const oldTracks = videoElement.querySelectorAll('track');
-              oldTracks.forEach(t => t.remove());
-
-              let defaultSet = false;
-              window.pendingSubtitles.forEach(sub => {
-                const track = document.createElement('track');
-                track.kind = 'subtitles';
-                track.label = sub.label;
-                track.srclang = sub.lang;
-                track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
-                
-                if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
-                  track.default = true;
-                  defaultSet = true;
-                  console.log('[VideoPlayer] Auto-selecting External Subtitle (Native):', sub.label);
-                }
-                videoElement.appendChild(track);
-                
-                if (track.default) {
-                  track.mode = 'showing';
-                }
-              });
+              }
               
-              window.pendingSubtitles = null;
-            }
+              // Add external subtitles
+              if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
+                  const oldTracks = videoElement.querySelectorAll('track');
+                  oldTracks.forEach(t => t.remove());
+
+                  let defaultSet = false;
+                  window.pendingSubtitles.forEach(sub => {
+                      const track = document.createElement('track');
+                      track.kind = 'subtitles';
+                      track.label = sub.label;
+                      track.srclang = sub.lang;
+                      track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                      
+                      if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+                          track.default = true;
+                          defaultSet = true;
+                          console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
+                      }
+                      videoElement.appendChild(track);
+                      
+                      if (track.default) {
+                         track.mode = 'showing';
+                      }
+                  });
+                  
+                  window.pendingSubtitles = null;
+              }
+
+              // Auto-select Indonesian Subtitle if available in HLS
+              if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+                 const idSub = hls.subtitleTracks.findIndex(t => 
+                   (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) || 
+                   (t.name && t.name.toLowerCase().includes('indo'))
+                 );
+                 if (idSub !== -1) {
+                   console.log('[VideoPlayer] Auto-selecting HLS Subtitle:', hls.subtitleTracks[idSub].name);
+                   hls.subtitleTrack = idSub;
+                 }
+              }
+              
+              onReady();
+            });
             
-            videoElement.onloadedmetadata = onReady;
-         }
+            // Enhanced error handling for mobile
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.log('[VideoPlayer] HLS Error:', data.type, data.details, data.fatal);
+              
+              if (data.fatal) {
+                switch(data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log('[VideoPlayer] Network error, attempting recovery...');
+                    setTimeout(() => hls.startLoad(), 1000);
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('[VideoPlayer] Media error, attempting recovery...');
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    console.error('[VideoPlayer] Unrecoverable error, trying native fallback...');
+                    // Try native playback as fallback
+                    if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                      console.log('[VideoPlayer] Falling back to native HLS');
+                      hls.destroy();
+                      videoElement.src = url;
+                      videoElement.load();
+                      videoElement.onloadedmetadata = onReady;
+                    } else {
+                      if (errorState) errorState.classList.remove('hidden');
+                    }
+                    break;
+                }
+              }
+            });
+            
+          } else {
+            // No HLS support at all - show error
+            console.error('[VideoPlayer] No HLS support available');
+            if (loader) loader.style.display = 'none';
+            if (errorState) {
+              errorState.querySelector('h3').textContent = 'Browser Tidak Didukung';
+              errorState.querySelector('p').textContent = 'Browser Anda tidak mendukung pemutaran video HLS. Silakan gunakan browser modern seperti Chrome atau Safari.';
+              errorState.classList.remove('hidden');
+            }
+          }
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
          videoElement.src = url;
