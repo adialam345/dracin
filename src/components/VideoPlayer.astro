@@ -174,6 +174,21 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            try {
                const data = JSON.parse(urlPayload);
                
+               // Check if this is a web player redirect
+               if (data.error === 'webplayer') {
+                   console.log('[VideoPlayer] Redirecting to web player:', data.redirectUrl);
+                   if (loader) loader.style.display = 'none';
+                   if (errorState) {
+                       errorState.querySelector('h3').textContent = '🌐 Buka di Web Player';
+                       errorState.querySelector('p').textContent = data.message || 'Drama ini hanya tersedia di FlickReels Web Player';
+                       const btn = errorState.querySelector('button');
+                       btn.textContent = 'Buka FlickReels';
+                       btn.onclick = () => window.open(data.redirectUrl, '_blank');
+                       errorState.classList.remove('hidden');
+                   }
+                   return;
+               }
+               
                // Check if this is a premium/locked episode error
                if (data.error === 'premium') {
                    console.error('[VideoPlayer] Premium episode:', data.message);
@@ -195,15 +210,19 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            }
        }
 
-       // --- PROXY LOGIC FOR DRAMAWAVE ---
-       if (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) {
+       // --- PROXY LOGIC FOR DRAMAWAVE & FLICKREELS ---
+       if (
+           (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
+           (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy'))
+       ) {
            url = '/api/proxy?url=' + encodeURIComponent(url);
            console.log('[VideoPlayer] Using Proxy:', url);
        }
        // ---------------------------------
 
        console.log(`[VideoPlayer] Loading: ${url}`);
-       const isHLS = url.includes('.m3u8') || url.includes('playlist.m3u8') || url.includes('/api/proxy');
+       const decodedUrl = decodeURIComponent(url);
+       const isHLS = (decodedUrl.includes('.m3u8') || decodedUrl.includes('playlist.m3u8')) && !decodedUrl.includes('.mp4');
 
        if (loader) {
          loader.style.display = 'flex';

@@ -7,13 +7,14 @@ import * as Netshort from './providers/netshort';
 import * as Melolo from './providers/melolo';
 import * as RadReel from './providers/radreel';
 import * as DramaWave from './providers/dramawave';
+import * as FlickReels from './providers/dramaflickreels';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
 
-// Cache for basic drama info found in lists (redundancy for detail fetch)
-// In a perfect world this lives in a shared cache manager, but module-scope map works fine for now.
 const dramaDetailsCache = new Map<string, UnifiedDrama>();
+const episodeDetailsCache = new Map<string, any[]>();
+
 
 // --- AGGREGATION FUNCTIONS ---
 
@@ -23,7 +24,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         nsForYou,
         mlTrending, mlLatest,
         rrForYou,
-        dwForYou
+        dwForYou,
+        frForYou
     ] = await Promise.all([
         Dramabox.getDramaboxForYou(),
         Dramabox.getDramaboxTrending(),
@@ -33,13 +35,14 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         Melolo.getMeloloLatest(),
         RadReel.getRadReelForYou(),
         DramaWave.getDramaWaveForYou(),
+        FlickReels.getFlickReelsForYou(),
     ]);
 
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou].forEach(list => cacheItems(list));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou].forEach(list => cacheItems(list));
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -128,6 +131,25 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             return Melolo.getMeloloDetail(id);
         case 'radreel':
             return RadReel.getRadReelDetail(id);
+        case 'dramaflickreels':
+            const frResult = await FlickReels.getFlickReelsDetail(id);
+            if (!frResult.drama && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: cached.chapterCount || 0,
+                        labels: [],
+                        source: 'dramaflickreels'
+                    },
+                    episodes: []
+                };
+            }
+            if (frResult.episodes) {
+                episodeDetailsCache.set(source + '_' + id, frResult.episodes);
+            }
+            return frResult;
         case 'dramawave':
             // Inject cache into provider logic if possible, or just rely on API
             // For now, we replicate the specific logic or move it to provider
@@ -283,6 +305,23 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 }
             } else {
                 console.error('[Aggregator] DramaWave episode not found or has no raw data. Episode ID:', episodeId, 'Available episodes:', episodes.map(e => e.id));
+            }
+        } else if (source === 'dramaflickreels') {
+            // Priority: Check cache for batched unlock URL
+            const cachedEps = episodeDetailsCache.get('dramaflickreels_' + bookId);
+            let foundInCache = false;
+
+            if (cachedEps) {
+                const ep = cachedEps.find(e => String(e.id) === String(episodeId));
+                if (ep && ep.raw && ep.raw.hls_url) {
+                    videoUrl = ep.raw.hls_url;
+                    foundInCache = true;
+                }
+            }
+
+            // Fallback: Web API Play (if cache miss or batch unlock failed)
+            if (!foundInCache) {
+                videoUrl = await FlickReels.getFlickReelsVideoUrl(bookId, episodeId);
             }
         }
 

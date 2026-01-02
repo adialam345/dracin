@@ -3,7 +3,8 @@ export interface UnifiedDrama {
     title: string;
     cover: string;
     description?: string;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave';
+    chapterCount?: number;
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels';
     raw?: any;
 }
 
@@ -105,13 +106,26 @@ export function normalizeDramaWave(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' = 'dramabox'): UnifiedDrama {
+export function normalizeFlickReels(data: any): UnifiedDrama {
+    return {
+        id: String(data.playlet_id || ''),
+        title: data.title || '',
+        cover: data.cover || '',
+        description: data.introduce || '',
+        source: 'dramaflickreels',
+        chapterCount: data.upload_num ? parseInt(data.upload_num) : 0,
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
     if (defaultSource === 'dramabox') return normalizeDramabox(data);
     if (defaultSource === 'radreel') return normalizeRadReel(data);
     if (defaultSource === 'dramawave') return normalizeDramaWave(data);
+    if (defaultSource === 'dramaflickreels') return normalizeFlickReels(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
@@ -119,6 +133,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.shortPlayId) return normalizeNetshort(data);
     if (data.key && data.h265_m3u8) return normalizeDramaWave(data); // Feed format
     if (data.id && data.name && data.series_tag) return normalizeDramaWave(data); // Search format
+    if (data.playlet_id && data.title) return normalizeFlickReels(data);
 
     return normalizeDramabox(data);
 }

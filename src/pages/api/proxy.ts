@@ -13,6 +13,11 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers: {
                     'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     // 'Referer': new URL(targetUrl).origin, // Sometimes needed, sometimes harmful
+                    ...(targetUrl.includes('farsunpteltd.com') ? {
+                        'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
+                        'bundleIdentifier': 'com.farsun.shortplay',
+                        'Version': '2.2.2.0'
+                    } : {})
                 }
             });
         } catch (fetchError: any) {
