@@ -12,6 +12,7 @@ export const GET: APIRoute = async ({ url, request }) => {
             response = await fetch(targetUrl, {
                 headers: {
                     'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    ...(request.headers.get('Range') ? { 'Range': request.headers.get('Range')! } : {}),
                     // 'Referer': new URL(targetUrl).origin, // Sometimes needed, sometimes harmful
                     ...(targetUrl.includes('farsunpteltd.com') ? {
                         'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
@@ -119,13 +120,33 @@ export const GET: APIRoute = async ({ url, request }) => {
 
         // Handle TS segments or other binary data
         // Stream the response body directly to avoid buffering large files in memory
+
+        // Fix for iOS Safari: Ensure TS segments have correct Content-Type
+        let finalContentType = contentType || 'application/octet-stream';
+        if (targetUrl.endsWith('.ts')) {
+            finalContentType = 'video/mp2t';
+        }
+
+        // Prepare headers to forward
+        const headers: Record<string, string> = {
+            'Content-Type': finalContentType,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=31536000'
+        };
+
+        if (response.headers.has('Content-Length')) {
+            headers['Content-Length'] = response.headers.get('Content-Length')!;
+        }
+        if (response.headers.has('Content-Range')) {
+            headers['Content-Range'] = response.headers.get('Content-Range')!;
+        }
+        if (response.headers.has('Accept-Ranges')) {
+            headers['Accept-Ranges'] = response.headers.get('Accept-Ranges')!;
+        }
+
         return new Response(response.body, {
             status: response.status,
-            headers: {
-                'Content-Type': contentType || 'application/octet-stream',
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'public, max-age=31536000'
-            }
+            headers: headers
         });
     } catch (e) {
         console.error('Proxy error:', e);
