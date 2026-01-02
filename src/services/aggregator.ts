@@ -200,6 +200,18 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             if (!data) return '';
             const ep = (data.shortPlayEpisodeInfos || []).find((e: any) => e.episodeId === episodeId);
             videoUrl = ep?.playVoucher || '';
+
+            // Handle subtitles if available
+            if (ep && ep.subtitleList && Array.isArray(ep.subtitleList) && ep.subtitleList.length > 0) {
+                return JSON.stringify({
+                    videoUrl: videoUrl,
+                    subtitles: ep.subtitleList.map((sub: any) => ({
+                        label: sub.subtitleLanguage === 'id_ID' ? 'Indonesia' : sub.subtitleLanguage,
+                        lang: sub.subtitleLanguage || 'id-ID',
+                        url: sub.url
+                    }))
+                });
+            }
         } else if (source === 'radreel') {
             // Priority 1: Check cache/direct
             if (episodeId === '0') {

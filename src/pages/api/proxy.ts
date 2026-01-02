@@ -4,17 +4,38 @@ export const GET: APIRoute = async ({ url, request }) => {
     const targetUrl = url.searchParams.get('url');
     if (!targetUrl) return new Response('Missing url', { status: 400 });
 
+    console.log(`[Proxy] Request received for: ${targetUrl.substring(0, 100)}...`);
+
     try {
-        const response = await fetch(targetUrl, {
-            headers: {
-                'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                // 'Referer': new URL(targetUrl).origin, // Sometimes needed, sometimes harmful
-            }
-        });
+        let response;
+        try {
+            response = await fetch(targetUrl, {
+                headers: {
+                    'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    // 'Referer': new URL(targetUrl).origin, // Sometimes needed, sometimes harmful
+                }
+            });
+        } catch (fetchError: any) {
+            console.error(`[Proxy] Fetch failed:`, fetchError);
+            return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
+        }
+
+        console.log(`[Proxy] Fetching: ${targetUrl}`);
+        console.log(`[Proxy] Response status: ${response.status} ${response.statusText}`);
 
         const contentType = response.headers.get('content-type') || '';
-        console.log(`[Proxy] Fetching: ${targetUrl}`);
         console.log(`[Proxy] Content-Type: ${contentType}`);
+
+        // For subtitle files, be more lenient with status codes
+        const isSubtitle = targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') ||
+            targetUrl.endsWith('.srt') || contentType.includes('vtt') ||
+            contentType.includes('text/plain');
+
+        if (!response.ok && !isSubtitle) {
+            console.error(`[Proxy] Failed to fetch: ${response.status} ${response.statusText}`);
+            return new Response(`Proxy error status:${response.status} statusText:${response.statusText}`, { status: 500 });
+        }
+
 
         // Handle M3U8 rewriting
         const isM3U8 = contentType.toLowerCase().includes('mpegurl') ||
@@ -75,6 +96,21 @@ export const GET: APIRoute = async ({ url, request }) => {
                 }
             });
         }
+
+        // Handle WebVTT subtitles (pass through with CORS headers)
+        if (targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') || contentType.includes('vtt') || contentType.includes('text/plain')) {
+            const vttText = await response.text();
+
+            return new Response(vttText, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'text/vtt',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=31536000'
+                }
+            });
+        }
+
 
         // Handle TS segments or other binary data
         const bodyBuffer = await response.arrayBuffer();

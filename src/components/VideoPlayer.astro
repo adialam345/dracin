@@ -43,6 +43,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     playsinline
     disablePictureInPicture={false}
     controlsList="nodownload"
+    crossorigin="anonymous"
   >
     Browser Anda tidak mendukung video player.
   </video>
@@ -123,6 +124,47 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
       }
       return null;
     };
+
+    // Helper to add subtitle tracks
+    const addSubtitleTracks = () => {
+      if (!window.pendingSubtitles || !Array.isArray(window.pendingSubtitles)) {
+        console.log('[VideoPlayer] No pending subtitles to add');
+        return;
+      }
+
+      console.log('[VideoPlayer] Adding', window.pendingSubtitles.length, 'subtitle tracks');
+      
+      // Clear old tracks
+      const oldTracks = videoElement.querySelectorAll('track');
+      oldTracks.forEach(t => t.remove());
+
+      let defaultSet = false;
+      window.pendingSubtitles.forEach(sub => {
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = sub.label;
+        track.srclang = sub.lang;
+        // Use proxy only for DramaWave (NetShort CDN has proper CORS headers)
+        track.src = (source === 'dramawave') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+        
+        // Auto-select ID
+        if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+          track.default = true;
+          defaultSet = true;
+          console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
+        }
+        videoElement.appendChild(track);
+        
+        // Force track to show if it is default (needed for some browsers)
+        if (track.default) {
+          track.mode = 'showing';
+        }
+      });
+      
+      // Clear pending subtitles
+      window.pendingSubtitles = null;
+    };
+
 
     // Load and Play Video Logic
     const loadAndPlay = async (urlPayload, isAutoNext = false) => {
@@ -261,7 +303,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                      track.kind = 'subtitles';
                      track.label = sub.label;
                      track.srclang = sub.lang;
-                     track.src = source === 'dramawave' ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                     track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
                      
                      // Auto-select ID
                      if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
@@ -338,7 +380,9 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            videoElement.onloadedmetadata = onReady;
          }
        } else {
+         // Non-HLS video (MP4, e.g., NetShort)
          videoElement.src = url;
+         addSubtitleTracks(); // Add subtitle tracks for non-HLS videos
          videoElement.load();
          videoElement.onloadeddata = onReady;
        }
