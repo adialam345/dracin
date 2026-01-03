@@ -490,10 +490,8 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           }
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
-         // Route through proxy to hide URL if it's NetShort
-         if (source === 'netshort' && !url.includes('/api/proxy')) {
-            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
-         }
+         // NetShort uses signed URLs that are already secure, no need to proxy
+         // (Their CDN also blocks server-side requests)
          
          videoElement.src = url;
          addSubtitleTracks(); // Add subtitle tracks for non-HLS videos

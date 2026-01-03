@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ url, request }) => {
     // console.log(`[Proxy] Request received`); 
 
     // DEBUG: Log decrypted URL to verify it's correct
-    console.log(`[Proxy] Target URL:`, targetUrl?.substring(0, 150));
+    // console.log(`[Proxy] Target URL:`, targetUrl?.substring(0, 150));
 
     try {
         let response;
