@@ -241,10 +241,25 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
              return; 
        }
        
-       // Handle subtitles if present
        if (data.subtitles) {
            window.pendingSubtitles = data.subtitles;
        }
+
+       // --- FIX: Check if videoUrl is actually a JSON string (Double Wrap Issue) ---
+       if (url && typeof url === 'string' && url.trim().startsWith('{')) {
+          try {
+             const innerData = JSON.parse(url);
+             if (innerData.videoUrl) {
+                 url = innerData.videoUrl;
+                 // Merge subtitles if inner has them
+                 if (innerData.subtitles && Array.isArray(innerData.subtitles)) {
+                     window.pendingSubtitles = innerData.subtitles;
+                 }
+             }
+          } catch(e) { /* ignore */ }
+       }
+       // -----------------------------------------------------------
+
 
 
        // --- PROXY LOGIC FOR DRAMAWAVE & FLICKREELS ---
