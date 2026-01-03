@@ -8,6 +8,7 @@ import * as Melolo from './providers/melolo';
 import * as RadReel from './providers/radreel';
 import * as DramaWave from './providers/dramawave';
 import * as FlickReels from './providers/dramaflickreels';
+import * as DramaDash from './providers/dramadash';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -25,7 +26,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         mlTrending, mlLatest,
         rrForYou,
         dwForYou,
-        frForYou
+        frForYou,
+        ddForYou
     ] = await Promise.all([
         Dramabox.getDramaboxForYou(),
         Dramabox.getDramaboxTrending(),
@@ -36,13 +38,14 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         RadReel.getRadReelForYou(),
         DramaWave.getDramaWaveForYou(),
         FlickReels.getFlickReelsForYou(),
+        DramaDash.getDramaDashForYou(),
     ]);
 
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou].forEach(list => cacheItems(list));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou].forEach(list => cacheItems(list));
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -52,22 +55,23 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList] = await Promise.all([
         Dramabox.searchDramabox(query),
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
         RadReel.searchRadReel(query),
         DramaWave.searchDramaWave(query, 20), // Fetch up to 20 pages
-        FlickReels.searchFlickReels(query)
+        FlickReels.searchFlickReels(query),
+        DramaDash.searchDramaDash(query)
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -75,6 +79,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (rrList[i]) candidates.push(rrList[i]);
         if (dwList[i]) candidates.push(dwList[i]);
         if (frList[i]) candidates.push(frList[i]);
+        if (ddList[i]) candidates.push(ddList[i]);
     }
 
     // Deduplicate
@@ -179,6 +184,8 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
                 };
             }
             return result;
+        case 'dramadash':
+            return DramaDash.getDramaDashDetail(id);
         default:
             return { drama: null, episodes: [] };
     }
@@ -324,6 +331,23 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             // Fallback: Web API Play (if cache miss or batch unlock failed)
             if (!foundInCache) {
                 videoUrl = await FlickReels.getFlickReelsVideoUrl(bookId, episodeId);
+            }
+        } else if (source === 'dramadash') {
+            const { episodes } = await DramaDash.getDramaDashDetail(bookId);
+            const ep = episodes.find(e => String(e.id) === String(episodeId));
+            if (ep && ep.raw && ep.raw.videoUrl) {
+                videoUrl = ep.raw.videoUrl;
+                // Add subtitles if present
+                if (ep.raw.subtitles && Array.isArray(ep.raw.subtitles)) {
+                    return JSON.stringify({
+                        videoUrl: videoUrl,
+                        subtitles: ep.raw.subtitles.map((sub: any) => ({
+                            label: sub.languageDisplayName || sub.language,
+                            lang: sub.language,
+                            url: sub.url
+                        }))
+                    });
+                }
             }
         }
 

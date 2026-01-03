@@ -116,6 +116,12 @@ export const GET: APIRoute = async ({ url, request }) => {
             else if (targetUrl.includes('tiktokcdn.com')) {
                 headers['Referer'] = 'https://www.tiktok.com/';
                 headers['Origin'] = 'https://www.tiktok.com';
+            }
+            // DramaDash (Cloudflare Stream)
+            else if (targetUrl.includes('cloudflarestream.com')) {
+                headers['User-Agent'] = 'DramaDash/50 CFNetwork/1474 Darwin/23.0.0';
+                headers['Origin'] = 'https://dramadash.app';
+                headers['Referer'] = 'https://dramadash.app/';
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';

@@ -4,7 +4,7 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash';
     raw?: any;
 }
 
@@ -106,6 +106,17 @@ export function normalizeDramaWave(data: any): UnifiedDrama {
     };
 }
 
+export function normalizeDramaDash(data: any): UnifiedDrama {
+    return {
+        id: String(data.id || ''),
+        title: data.name || data.title || '',
+        cover: data.poster || data.cover || '',
+        description: data.description || '',
+        source: 'dramadash',
+        raw: data
+    };
+}
+
 export function normalizeFlickReels(data: any): UnifiedDrama {
     return {
         id: String(data.playlet_id || ''),
@@ -118,7 +129,7 @@ export function normalizeFlickReels(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' = 'dramabox'): UnifiedDrama {
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -126,6 +137,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'radreel') return normalizeRadReel(data);
     if (defaultSource === 'dramawave') return normalizeDramaWave(data);
     if (defaultSource === 'dramaflickreels') return normalizeFlickReels(data);
+    if (defaultSource === 'dramadash') return normalizeDramaDash(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
@@ -134,6 +146,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.key && data.h265_m3u8) return normalizeDramaWave(data); // Feed format
     if (data.id && data.name && data.series_tag) return normalizeDramaWave(data); // Search format
     if (data.playlet_id && data.title) return normalizeFlickReels(data);
+    if (data.poster && data.videoUrl) return normalizeDramaDash(data); // Crude heuristic
 
     return normalizeDramabox(data);
 }
