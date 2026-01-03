@@ -27,9 +27,12 @@ export function encrypt(data: any): string {
 export function decrypt(cipher: string): any {
     try {
         if (!cipher) return null;
+        // Fix common base64 transfer issues (spaces instead of pluses) and allow URL-safe chars
+        const safeCipher = cipher.replace(/ /g, '+').replace(/-/g, '+').replace(/_/g, '/');
+
         const input = typeof atob !== 'undefined'
-            ? atob(cipher)
-            : Buffer.from(cipher, 'base64').toString('binary');
+            ? atob(safeCipher)
+            : Buffer.from(safeCipher, 'base64').toString('binary');
 
         let output = "";
         for (let i = 0; i < input.length; i++) {

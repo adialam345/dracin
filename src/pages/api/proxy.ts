@@ -7,7 +7,9 @@ export const GET: APIRoute = async ({ url, request }) => {
 
     if (q) {
         // Try decrypting
-        const decrypted = decrypt(q);
+        // Decode URI component just in case browsers/servers double encode the base64 symbols
+        const decrypted = decrypt(decodeURIComponent(q)) || decrypt(q);
+
         // Decrypt might return object or string depending on how it was encrypted.
         // If we strictly encrypt string -> string, then 'decrypted' is the url.
         // If we encrypt object {url: ...}, we need to parse.
