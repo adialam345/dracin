@@ -51,7 +51,15 @@ export const GET: APIRoute = async ({ url, request }) => {
         if (isM3U8) {
             const text = await response.text();
             const baseUrl = new URL('.', targetUrl).href;
-            const origin = new URL(request.url).origin;
+
+            // Determine correct origin (handling reverse proxies)
+            let origin = new URL(request.url).origin;
+            const protocol = request.headers.get('x-forwarded-proto') || 'https';
+            const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+
+            if (host) {
+                origin = `${protocol}://${host}`;
+            }
 
             const newText = text.split('\n').map(line => {
                 const trimmed = line.trim();
