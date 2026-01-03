@@ -1,0 +1,281 @@
+---
+// Simple mobile debug page
+const testVideoUrl = 'https://video-v6.mydramawave.com/vt/0fe8195c-ea7b-44ce-aae4-c6a20dfe9295/h264-e36c7451-2842-4a35-9f74-cecefe490ab2-v3.m3u8';
+const proxyUrl = `/api/proxy?url=${encodeURIComponent(testVideoUrl)}`;
+---
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Video Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #000;
+            color: #fff;
+        }
+        #video-container {
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+            background: #111;
+        }
+        video {
+            width: 100%;
+            height: auto;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #222;
+            border-radius: 8px;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .log-error {
+            border-left-color: #f44336;
+        }
+        .log-warn {
+            border-left-color: #ff9800;
+        }
+        .info {
+            background: #1a1a1a;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 640px;
+            border-radius: 8px;
+        }
+        .info h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .info-item {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .info-label {
+            color: #888;
+        }
+        .info-value {
+            color: #fff;
+            font-weight: bold;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:active {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h3>📱 Mobile Video Debug Tool</h3>
+        <div class="info-item">
+            <span class="info-label">User Agent:</span>
+            <span class="info-value" id="ua">Loading...</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Platform:</span>
+            <span class="info-value" id="platform">Loading...</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">HLS.js Support:</span>
+            <span class="info-value" id="hlsjs">Loading...</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Native HLS:</span>
+            <span class="info-value" id="native">Loading...</span>
+        </div>
+    </div>
+
+    <div id="video-container">
+        <video 
+            id="video" 
+            controls 
+            playsinline 
+            webkit-playsinline
+            x5-playsinline
+            crossorigin="anonymous"
+            style="background: #000;"
+        >
+            Your browser doesn't support video playback.
+        </video>
+    </div>
+
+    <div style="text-align: center; max-width: 640px; margin: 0 auto;">
+        <button onclick="testNative()">🎬 Test Native HLS</button>
+        <button onclick="testHlsJs()">⚡ Test HLS.js</button>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const logDiv = document.getElementById('log');
+        let hlsInstance = null;
+
+        // Logging function
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            console.log(message);
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        // Detect capabilities
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isAndroid = /Android/.test(navigator.userAgent);
+        const canPlayHLS = video.canPlayType('application/vnd.apple.mpegurl');
+        const hlsJsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
+
+        // Display device info
+        document.getElementById('ua').textContent = isIOS ? 'iOS' : isAndroid ? 'Android' : 'Other';
+        document.getElementById('platform').textContent = navigator.platform;
+        document.getElementById('hlsjs').textContent = hlsJsSupported ? '✅ Yes' : '❌ No';
+        document.getElementById('native').textContent = canPlayHLS ? '✅ Yes' : '❌ No';
+
+        log(`Device: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Other'}`);
+        log(`HLS.js: ${hlsJsSupported ? 'Supported' : 'Not Supported'}`);
+        log(`Native HLS: ${canPlayHLS ? 'Supported' : 'Not Supported'}`);
+
+        // Test Native HLS
+        function testNative() {
+            log('🎬 Testing Native HLS Player...', 'info');
+            
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+
+            if (!canPlayHLS) {
+                log('❌ Native HLS not supported on this device', 'error');
+                return;
+            }
+
+            video.src = '${proxyUrl}';
+            
+            video.onloadstart = () => log('📡 Loading started...');
+            video.onloadedmetadata = () => log('✅ Metadata loaded');
+            video.oncanplay = () => log('✅ Can play - ready to start');
+            video.onplaying = () => log('▶️ Playing...');
+            video.onerror = (e) => {
+                log(`❌ Native Error: ${video.error?.message || 'Unknown error'}`, 'error');
+                log(`Error code: ${video.error?.code}`, 'error');
+            };
+
+            video.load();
+            video.play().catch(e => log(`❌ Play failed: ${e.message}`, 'error'));
+        }
+
+        // Test HLS.js
+        function testHlsJs() {
+            log('⚡ Testing HLS.js Player...', 'info');
+
+            if (!hlsJsSupported) {
+                log('❌ HLS.js not supported on this device', 'error');
+                return;
+            }
+
+            if (hlsInstance) {
+                hlsInstance.destroy();
+            }
+
+            const hls = new Hls({
+                debug: false,
+                enableWorker: true,
+                maxBufferLength: 15,
+                maxMaxBufferLength: 30,
+                manifestLoadingTimeOut: 15000,
+                fragLoadingTimeOut: 30000,
+            });
+
+            hlsInstance = hls;
+
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                log('✅ Media attached');
+            });
+
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                log(`✅ Manifest parsed: ${data.levels.length} quality levels`);
+                video.play().catch(e => log(`❌ Play failed: ${e.message}`, 'error'));
+            });
+
+            hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                log(`📊 Level loaded: ${data.details.totalduration}s duration`);
+            });
+
+            hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                log(`📦 Fragment loaded: ${data.frag.sn}`);
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                const msg = `${data.type} - ${data.details}`;
+                if (data.fatal) {
+                    log(`❌ FATAL: ${msg}`, 'error');
+                    log(`Response: ${JSON.stringify(data.response)}`, 'error');
+                    
+                    switch(data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            log('🔄 Attempting network recovery...', 'warn');
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            log('🔄 Attempting media recovery...', 'warn');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            log('💀 Unrecoverable error', 'error');
+                            break;
+                    }
+                } else {
+                    log(`⚠️ ${msg}`, 'warn');
+                }
+            });
+
+            video.onplaying = () => log('▶️ Playing...');
+
+            hls.loadSource('${proxyUrl}');
+            hls.attachMedia(video);
+        }
+
+        // Auto-test based on device
+        log('🚀 Auto-testing based on device capabilities...');
+        if (isIOS || isSafari) {
+            setTimeout(testNative, 1000);
+        } else if (hlsJsSupported) {
+            setTimeout(testHlsJs, 1000);
+        } else {
+            log('❌ No HLS playback method available', 'error');
+        }
+    </script>
+</body>
+</html>

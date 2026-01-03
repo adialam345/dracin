@@ -254,13 +254,21 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
        };
 
        if (isHLS) {
-          // Detect iOS/Safari for native HLS support
+          // Check native HLS support first (most reliable)
+          const canPlayNativeHLS = videoElement.canPlayType('application/vnd.apple.mpegurl');
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          const useNativeHLS = isIOS || isSafari || videoElement.canPlayType('application/vnd.apple.mpegurl');
           
-          if (useNativeHLS && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-             // Native HLS support (Safari iOS/macOS, some Android browsers)
+          console.log('[VideoPlayer] HLS Detection:', {
+            canPlayNativeHLS: canPlayNativeHLS,
+            isIOS: isIOS,
+            isSafari: isSafari,
+            hlsJsSupported: Hls.isSupported()
+          });
+          
+          // Prioritize native HLS on iOS and Safari (better performance and compatibility)
+          if (canPlayNativeHLS && (isIOS || isSafari)) {
+             // Native HLS support (Safari iOS/macOS)
              console.log('[VideoPlayer] Using Native HLS Player');
              videoElement.src = url;
              
