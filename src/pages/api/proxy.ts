@@ -111,6 +111,11 @@ export const GET: APIRoute = async ({ url, request }) => {
             else if (targetUrl.includes('wolftv.online')) {
                 headers['Referer'] = 'https://www.wolftv.online/';
                 headers['Origin'] = 'https://www.wolftv.online';
+            }
+            // Melolo CDN (TikTok)
+            else if (targetUrl.includes('tiktokcdn.com')) {
+                headers['Referer'] = 'https://www.tiktok.com/';
+                headers['Origin'] = 'https://www.tiktok.com';
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';
