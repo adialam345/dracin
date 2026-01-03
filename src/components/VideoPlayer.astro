@@ -50,6 +50,15 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     Browser Anda tidak mendukung video player.
   </video>
 
+  {/* Custom Subtitle Overlay for iOS Safari */}
+  <div id="custom-subtitle-overlay" class="absolute bottom-[15%] left-0 right-0 flex items-center justify-center pointer-events-none z-10 px-4">
+    <div id="custom-subtitle-text" class="text-white text-center font-semibold leading-relaxed" style="
+      font-size: 1.2em;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9), 1px -1px 2px rgba(0, 0, 0, 0.9), -1px 1px 2px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    "></div>
+  </div>
+
   {/* Error State */}
   <div id="player-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 z-20 p-6 text-center">
     <div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
@@ -120,18 +129,42 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
       0 0 8px rgba(0, 0, 0, 0.8) !important;
   }
 
-  /* iOS Safari specific - force remove background box */
+  /* iOS Safari specific - Hide native subtitles and use custom overlay */
   @supports (-webkit-touch-callout: none) {
+    /* Hide native subtitle rendering */
     #video-player::cue {
-      background: none !important;
-      background-color: rgba(0, 0, 0, 0) !important;
-      box-shadow: none !important;
+      display: none !important;
+      visibility: hidden !important;
     }
     
-    video::cue {
-      background: none !important;
-      background-color: rgba(0, 0, 0, 0) !important;
+    video::-webkit-media-text-track-container {
+      display: none !important;
     }
+    
+    video::-webkit-media-text-track-display {
+      display: none !important;
+    }
+  }
+
+  /* Custom subtitle overlay - hidden by default, shown by JS for iOS */
+  #custom-subtitle-overlay {
+    display: none;
+    transition: opacity 0.2s ease;
+  }
+
+  /* Show custom overlay on iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    #custom-subtitle-overlay {
+      display: flex;
+    }
+  }
+
+  /* Ensure custom subtitle shows in fullscreen */
+  video:fullscreen + #custom-subtitle-overlay,
+  video:-webkit-full-screen + #custom-subtitle-overlay {
+    display: flex !important;
+    position: fixed !important;
+    z-index: 2147483647 !important;
   }
 </style>
 
@@ -164,16 +197,110 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     };
 
     // Log device and browser info for debugging
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
     console.log('[VideoPlayer] Device Info:', {
       userAgent: navigator.userAgent,
-      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-      isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
+      isIOS: isIOS,
+      isSafari: isSafari,
       isAndroid: /Android/.test(navigator.userAgent),
       isChrome: /Chrome/.test(navigator.userAgent),
       canPlayHLS: videoElement.canPlayType('application/vnd.apple.mpegurl'),
       hlsJsSupported: Hls.isSupported(),
       source: source
     });
+
+    // Custom Subtitle Renderer for iOS Safari
+    const customSubtitleOverlay = document.getElementById('custom-subtitle-text');
+    
+    if (isIOS && customSubtitleOverlay) {
+      console.log('[VideoPlayer] iOS detected - Using custom subtitle renderer');
+      
+      // Function to update custom subtitle display
+      const updateCustomSubtitle = () => {
+        const textTracks = videoElement.textTracks;
+        let activeText = '';
+        
+        // Find active subtitle track
+        for (let i = 0; i < textTracks.length; i++) {
+          const track = textTracks[i];
+          if (track.mode === 'showing' && track.kind === 'subtitles') {
+            const activeCues = track.activeCues;
+            if (activeCues && activeCues.length > 0) {
+              // Get text from all active cues
+              for (let j = 0; j < activeCues.length; j++) {
+                activeText += activeCues[j].text + ' ';
+              }
+              console.log('[CustomSubtitle] Active text:', activeText.trim());
+            }
+            break;
+          }
+        }
+        
+        // Update overlay
+        if (activeText.trim()) {
+          customSubtitleOverlay.textContent = activeText.trim();
+          customSubtitleOverlay.style.opacity = '1';
+        } else {
+          customSubtitleOverlay.textContent = '';
+          customSubtitleOverlay.style.opacity = '0';
+        }
+      };
+      
+      // Listen to cuechange events on all text tracks
+      const setupTrackListeners = () => {
+        const textTracks = videoElement.textTracks;
+        console.log('[CustomSubtitle] Setting up listeners for', textTracks.length, 'tracks');
+        
+        for (let i = 0; i < textTracks.length; i++) {
+          const track = textTracks[i];
+          console.log('[CustomSubtitle] Track', i, ':', track.label, 'mode:', track.mode, 'kind:', track.kind);
+          
+          // Remove old listener if exists
+          track.removeEventListener('cuechange', updateCustomSubtitle);
+          // Add new listener
+          track.addEventListener('cuechange', updateCustomSubtitle);
+          
+          // Force mode to showing for default track
+          if (track.default && track.mode !== 'showing') {
+            track.mode = 'showing';
+            console.log('[CustomSubtitle] Forced track to showing:', track.label);
+          }
+        }
+      };
+      
+      // Setup listeners when tracks are added
+      videoElement.addEventListener('loadedmetadata', () => {
+        console.log('[CustomSubtitle] loadedmetadata event');
+        setupTrackListeners();
+      });
+      
+      // Also listen for track changes
+      if (videoElement.textTracks) {
+        videoElement.textTracks.addEventListener('addtrack', (e) => {
+          console.log('[CustomSubtitle] Track added:', e.track.label);
+          setupTrackListeners();
+        });
+        videoElement.textTracks.addEventListener('change', () => {
+          console.log('[CustomSubtitle] Track change event');
+          updateCustomSubtitle();
+        });
+      }
+      
+      // Update on timeupdate as fallback
+      videoElement.addEventListener('timeupdate', updateCustomSubtitle);
+      
+      // Initial setup after a delay (in case tracks are already loaded)
+      setTimeout(() => {
+        console.log('[CustomSubtitle] Initial setup check');
+        if (videoElement.textTracks.length > 0) {
+          setupTrackListeners();
+        }
+      }, 500);
+    }
+
+
 
     // Helper to add subtitle tracks
     const addSubtitleTracks = () => {
