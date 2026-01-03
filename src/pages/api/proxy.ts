@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ url, request }) => {
     // console.log(`[Proxy] Request received`); 
 
     // DEBUG: Log decrypted URL to verify it's correct
-    // console.log(`[Proxy] Target: ${targetUrl}`);
+    console.log(`[Proxy] Target URL:`, targetUrl?.substring(0, 150));
 
     try {
         let response;
@@ -68,7 +68,7 @@ export const GET: APIRoute = async ({ url, request }) => {
             response = await fetch(targetUrl, { headers });
 
         } catch (fetchError: any) {
-            console.error(`[Proxy] Fetch failed:`, fetchError.message);
+            console.error(`[Proxy] Fetch failed for:`, targetUrl?.substring(0, 100), fetchError.message);
             // Return actual error message for debugging
             return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
         }
