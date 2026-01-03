@@ -16,9 +16,9 @@ import { encrypt } from '../utils/security';
 // Encrypt initial URL to hide it in DOM
 const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUrl }) : '';
 
-// Encrypt Poster
+// Encrypt Poster (exclude NetShort - CDN blocks server requests)
 let finalPoster = poster;
-if (poster && (poster.includes('http') || poster.includes('https'))) {
+if (poster && (poster.includes('http') || poster.includes('https')) && !poster.includes('netshort.com')) {
     const encryptedPoster = encrypt(poster); // Encrypt the URL string directly
     finalPoster = `/api/proxy?q=${encodeURIComponent(encryptedPoster)}`;
 }
@@ -271,9 +271,10 @@ if (poster && (poster.includes('http') || poster.includes('https'))) {
 
 
        // --- PROXY LOGIC (Hide All Sources) ---
+       // Note: NetShort excluded - CDN blocks server requests and URLs are already signed
        if (
            !url.includes('/api/proxy') && 
-           (source === 'dramawave' || source === 'dramaflickreels' || source === 'dramabox' || source === 'netshort' || source === 'radreel' || source === 'melolo')
+           (source === 'dramawave' || source === 'dramaflickreels' || source === 'dramabox' || source === 'radreel' || source === 'melolo')
        ) {
            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
            // console.log('[VideoPlayer] Using Proxy: ...');
