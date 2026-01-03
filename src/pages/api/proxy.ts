@@ -10,15 +10,20 @@ export const GET: APIRoute = async ({ url, request }) => {
         // Decode URI component just in case browsers/servers double encode the base64 symbols
         const decrypted = decrypt(decodeURIComponent(q)) || decrypt(q);
 
+        console.log('[Proxy] Decrypted payload:', decrypted ? (typeof decrypted === 'string' ? decrypted.substring(0, 100) : JSON.stringify(decrypted).substring(0, 100)) : 'NULL');
+
         // Decrypt might return object or string depending on how it was encrypted.
         // If we strictly encrypt string -> string, then 'decrypted' is the url.
         // If we encrypt object {url: ...}, we need to parse.
         // Our 'encrypt' utility handles JSON.stringify.
         // So checking if it is a JSON string or raw URL.
         if (decrypted) {
-            if (decrypted.startsWith('http')) {
+            if (typeof decrypted === 'string' && decrypted.startsWith('http')) {
                 targetUrl = decrypted;
-            } else {
+            } else if (typeof decrypted === 'object') {
+                // Already parsed object
+                targetUrl = decrypted.videoUrl || decrypted.url || null;
+            } else if (typeof decrypted === 'string') {
                 try {
                     const parsed = JSON.parse(decrypted);
                     // Handle both {videoUrl: '...'} (VideoPlayer prop) and {url: '...'} (potential other cases)
@@ -30,12 +35,12 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
     }
 
-    if (!targetUrl) return new Response('Missing url', { status: 400 });
+    if (!targetUrl) {
+        console.error('[Proxy] No target URL after decryption');
+        return new Response('Missing url', { status: 400 });
+    }
 
-    // console.log(`[Proxy] Request received`); 
-
-    // DEBUG: Log decrypted URL to verify it's correct
-    // console.log(`[Proxy] Target: ${targetUrl}`);
+    console.log(`[Proxy] Target URL: ${targetUrl.substring(0, 150)}...`);
 
     try {
         let response;
@@ -59,15 +64,20 @@ export const GET: APIRoute = async ({ url, request }) => {
                 });
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
-                headers['Referer'] = new URL(targetUrl).origin + '/';
+                try {
+                    headers['Referer'] = new URL(targetUrl).origin + '/';
+                } catch (e) {
+                    // Invalid URL, skip referer
+                }
             }
 
             response = await fetch(targetUrl, { headers });
 
         } catch (fetchError: any) {
-            console.error(`[Proxy] Fetch failed:`, fetchError.message);
+            console.error(`[Proxy] Fetch failed for URL:`, targetUrl);
+            console.error(`[Proxy] Error details:`, fetchError);
             // Return actual error message for debugging
-            return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
+            return new Response(`Proxy fetch error: ${fetchError.message} | URL: ${targetUrl.substring(0, 100)}`, { status: 500 });
         }
 
         // console.log(`[Proxy] Response status: ${response.status}`);
