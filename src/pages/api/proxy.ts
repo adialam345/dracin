@@ -7,27 +7,20 @@ export const GET: APIRoute = async ({ url, request }) => {
 
     if (q) {
         // Try decrypting
-        // Decode URI component just in case browsers/servers double encode the base64 symbols
-        const decrypted = decrypt(decodeURIComponent(q)) || decrypt(q);
-
-        console.log('[Proxy] Decrypted payload:', decrypted ? (typeof decrypted === 'string' ? decrypted.substring(0, 100) : JSON.stringify(decrypted).substring(0, 100)) : 'NULL');
-
+        const decrypted = decrypt(q);
         // Decrypt might return object or string depending on how it was encrypted.
         // If we strictly encrypt string -> string, then 'decrypted' is the url.
         // If we encrypt object {url: ...}, we need to parse.
         // Our 'encrypt' utility handles JSON.stringify.
         // So checking if it is a JSON string or raw URL.
         if (decrypted) {
-            if (typeof decrypted === 'string' && decrypted.startsWith('http')) {
+            if (decrypted.startsWith('http')) {
                 targetUrl = decrypted;
-            } else if (typeof decrypted === 'object') {
-                // Already parsed object
-                targetUrl = decrypted.videoUrl || decrypted.url || null;
-            } else if (typeof decrypted === 'string') {
+            } else {
                 try {
                     const parsed = JSON.parse(decrypted);
-                    // Handle both {videoUrl: '...'} (VideoPlayer prop) and {url: '...'} (potential other cases)
-                    targetUrl = parsed.videoUrl || parsed.url || decrypted;
+                    if (parsed.url) targetUrl = parsed.url;
+                    else targetUrl = decrypted; // fallback
                 } catch (e) {
                     targetUrl = decrypted;
                 }
@@ -35,12 +28,12 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
     }
 
-    if (!targetUrl) {
-        console.error('[Proxy] No target URL after decryption');
-        return new Response('Missing url', { status: 400 });
-    }
+    if (!targetUrl) return new Response('Missing url', { status: 400 });
 
-    console.log(`[Proxy] Target URL: ${targetUrl.substring(0, 150)}...`);
+    // console.log(`[Proxy] Request received`); 
+
+    // DEBUG: Log decrypted URL to verify it's correct
+    // console.log(`[Proxy] Target: ${targetUrl}`);
 
     try {
         let response;
@@ -62,51 +55,25 @@ export const GET: APIRoute = async ({ url, request }) => {
                     'bundleIdentifier': 'com.farsun.shortplay',
                     'Version': '2.2.2.0'
                 });
+            }
+            // NetShort CDN
+            else if (targetUrl.includes('netshort.com')) {
+                headers['Referer'] = 'https://www.netshort.com/';
+                // NetShort CDN usually works with standard headers, no special auth needed
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
-                try {
-                    headers['Referer'] = new URL(targetUrl).origin + '/';
-                } catch (e) {
-                    // Invalid URL, skip referer
-                }
+                headers['Referer'] = new URL(targetUrl).origin + '/';
             }
 
-            // Add timeout to prevent hanging
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-            try {
-                response = await fetch(targetUrl, {
-                    headers,
-                    signal: controller.signal,
-                    // @ts-ignore - some environments support these
-                    redirect: 'follow',
-                    keepalive: false
-                });
-                clearTimeout(timeoutId);
-            } catch (err) {
-                clearTimeout(timeoutId);
-                throw err;
-            }
+            response = await fetch(targetUrl, { headers });
 
         } catch (fetchError: any) {
-            console.error(`[Proxy] Fetch failed for URL:`, targetUrl);
-            console.error(`[Proxy] Error details:`, fetchError);
-            console.error(`[Proxy] Error stack:`, fetchError.stack);
-
-            // Provide more specific error messages
-            let errorMsg = fetchError.message;
-            if (fetchError.name === 'AbortError') {
-                errorMsg = 'Request timeout (30s)';
-            } else if (errorMsg.includes('fetch failed')) {
-                errorMsg = 'Network error - CDN may be blocking server requests';
-            }
-
+            console.error(`[Proxy] Fetch failed:`, fetchError.message);
             // Return actual error message for debugging
-            return new Response(`Proxy fetch error: ${errorMsg} | URL: ${targetUrl.substring(0, 100)}`, { status: 500 });
+            return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
         }
 
-        console.log(`[Proxy] Response status: ${response.status}`);
+        // console.log(`[Proxy] Response status: ${response.status}`);
 
         const contentType = response.headers.get('content-type') || '';
 

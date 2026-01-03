@@ -16,14 +16,6 @@ import { encrypt } from '../utils/security';
 // Encrypt initial URL to hide it in DOM
 const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUrl }) : '';
 
-// Encrypt Poster (exclude NetShort - CDN blocks server requests)
-let finalPoster = poster;
-if (poster && (poster.includes('http') || poster.includes('https')) && !poster.includes('netshort.com')) {
-    const encryptedPoster = encrypt(poster); // Encrypt the URL string directly
-    finalPoster = `/api/proxy?q=${encodeURIComponent(encryptedPoster)}`;
-}
-
-
 ---
 
 <div class="relative bg-black w-full h-full group overflow-hidden" id="video-container">
@@ -47,7 +39,7 @@ if (poster && (poster.includes('http') || poster.includes('https')) && !poster.i
     class="w-full h-full object-contain opacity-0 transition-opacity duration-700"
     controls
     preload="metadata"
-    poster={finalPoster}
+    poster={poster}
     data-video-url={encryptedInitialUrl}
     data-source={source}
     data-book-id={bookId}
@@ -270,11 +262,11 @@ if (poster && (poster.includes('http') || poster.includes('https')) && !poster.i
 
 
 
-       // --- PROXY LOGIC (Hide All Sources) ---
-       // Note: NetShort excluded - CDN blocks server requests and URLs are already signed
+       // --- PROXY LOGIC FOR DRAMAWAVE & FLICKREELS ---
        if (
-           !url.includes('/api/proxy') && 
-           (source === 'dramawave' || source === 'dramaflickreels' || source === 'dramabox' || source === 'radreel' || source === 'melolo')
+           (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
+           (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy')) ||
+           (source === 'dramabox' && !url.includes('/api/proxy'))
        ) {
            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
            // console.log('[VideoPlayer] Using Proxy: ...');
@@ -498,6 +490,11 @@ if (poster && (poster.includes('http') || poster.includes('https')) && !poster.i
           }
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
+         // Route through proxy to hide URL if it's NetShort
+         if (source === 'netshort' && !url.includes('/api/proxy')) {
+            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
+         }
+         
          videoElement.src = url;
          addSubtitleTracks(); // Add subtitle tracks for non-HLS videos
          videoElement.load();
