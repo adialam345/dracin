@@ -52,27 +52,29 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList] = await Promise.all([
         Dramabox.searchDramabox(query),
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
         RadReel.searchRadReel(query),
         DramaWave.searchDramaWave(query, 20), // Fetch up to 20 pages
+        FlickReels.searchFlickReels(query)
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
         if (mlList[i]) candidates.push(mlList[i]);
         if (rrList[i]) candidates.push(rrList[i]);
         if (dwList[i]) candidates.push(dwList[i]);
+        if (frList[i]) candidates.push(frList[i]);
     }
 
     // Deduplicate

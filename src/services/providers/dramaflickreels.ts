@@ -2,6 +2,7 @@ import { normalizeFlickReels, type UnifiedDrama } from '../adapter';
 import crypto from 'crypto';
 
 const FLICKREELS_MOB_API = 'https://api.farsunpteltd.com/app/playlet';
+const FLICKREELS_SEARCH_API = 'https://api.farsunpteltd.com/app/user_search';
 const FLICKREELS_WEB_API = 'https://apiweb.flickreels.net/web/playlet';
 
 // Using provided headers from user logs
@@ -251,4 +252,36 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
     }
 
     return { drama: dramaInfo, episodes };
+}
+
+export async function searchFlickReels(query: string): Promise<UnifiedDrama[]> {
+    try {
+        const body = {
+            ...DEFAULT_MOB_BODY,
+            keyword: query,
+            is_mid_page: "1"
+        };
+        const sign = generateSign(body);
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+
+        const response = await fetch(FLICKREELS_SEARCH_API + '/search', {
+            method: 'POST',
+            headers: {
+                ...FLICKREELS_MOB_HEADERS,
+                'Sign': sign,
+                'Timestamp': timestamp
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        if (!data || !data.data) return [];
+
+        return (data.data as any[]).map(item => normalizeFlickReels(item)).filter(i => i.id && i.id !== '0');
+    } catch (e) {
+        console.error('[FlickReels] Search Error:', e);
+        return [];
+    }
 }
