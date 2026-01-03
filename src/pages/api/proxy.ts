@@ -71,7 +71,8 @@ export const GET: APIRoute = async ({ url, request }) => {
                         headers: headers,
                         hostname: urlObj.hostname,
                         path: urlObj.pathname + urlObj.search,
-                        port: 443
+                        port: 443,
+                        rejectUnauthorized: false // Disable SSL verification for CDN
                     };
 
                     const req = https.request(options, (res) => {
