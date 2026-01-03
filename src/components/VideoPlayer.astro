@@ -142,8 +142,16 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    z-index: 9999 !important;
+    height: 100dvh !important; /* Dynamic viewport height for mobile */
+    z-index: 999999 !important; /* Higher z-index to cover everything */
     background: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Handle iOS safe areas */
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-left: env(safe-area-inset-left) !important;
+    padding-right: env(safe-area-inset-right) !important;
   }
 
   #video-container.ios-fullscreen #video-player {
@@ -153,12 +161,12 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
   }
 
   #video-container.ios-fullscreen #subtitle-overlay {
-    bottom: 8% !important;
+    bottom: calc(8% + env(safe-area-inset-bottom)) !important;
   }
 
   #video-container.ios-fullscreen #ios-fullscreen-btn {
-    bottom: 16px !important;
-    right: 16px !important;
+    bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+    right: calc(16px + env(safe-area-inset-right)) !important;
   }
 
   /* Hide native fullscreen button on iOS when using fake fullscreen */
@@ -166,6 +174,26 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     #video-player::-webkit-media-controls-fullscreen-button {
       display: none !important;
     }
+  }
+
+  /* When fullscreen active via class on body */
+  body.video-fullscreen {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.video-fullscreen > *:not(#video-container):not(script):not(style) {
+    display: none !important;
+  }
+
+  /* Make sure video container is visible when fullscreen */
+  body.video-fullscreen #video-container,
+  body.video-fullscreen #video-container.ios-fullscreen {
+    display: block !important;
   }
 </style>
 
@@ -366,13 +394,26 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
       iosFullscreenBtn.style.display = 'block';
       console.log('[VideoPlayer] Custom fullscreen button enabled');
       
+      // Store original parent for restoring later
+      let originalParent: HTMLElement | null = null;
+      let originalNextSibling: Node | null = null;
+      
       const toggleIOSFullscreen = () => {
         isIOSFullscreen = !isIOSFullscreen;
         
         if (isIOSFullscreen) {
+          // Store original position
+          originalParent = videoContainer.parentElement;
+          originalNextSibling = videoContainer.nextSibling;
+          
+          // Move video container to body for true fullscreen
+          document.body.appendChild(videoContainer);
+          
           // Enter fake fullscreen
           videoContainer.classList.add('ios-fullscreen');
+          document.body.classList.add('video-fullscreen');
           document.body.style.overflow = 'hidden';
+          document.documentElement.style.overflow = 'hidden';
           if (fsIconExpand) fsIconExpand.style.display = 'none';
           if (fsIconCompress) fsIconCompress.style.display = 'block';
           
@@ -383,13 +424,27 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
             }
           } catch (e) {}
           
+          // Scroll to top to ensure fullscreen covers properly
+          window.scrollTo(0, 0);
+          
           console.log('[VideoPlayer] Entered fake fullscreen');
         } else {
           // Exit fake fullscreen
           videoContainer.classList.remove('ios-fullscreen');
+          document.body.classList.remove('video-fullscreen');
           document.body.style.overflow = '';
+          document.documentElement.style.overflow = '';
           if (fsIconExpand) fsIconExpand.style.display = 'block';
           if (fsIconCompress) fsIconCompress.style.display = 'none';
+          
+          // Restore video container to original position
+          if (originalParent) {
+            if (originalNextSibling) {
+              originalParent.insertBefore(videoContainer, originalNextSibling);
+            } else {
+              originalParent.appendChild(videoContainer);
+            }
+          }
           
           // Unlock orientation
           try {
