@@ -30,7 +30,30 @@ export async function fetchRadReel(endpoint: string): Promise<any> {
 
 export async function getRadReelForYou(): Promise<UnifiedDrama[]> {
     const data = await fetchRadReel('https://cdp.wolftv.online/cdp/compilations_recommend_slot/for_you_recommended?index=0');
-    return extractList(data);
+    const list = extractList(data);
+
+    // Enrich covers for top 10 items because For You endpoint returns 'wrong' (landscape) covers
+    // and user wants the Search/Detail (portrait) covers.
+    const enrichLimit = 10;
+    const toEnrich = list.slice(0, enrichLimit);
+    const others = list.slice(enrichLimit);
+
+    await Promise.all(toEnrich.map(async (item) => {
+        try {
+            // ID format is fakeId_compilationsId or similar
+            const fakeId = item.id.split('_')[0];
+            if (!fakeId) return;
+
+            const meta = await fetchRadReel(`https://cdp.wolftv.online/content/compilations/v2/${fakeId}`);
+            if (meta && meta.coverImgUrl) {
+                item.cover = meta.coverImgUrl; // Update cover
+            }
+        } catch (e) {
+            // Ignore enrichment errors
+        }
+    }));
+
+    return [...toEnrich, ...others];
 }
 
 export async function searchRadReel(query: string): Promise<UnifiedDrama[]> {
