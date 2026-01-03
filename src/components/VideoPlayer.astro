@@ -69,47 +69,33 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
 
 <style>
   /* Custom Subtitle Styling */
-  /* Using both ID and element selector for better specificity */
-  #video-player::cue,
-  video::cue {
+  #video-player::cue {
     background-color: transparent !important;
     background: transparent !important;
     color: white;
-    font-size: 1.1em;
+    font-size: 1.2em;
     font-weight: 600;
     text-shadow: 
-      2px 2px 2px rgba(0, 0, 0, 0.9),
-      0px 0px 4px rgba(0, 0, 0, 0.8),
-      -1px -1px 0 rgba(0, 0, 0, 1),
-      1px -1px 0 rgba(0, 0, 0, 1),
-      -1px 1px 0 rgba(0, 0, 0, 1),
-      1px 1px 0 rgba(0, 0, 0, 1);
-    line-height: normal;
+      2px 2px 4px rgba(0, 0, 0, 0.9),
+      -1px -1px 2px rgba(0, 0, 0, 0.9),
+      1px -1px 2px rgba(0, 0, 0, 0.9),
+      -1px 1px 2px rgba(0, 0, 0, 0.9);
+    line-height: 1.4;
   }
 
-  /* WebKit/iOS Safari Specific Overrides to remove default background box */
+  /* Position subtitles higher (closer to center) */
+  #video-player::cue {
+    position: relative;
+    bottom: 15% !important;
+  }
+
+  /* Remove any default background from video text tracks */
   #video-player::-webkit-media-text-track-container {
     bottom: 15% !important;
-    overflow: visible !important;
   }
 
   #video-player::-webkit-media-text-track-display {
-    background-color: transparent !important;
     background: transparent !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  #video-player::-webkit-media-text-track-background {
-    background-color: transparent !important;
-    background: transparent !important;
-  }
-
-  /* Ensure text track region doesn't clip shadows */
-  #video-player::-webkit-media-text-track-region {
-    background: transparent !important;
-    background-color: transparent !important;
   }
 </style>
 
