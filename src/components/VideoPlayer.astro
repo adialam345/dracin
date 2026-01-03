@@ -11,6 +11,11 @@ interface Props {
 }
 
 const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nextEpisodeUrl, episodes = [] } = Astro.props;
+import { encrypt } from '../utils/security';
+
+// Encrypt initial URL to hide it in DOM
+const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUrl }) : '';
+
 ---
 
 <div class="relative bg-black w-full h-full group overflow-hidden" id="video-container">
@@ -35,7 +40,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     controls
     preload="metadata"
     poster={poster}
-    data-video-url={initialVideoUrl}
+    data-video-url={encryptedInitialUrl}
     data-source={source}
     data-book-id={bookId}
     data-episode-id={episodeId}
@@ -101,6 +106,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
 
 <script>
   import Hls from 'hls.js';
+  import { encrypt, decrypt } from '../utils/security';
 
   async function initPlayer() {
     const videoElement = document.getElementById('video-player') as HTMLVideoElement;
@@ -180,49 +186,66 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     };
 
 
+    // Helper to decode response/payload
+    const processPayload = (rawPayload) => {
+        if (!rawPayload) return null;
+        try {
+            // Try decrypting first
+            const decrypted = decrypt(rawPayload);
+            if (decrypted) return decrypted;
+            
+            // Fallback: try parsing as JSON (legacy/cleartext)
+            return JSON.parse(rawPayload);
+        } catch (e) {
+            // If it's just a string url, return object
+            if (rawPayload.startsWith('http')) return { videoUrl: rawPayload };
+            return null;
+        }
+    };
+
     // Load and Play Video Logic
-    const loadAndPlay = async (urlPayload, isAutoNext = false) => {
-       let url = urlPayload;
-       // Parse JSON payload if sent (containing subtitles or error)
-       if (typeof urlPayload === 'string' && urlPayload.trim().startsWith('{')) {
-           try {
-               const data = JSON.parse(urlPayload);
-               
-               // Check if this is a web player redirect
-               if (data.error === 'webplayer') {
-                   console.log('[VideoPlayer] Redirecting to web player:', data.redirectUrl);
-                   if (loader) loader.style.display = 'none';
-                   if (errorState) {
-                       errorState.querySelector('h3').textContent = '🌐 Buka di Web Player';
-                       errorState.querySelector('p').textContent = data.message || 'Drama ini hanya tersedia di FlickReels Web Player';
-                       const btn = errorState.querySelector('button');
-                       btn.textContent = 'Buka FlickReels';
-                       btn.onclick = () => window.open(data.redirectUrl, '_blank');
-                       errorState.classList.remove('hidden');
-                   }
-                   return;
-               }
-               
-               // Check if this is a premium/locked episode error
-               if (data.error === 'premium') {
-                   console.error('[VideoPlayer] Premium episode:', data.message);
-                   if (loader) loader.style.display = 'none';
-                   if (errorState) {
-                       errorState.querySelector('h3').textContent = '🔒 Episode Premium';
-                       errorState.querySelector('p').textContent = data.message || 'Episode ini memerlukan akun premium';
-                       errorState.classList.remove('hidden');
-                   }
-                   return; // Stop loading
-               }
-               
-               url = data.videoUrl;
-               // Wait for player to be ready before adding tracks? No, HLS needs init first.
-               // We'll set a global/scoped variable to add them after attach
-               window.pendingSubtitles = data.subtitles; 
-           } catch(e) {
-               console.error('[VideoPlayer] Failed to parse payload:', e);
-           }
+    const loadAndPlay = async (payloadRaw, isAutoNext = false) => {
+       // Decrypt/Parse payload
+       let data = processPayload(payloadRaw);
+       if (!data) {
+           console.error('[VideoPlayer] Invalid payload');
+           return;
        }
+       
+       let url = data.videoUrl;
+       
+       // Handle errors in payload
+       if (data.error === 'webplayer') {
+           // ... (existing error handling logic)
+           console.log('[VideoPlayer] Redirecting to web player:', data.redirectUrl);
+           if (loader) loader.style.display = 'none';
+           if (errorState) {
+               errorState.querySelector('h3').textContent = '🌐 Buka di Web Player';
+               errorState.querySelector('p').textContent = data.message || 'Drama ini hanya tersedia di FlickReels Web Player';
+               const btn = errorState.querySelector('button');
+               btn.textContent = 'Buka FlickReels';
+               btn.onclick = () => window.open(data.redirectUrl, '_blank');
+               errorState.classList.remove('hidden');
+           }
+           return;
+       }
+       
+       if (data.error === 'premium') {
+             console.error('[VideoPlayer] Premium episode:', data.message);
+             if (loader) loader.style.display = 'none';
+             if (errorState) {
+                 errorState.querySelector('h3').textContent = '🔒 Episode Premium';
+                 errorState.querySelector('p').textContent = data.message || 'Episode ini memerlukan akun premium';
+                 errorState.classList.remove('hidden');
+             }
+             return; 
+       }
+       
+       // Handle subtitles if present
+       if (data.subtitles) {
+           window.pendingSubtitles = data.subtitles;
+       }
+
 
        // --- PROXY LOGIC FOR DRAMAWAVE & FLICKREELS ---
        if (
@@ -230,12 +253,12 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
            (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy')) ||
            (source === 'dramabox' && !url.includes('/api/proxy'))
        ) {
-           url = '/api/proxy?url=' + encodeURIComponent(url);
-           console.log('[VideoPlayer] Using Proxy:', url);
+           url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
+           // console.log('[VideoPlayer] Using Proxy: ...');
        }
        // ---------------------------------
 
-       console.log(`[VideoPlayer] Loading: ${url}`);
+       // console.log(`[VideoPlayer] Loading: ...`);
        const decodedUrl = decodeURIComponent(url);
        const isHLS = (decodedUrl.includes('.m3u8') || decodedUrl.includes('playlist.m3u8')) && !decodedUrl.includes('.mp4');
 
@@ -275,7 +298,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                  track.kind = 'subtitles';
                  track.label = sub.label;
                  track.srclang = sub.lang;
-                 track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                 track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
                  
                  if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                    track.default = true;
@@ -377,7 +400,7 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                       track.kind = 'subtitles';
                       track.label = sub.label;
                       track.srclang = sub.lang;
-                      track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                      track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
                       
                       if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                           track.default = true;
@@ -487,10 +510,17 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
                 loader.style.opacity = '1';
              }
              
-             const res = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${nextId}`, {
+             // 1. Fetch next video URL
+             // Encrypt params
+             const q = encrypt({ source, bookId, episodeId: nextId });
+             const res = await fetch(`/api/video-stream?q=${encodeURIComponent(q)}`, {
                  signal: currentFetchController.signal
              });
-             const data = await res.json();
+             
+             // Decrypt response
+             const text = await res.text();
+             const data = processPayload(text); // Use helper
+
              
              if (data.videoUrl) {
                 // 2. Play next video
@@ -538,20 +568,21 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     // Initial Load
     if (!videoUrl && source && bookId && currentEpisodeId) {
       try {
-        const response = await fetch(`/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${currentEpisodeId}`);
-        const data = await response.json();
-        const payload = data.videoUrl; // Can be JSON string
-
-        loadAndPlay(payload);
-        return; // loadAndPlay handles parsing
+        const q = encrypt({ source, bookId, episodeId: currentEpisodeId });
+        const response = await fetch(`/api/video-stream?q=${encodeURIComponent(q)}`);
+        const text = await response.text();
+        // Pass encrypted/raw text to loadAndPlay, it will handle it via processPayload
+        loadAndPlay(text);
+        return; 
       } catch (e) {
         console.error('[VideoPlayer] Client-side fetch failed:', e);
       }
     }
 
     if (videoUrl) {
-      // Check if videoUrl needs parsing (passed via props)
+      // videoUrl from DOM is now encrypted string (from props)
       loadAndPlay(videoUrl);
+      return;
     } else {
       if (loader) loader.style.display = 'none';
       if (errorState) errorState.classList.remove('hidden');

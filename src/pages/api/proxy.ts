@@ -1,10 +1,36 @@
 import type { APIRoute } from 'astro';
+import { encrypt, decrypt } from '../../utils/security';
 
 export const GET: APIRoute = async ({ url, request }) => {
-    const targetUrl = url.searchParams.get('url');
+    let targetUrl = url.searchParams.get('url');
+    const q = url.searchParams.get('q');
+
+    if (q) {
+        // Try decrypting
+        const decrypted = decrypt(q);
+        // Decrypt might return object or string depending on how it was encrypted.
+        // If we strictly encrypt string -> string, then 'decrypted' is the url.
+        // If we encrypt object {url: ...}, we need to parse.
+        // Our 'encrypt' utility handles JSON.stringify.
+        // So checking if it is a JSON string or raw URL.
+        if (decrypted) {
+            if (decrypted.startsWith('http')) {
+                targetUrl = decrypted;
+            } else {
+                try {
+                    const parsed = JSON.parse(decrypted);
+                    if (parsed.url) targetUrl = parsed.url;
+                    else targetUrl = decrypted; // fallback
+                } catch (e) {
+                    targetUrl = decrypted;
+                }
+            }
+        }
+    }
+
     if (!targetUrl) return new Response('Missing url', { status: 400 });
 
-    console.log(`[Proxy] Request received for: ${targetUrl.substring(0, 100)}...`);
+    // console.log(`[Proxy] Request received`); 
 
     try {
         let response;
@@ -22,15 +48,13 @@ export const GET: APIRoute = async ({ url, request }) => {
                 }
             });
         } catch (fetchError: any) {
-            console.error(`[Proxy] Fetch failed:`, fetchError);
-            return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
+            console.error(`[Proxy] Fetch failed:`, fetchError.message);
+            return new Response(`Proxy fetch error`, { status: 500 });
         }
 
-        console.log(`[Proxy] Fetching: ${targetUrl}`);
-        console.log(`[Proxy] Response status: ${response.status} ${response.statusText}`);
+        // console.log(`[Proxy] Response status: ${response.status}`);
 
         const contentType = response.headers.get('content-type') || '';
-        console.log(`[Proxy] Content-Type: ${contentType}`);
 
         // For subtitle files, be more lenient with status codes
         const isSubtitle = targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') ||
@@ -38,8 +62,7 @@ export const GET: APIRoute = async ({ url, request }) => {
             contentType.includes('text/plain');
 
         if (!response.ok && !isSubtitle) {
-            console.error(`[Proxy] Failed to fetch: ${response.status} ${response.statusText}`);
-            return new Response(`Proxy error status:${response.status} statusText:${response.statusText}`, { status: 500 });
+            return new Response(`Proxy error status:${response.status}`, { status: 500 });
         }
 
 
@@ -68,7 +91,8 @@ export const GET: APIRoute = async ({ url, request }) => {
                     // Resolve absolute URL
                     try {
                         const absoluteUrl = new URL(trimmed, baseUrl).href;
-                        return `${origin}/api/proxy?url=${encodeURIComponent(absoluteUrl)}`;
+                        const encryptedUrl = encrypt(absoluteUrl); // Encrypt the URL for the next segment
+                        return `${origin}/api/proxy?q=${encodeURIComponent(encryptedUrl)}`;
                     } catch (e) {
                         return line; // Fallback
                     }
@@ -78,7 +102,8 @@ export const GET: APIRoute = async ({ url, request }) => {
                     return trimmed.replace(/URI="([^"]+)"/, (match, uri) => {
                         try {
                             const absoluteUrl = new URL(uri, baseUrl).href;
-                            return `URI="${origin}/api/proxy?url=${encodeURIComponent(absoluteUrl)}"`;
+                            const encryptedUrl = encrypt(absoluteUrl);
+                            return `URI="${origin}/api/proxy?q=${encodeURIComponent(encryptedUrl)}"`;
                         } catch (e) {
                             return match;
                         }
