@@ -95,5 +95,27 @@ export async function getDramaDashDetail(id: string): Promise<{ drama: any, epis
 // TODO: Implement search if endpoint is discovered.
 // For now, we return empty to avoid errors.
 export async function searchDramaDash(query: string): Promise<UnifiedDrama[]> {
-    return [];
+    try {
+        const response = await fetch(`${API_BASE}/search/text`, {
+            method: 'POST',
+            headers: {
+                ...HEADERS,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ search: query })
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        // Check if data.result exists and is an array
+        if (data.result && Array.isArray(data.result)) {
+            return data.result.map((item: any) => normalizeDramaDash(item));
+        }
+
+        return [];
+    } catch (e) {
+        console.error('[DramaDash] Search Error:', e);
+        return [];
+    }
 }
