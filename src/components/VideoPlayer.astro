@@ -50,27 +50,6 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     Browser Anda tidak mendukung video player.
   </video>
 
-  {/* Custom Subtitle Overlay - for consistent styling across all platforms */}
-  <div id="subtitle-overlay" class="absolute left-0 right-0 bottom-[12%] flex justify-center items-end pointer-events-none z-10 px-4">
-    <div id="subtitle-text" class="text-center text-white font-semibold text-lg md:text-xl leading-relaxed max-w-[90%]" style="text-shadow: 2px 2px 2px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;"></div>
-  </div>
-
-  {/* Custom Fullscreen Button for Mobile - shows on touch devices */}
-  <button id="ios-fullscreen-btn" class="absolute bottom-4 right-4 z-30 bg-black/70 hover:bg-black/90 active:bg-black text-white p-3 rounded-full transition-all" style="display: none;" title="Fullscreen">
-    <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 3 21 3 21 9"></polyline>
-      <polyline points="9 21 3 21 3 15"></polyline>
-      <line x1="21" y1="3" x2="14" y2="10"></line>
-      <line x1="3" y1="21" x2="10" y2="14"></line>
-    </svg>
-    <svg id="fs-icon-compress" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 14 10 14 10 20"></polyline>
-      <polyline points="20 10 14 10 14 4"></polyline>
-      <line x1="14" y1="10" x2="21" y2="3"></line>
-      <line x1="3" y1="21" x2="10" y2="14"></line>
-    </svg>
-  </button>
-
   {/* Error State */}
   <div id="player-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 z-20 p-6 text-center">
     <div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
@@ -132,225 +111,10 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     background: transparent !important;
     background-color: transparent !important;
   }
-
-  /* iOS Fake Fullscreen Mode - uses CSS to fill screen instead of native fullscreen */
-  #video-container.ios-fullscreen {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important; /* Dynamic viewport height for mobile */
-    z-index: 999999 !important; /* Higher z-index to cover everything */
-    background: black !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    /* Handle iOS safe areas */
-    padding-top: env(safe-area-inset-top) !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
-    padding-left: env(safe-area-inset-left) !important;
-    padding-right: env(safe-area-inset-right) !important;
-  }
-
-  #video-container.ios-fullscreen #video-player {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-  }
-
-  #video-container.ios-fullscreen #subtitle-overlay {
-    bottom: calc(8% + env(safe-area-inset-bottom)) !important;
-  }
-
-  #video-container.ios-fullscreen #ios-fullscreen-btn {
-    bottom: calc(16px + env(safe-area-inset-bottom)) !important;
-    right: calc(16px + env(safe-area-inset-right)) !important;
-  }
-
-  /* Hide native fullscreen button on iOS when using fake fullscreen */
-  @supports (-webkit-touch-callout: none) {
-    #video-player::-webkit-media-controls-fullscreen-button {
-      display: none !important;
-    }
-  }
-
-  /* When fullscreen active via class on body */
-  body.video-fullscreen {
-    overflow: hidden !important;
-    position: fixed !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  body.video-fullscreen > *:not(#video-container):not(script):not(style) {
-    display: none !important;
-  }
-
-  /* Make sure video container is visible when fullscreen */
-  body.video-fullscreen #video-container,
-  body.video-fullscreen #video-container.ios-fullscreen {
-    display: block !important;
-  }
 </style>
 
 <script>
   import Hls from 'hls.js';
-
-  // Custom Subtitle Renderer Class - renders subtitles as HTML overlay
-  class CustomSubtitleRenderer {
-    private videoElement: HTMLVideoElement;
-    private subtitleContainer: HTMLElement | null;
-    private cues: Array<{ start: number; end: number; text: string }> = [];
-    private currentCueIndex: number = -1;
-    private isActive: boolean = false;
-
-    constructor(videoElement: HTMLVideoElement) {
-      this.videoElement = videoElement;
-      this.subtitleContainer = document.getElementById('subtitle-text');
-      this.onTimeUpdate = this.onTimeUpdate.bind(this);
-    }
-
-    // Parse VTT/SRT content
-    async loadFromUrl(url: string): Promise<void> {
-      try {
-        console.log('[CustomSubtitle] Loading subtitle from:', url);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to fetch subtitle: ${response.status}`);
-        
-        const text = await response.text();
-        this.cues = this.parseSubtitle(text);
-        console.log('[CustomSubtitle] Parsed', this.cues.length, 'cues');
-        
-        if (this.cues.length > 0) {
-          this.activate();
-        }
-      } catch (e) {
-        console.error('[CustomSubtitle] Failed to load subtitle:', e);
-      }
-    }
-
-    private parseSubtitle(content: string): Array<{ start: number; end: number; text: string }> {
-      const cues: Array<{ start: number; end: number; text: string }> = [];
-      
-      // Normalize line endings
-      content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      
-      // Remove WEBVTT header if present
-      content = content.replace(/^WEBVTT.*?\n\n/s, '');
-      
-      // Split into blocks
-      const blocks = content.split(/\n\n+/);
-      
-      for (const block of blocks) {
-        const lines = block.trim().split('\n');
-        if (lines.length < 2) continue;
-        
-        // Find the timing line (contains -->)
-        let timingLineIndex = lines.findIndex(line => line.includes('-->'));
-        if (timingLineIndex === -1) continue;
-        
-        const timingLine = lines[timingLineIndex];
-        const match = timingLine.match(/(\d{1,2}:)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{1,2}:)?(\d{2}):(\d{2})[,.](\d{3})/);
-        
-        if (match) {
-          const startHours = match[1] ? parseInt(match[1]) : 0;
-          const startMinutes = parseInt(match[2]);
-          const startSeconds = parseInt(match[3]);
-          const startMs = parseInt(match[4]);
-          
-          const endHours = match[5] ? parseInt(match[5]) : 0;
-          const endMinutes = parseInt(match[6]);
-          const endSeconds = parseInt(match[7]);
-          const endMs = parseInt(match[8]);
-          
-          const start = startHours * 3600 + startMinutes * 60 + startSeconds + startMs / 1000;
-          const end = endHours * 3600 + endMinutes * 60 + endSeconds + endMs / 1000;
-          
-          // Get text lines after timing
-          const textLines = lines.slice(timingLineIndex + 1);
-          const text = textLines.join('\n').trim();
-          
-          if (text) {
-            cues.push({ start, end, text });
-          }
-        }
-      }
-      
-      // Sort by start time
-      cues.sort((a, b) => a.start - b.start);
-      
-      return cues;
-    }
-
-    private parseTime(timeStr: string): number {
-      // Handle both HH:MM:SS,mmm and MM:SS,mmm formats
-      const parts = timeStr.replace(',', '.').split(':');
-      if (parts.length === 3) {
-        return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
-      } else if (parts.length === 2) {
-        return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-      }
-      return 0;
-    }
-
-    activate(): void {
-      if (this.isActive) return;
-      this.isActive = true;
-      this.videoElement.addEventListener('timeupdate', this.onTimeUpdate);
-      console.log('[CustomSubtitle] Renderer activated');
-    }
-
-    deactivate(): void {
-      this.isActive = false;
-      this.videoElement.removeEventListener('timeupdate', this.onTimeUpdate);
-      if (this.subtitleContainer) {
-        this.subtitleContainer.textContent = '';
-      }
-      console.log('[CustomSubtitle] Renderer deactivated');
-    }
-
-    private onTimeUpdate(): void {
-      if (!this.subtitleContainer || this.cues.length === 0) return;
-      
-      const currentTime = this.videoElement.currentTime;
-      
-      // Find active cue
-      let activeCue: { start: number; end: number; text: string } | null = null;
-      for (const cue of this.cues) {
-        if (currentTime >= cue.start && currentTime <= cue.end) {
-          activeCue = cue;
-          break;
-        }
-      }
-      
-      if (activeCue) {
-        // Clean text (remove HTML tags, decode entities)
-        let cleanText = activeCue.text
-          .replace(/<[^>]+>/g, '') // Remove HTML tags
-          .replace(/\{[^}]+\}/g, '') // Remove ASS/SSA styles
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"');
-        
-        this.subtitleContainer.innerHTML = cleanText.replace(/\n/g, '<br>');
-      } else {
-        this.subtitleContainer.textContent = '';
-      }
-    }
-
-    clear(): void {
-      this.cues = [];
-      this.currentCueIndex = -1;
-      if (this.subtitleContainer) {
-        this.subtitleContainer.textContent = '';
-      }
-    }
-  }
 
   async function initPlayer() {
     const videoElement = document.getElementById('video-player') as HTMLVideoElement;
@@ -367,109 +131,6 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     const bookId = videoElement.getAttribute('data-book-id');
     let videoUrl = videoElement.getAttribute('data-video-url');
     let currentFetchController: AbortController | null = null;
-    
-    // Initialize Custom Subtitle Renderer for consistent styling across all platforms
-    const customSubtitleRenderer = new CustomSubtitleRenderer(videoElement);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const useCustomSubtitles = isIOS || isSafari; // Use custom renderer for iOS/Safari
-    
-    console.log('[VideoPlayer] Using custom subtitle renderer:', useCustomSubtitles);
-    
-    // iOS Fake Fullscreen Setup - uses CSS fullscreen to keep subtitle overlay visible
-    const videoContainer = document.getElementById('video-container');
-    const iosFullscreenBtn = document.getElementById('ios-fullscreen-btn');
-    const fsIconExpand = document.getElementById('fs-icon-expand');
-    const fsIconCompress = document.getElementById('fs-icon-compress');
-    let isIOSFullscreen = false;
-    
-    // Detect mobile/touch devices for custom fullscreen button
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    console.log('[VideoPlayer] Mobile detection:', { isIOS, isSafari, isMobile, isTouchDevice });
-    
-    if ((isIOS || (isMobile && isTouchDevice)) && iosFullscreenBtn && videoContainer) {
-      // Show custom fullscreen button on mobile
-      iosFullscreenBtn.style.display = 'block';
-      console.log('[VideoPlayer] Custom fullscreen button enabled');
-      
-      // Store original parent for restoring later
-      let originalParent: HTMLElement | null = null;
-      let originalNextSibling: Node | null = null;
-      
-      const toggleIOSFullscreen = () => {
-        isIOSFullscreen = !isIOSFullscreen;
-        
-        if (isIOSFullscreen) {
-          // Store original position
-          originalParent = videoContainer.parentElement;
-          originalNextSibling = videoContainer.nextSibling;
-          
-          // Move video container to body for true fullscreen
-          document.body.appendChild(videoContainer);
-          
-          // Enter fake fullscreen
-          videoContainer.classList.add('ios-fullscreen');
-          document.body.classList.add('video-fullscreen');
-          document.body.style.overflow = 'hidden';
-          document.documentElement.style.overflow = 'hidden';
-          if (fsIconExpand) fsIconExpand.style.display = 'none';
-          if (fsIconCompress) fsIconCompress.style.display = 'block';
-          
-          // Try to lock orientation to landscape
-          try {
-            if ((screen.orientation as any)?.lock) {
-              (screen.orientation as any).lock('landscape').catch(() => {});
-            }
-          } catch (e) {}
-          
-          // Scroll to top to ensure fullscreen covers properly
-          window.scrollTo(0, 0);
-          
-          console.log('[VideoPlayer] Entered fake fullscreen');
-        } else {
-          // Exit fake fullscreen
-          videoContainer.classList.remove('ios-fullscreen');
-          document.body.classList.remove('video-fullscreen');
-          document.body.style.overflow = '';
-          document.documentElement.style.overflow = '';
-          if (fsIconExpand) fsIconExpand.style.display = 'block';
-          if (fsIconCompress) fsIconCompress.style.display = 'none';
-          
-          // Restore video container to original position
-          if (originalParent) {
-            if (originalNextSibling) {
-              originalParent.insertBefore(videoContainer, originalNextSibling);
-            } else {
-              originalParent.appendChild(videoContainer);
-            }
-          }
-          
-          // Unlock orientation
-          try {
-            if ((screen.orientation as any)?.unlock) {
-              (screen.orientation as any).unlock();
-            }
-          } catch (e) {}
-          
-          console.log('[VideoPlayer] Exited fake fullscreen');
-        }
-      };
-      
-      iosFullscreenBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleIOSFullscreen();
-      });
-      
-      // Handle escape key to exit fullscreen
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isIOSFullscreen) {
-          toggleIOSFullscreen();
-        }
-      });
-    }
     
     // Helper to find next episode ID
     const getNextEpisodeId = (currentId) => {
@@ -501,43 +162,32 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
 
       console.log('[VideoPlayer] Adding', window.pendingSubtitles.length, 'subtitle tracks');
       
-      // Find Indonesian subtitle
-      const idSub = window.pendingSubtitles.find(sub => 
-        sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia')
-      ) || window.pendingSubtitles[0];
-      
-      if (idSub && useCustomSubtitles) {
-        // Use custom HTML renderer for iOS/Safari
-        console.log('[VideoPlayer] Using Custom Subtitle Renderer:', idSub.label);
-        const subUrl = (source === 'dramawave' || source === 'netshort') 
-          ? '/api/proxy?url=' + encodeURIComponent(idSub.url) 
-          : idSub.url;
-        customSubtitleRenderer.loadFromUrl(subUrl);
-      } else {
-        // Use native tracks for other platforms
-        const oldTracks = videoElement.querySelectorAll('track');
-        oldTracks.forEach(t => t.remove());
+      // Clear old tracks
+      const oldTracks = videoElement.querySelectorAll('track');
+      oldTracks.forEach(t => t.remove());
 
-        let defaultSet = false;
-        window.pendingSubtitles.forEach(sub => {
-          const track = document.createElement('track');
-          track.kind = 'subtitles';
-          track.label = sub.label;
-          track.srclang = sub.lang;
-          track.src = (source === 'dramawave') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
-          
-          if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
-            track.default = true;
-            defaultSet = true;
-            console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
-          }
-          videoElement.appendChild(track);
-          
-          if (track.default) {
-            track.mode = 'showing';
-          }
-        });
-      }
+      let defaultSet = false;
+      window.pendingSubtitles.forEach(sub => {
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = sub.label;
+        track.srclang = sub.lang;
+        // Use proxy only for DramaWave (NetShort CDN has proper CORS headers)
+        track.src = (source === 'dramawave') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+        
+        // Auto-select ID
+        if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+          track.default = true;
+          defaultSet = true;
+          console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
+        }
+        videoElement.appendChild(track);
+        
+        // Force track to show if it is default (needed for some browsers)
+        if (track.default) {
+          track.mode = 'showing';
+        }
+      });
       
       // Clear pending subtitles
       window.pendingSubtitles = null;
@@ -630,40 +280,28 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
              
              // Add external subtitles for native player
              if (window.pendingSubtitles && Array.isArray(window.pendingSubtitles)) {
-               // Find Indonesian subtitle
-               const idSub = window.pendingSubtitles.find(sub => 
-                 sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia')
-               ) || window.pendingSubtitles[0];
-               
-               if (idSub) {
-                 // Use custom HTML renderer for iOS/Safari for consistent styling
-                 if (useCustomSubtitles) {
-                   console.log('[VideoPlayer] Using Custom Subtitle Renderer (iOS/Safari):', idSub.label);
-                   const subUrl = (source === 'dramawave' || source === 'netshort') 
-                     ? '/api/proxy?url=' + encodeURIComponent(idSub.url) 
-                     : idSub.url;
-                   customSubtitleRenderer.loadFromUrl(subUrl);
-                 } else {
-                   // Fallback to native tracks for non-iOS/Safari
-                   const oldTracks = videoElement.querySelectorAll('track');
-                   oldTracks.forEach(t => t.remove());
-                   
-                   window.pendingSubtitles.forEach(sub => {
-                     const track = document.createElement('track');
-                     track.kind = 'subtitles';
-                     track.label = sub.label;
-                     track.srclang = sub.lang;
-                     track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
-                     
-                     if (sub === idSub) {
-                       track.default = true;
-                       track.mode = 'showing';
-                       console.log('[VideoPlayer] Auto-selecting External Subtitle (Native):', sub.label);
-                     }
-                     videoElement.appendChild(track);
-                   });
+               const oldTracks = videoElement.querySelectorAll('track');
+               oldTracks.forEach(t => t.remove());
+
+               let defaultSet = false;
+               window.pendingSubtitles.forEach(sub => {
+                 const track = document.createElement('track');
+                 track.kind = 'subtitles';
+                 track.label = sub.label;
+                 track.srclang = sub.lang;
+                 track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+                 
+                 if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+                   track.default = true;
+                   defaultSet = true;
+                   console.log('[VideoPlayer] Auto-selecting External Subtitle (Native):', sub.label);
                  }
-               }
+                 videoElement.appendChild(track);
+                 
+                 if (track.default) {
+                   track.mode = 'showing';
+                 }
+               });
                
                window.pendingSubtitles = null;
              }
