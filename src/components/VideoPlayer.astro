@@ -69,37 +69,42 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
 
 <style>
   /* Custom Subtitle Styling */
-  /* Custom Subtitle Styling */
   #video-player::cue {
     background-color: transparent !important;
     background: transparent !important;
     color: white;
-    font-size: 1em; /* Reduced from 1.2em */
+    font-size: 1.25em; /* Slightly larger for better readability */
     font-weight: 600;
     text-shadow: 
-      2px 2px 2px black,
-      -1px -1px 1px black,
-      1px -1px 1px black,
-      -1px 1px 1px black,
-      1px 1px 1px black;
+      2px 2px 4px rgba(0, 0, 0, 0.9),
+      -1px -1px 2px rgba(0, 0, 0, 0.9),
+      1px -1px 2px rgba(0, 0, 0, 0.9),
+      -1px 1px 2px rgba(0, 0, 0, 0.9);
     line-height: 1.4;
   }
 
-  /* Position subtitles higher (closer to center) */
-  #video-player::cue {
-    position: relative;
-    bottom: 25% !important; /* Moved up from 15% */
-  }
-
-  /* Remove any default background from video text tracks */
-  #video-player::-webkit-media-text-track-container {
-    bottom: 25% !important; /* Moved up from 15% */
-  }
-
+  /* WebKit (iOS/Safari) Specific Fixes to remove default background box */
   #video-player::-webkit-media-text-track-display {
-    background: transparent !important;
     background-color: transparent !important;
-    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  #video-player::-webkit-media-text-track-display-backdrop {
+    background-color: transparent !important;
+    background: transparent !important;
+    display: none !important;
+  }
+
+  #video-player::-webkit-media-text-track-container {
+    overflow: visible !important;
+    /* Lift subtitles up slightly to avoid overlapping bottom controls on some devices */
+    transform: translateY(-10%) !important; 
+  }
+
+  /* Force transparent background on internal cue structure */
+  video::cue(b), video::cue(i), video::cue(u), video::cue(c) {
+     background-color: transparent !important;
   }
 </style>
 
