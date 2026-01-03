@@ -254,34 +254,14 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
        };
 
        if (isHLS) {
-          // Check native HLS support first (most reliable)
-          const canPlayNativeHLS = videoElement.canPlayType('application/vnd.apple.mpegurl');
+          // Detect iOS/Safari for native HLS support
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          const isAndroid = /Android/.test(navigator.userAgent);
-          const isMobile = isIOS || isAndroid || /Mobile/i.test(navigator.userAgent);
+          const useNativeHLS = isIOS || isSafari || videoElement.canPlayType('application/vnd.apple.mpegurl');
           
-          console.log('[VideoPlayer] HLS Detection:', {
-            canPlayNativeHLS: canPlayNativeHLS,
-            isIOS: isIOS,
-            isSafari: isSafari,
-            isAndroid: isAndroid,
-            isMobile: isMobile,
-            hlsJsSupported: Hls.isSupported()
-          });
-          
-          // Prioritize native HLS on:
-          // 1. iOS/Safari (always better)
-          // 2. Mobile devices with native support (avoid HLS.js audio issues)
-          const useNativeHLS = canPlayNativeHLS && (
-            isIOS || 
-            isSafari || 
-            (isMobile && canPlayNativeHLS === 'probably')
-          );
-          
-          if (useNativeHLS) {
-             // Native HLS support
-             console.log('[VideoPlayer] Using Native HLS Player (Mobile-optimized)');
+          if (useNativeHLS && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+             // Native HLS support (Safari iOS/macOS, some Android browsers)
+             console.log('[VideoPlayer] Using Native HLS Player');
              videoElement.src = url;
              
              // Add external subtitles for native player
@@ -324,8 +304,6 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
             }
             
             // SIMPLIFIED HLS CONFIG for better mobile compatibility
-            const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-            
             const hlsConfig = {
               // Core settings
               enableWorker: true,
@@ -345,11 +323,6 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
               levelLoadingMaxRetry: 4,
               fragLoadingTimeOut: 30000,      // Increased from 20s
               fragLoadingMaxRetry: 6,         // More retries for mobile
-              
-              // Audio track settings - critical for mobile
-              audioTrackLoadingTimeOut: 30000,  // Longer timeout for audio
-              audioTrackLoadingMaxRetry: 6,     // More retries for audio
-              audioTrackLoadingRetryDelay: 1000,
               
               // Adaptive Bitrate - start with lower quality on mobile
               startLevel: -1,
@@ -440,32 +413,11 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
             hls.on(Hls.Events.ERROR, (event, data) => {
               console.log('[VideoPlayer] HLS Error:', data.type, data.details, data.fatal);
               
-              // Handle non-fatal audio track errors (common on mobile)
-              if (!data.fatal && data.details === 'audioTrackLoadError') {
-                console.warn('[VideoPlayer] Audio track load error (non-fatal), continuing with default audio...');
-                return; // Continue playback with default audio
-              }
-              
               if (data.fatal) {
                 switch(data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
-                    // Special handling for audio track errors
-                    if (data.details === 'audioTrackLoadError') {
-                      console.log('[VideoPlayer] Fatal audio track error, trying to recover...');
-                      // Try to switch to default audio track (index 0)
-                      if (hls.audioTracks && hls.audioTracks.length > 0) {
-                        console.log('[VideoPlayer] Switching to default audio track');
-                        hls.audioTrack = 0;
-                      }
-                      // Retry loading
-                      setTimeout(() => {
-                        console.log('[VideoPlayer] Retrying after audio error...');
-                        hls.startLoad();
-                      }, 1000);
-                    } else {
-                      console.log('[VideoPlayer] Network error, attempting recovery...');
-                      setTimeout(() => hls.startLoad(), 1000);
-                    }
+                    console.log('[VideoPlayer] Network error, attempting recovery...');
+                    setTimeout(() => hls.startLoad(), 1000);
                     break;
                   case Hls.ErrorTypes.MEDIA_ERROR:
                     console.log('[VideoPlayer] Media error, attempting recovery...');

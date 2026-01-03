@@ -1,30 +1,10 @@
 import type { APIRoute } from 'astro';
 
-// CORS headers for mobile compatibility
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Range, User-Agent',
-    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Type',
-    'Access-Control-Max-Age': '86400',
-};
-
-// Handle CORS preflight
-export const OPTIONS: APIRoute = async () => {
-    return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-    });
-};
-
 export const GET: APIRoute = async ({ url, request }) => {
     const targetUrl = url.searchParams.get('url');
     if (!targetUrl) return new Response('Missing url', { status: 400 });
 
-    const userAgent = request.headers.get('User-Agent') || '';
-    const isMobile = /Mobile|Android|iPhone|iPad/i.test(userAgent);
-
-    console.log(`[Proxy] Request from ${isMobile ? 'MOBILE' : 'DESKTOP'}: ${targetUrl.substring(0, 100)}...`);
+    console.log(`[Proxy] Request received for: ${targetUrl.substring(0, 100)}...`);
 
     try {
         let response;
@@ -102,8 +82,8 @@ export const GET: APIRoute = async ({ url, request }) => {
             return new Response(newText, {
                 status: 200,
                 headers: {
-                    ...corsHeaders,
                     'Content-Type': 'application/vnd.apple.mpegurl',
+                    'Access-Control-Allow-Origin': '*',
                 }
             });
         }
@@ -116,8 +96,8 @@ export const GET: APIRoute = async ({ url, request }) => {
             return new Response(vttText, {
                 status: 200,
                 headers: {
-                    ...corsHeaders,
                     'Content-Type': 'text/vtt',
+                    'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'public, max-age=31536000'
                 }
             });
@@ -130,8 +110,8 @@ export const GET: APIRoute = async ({ url, request }) => {
             return new Response(vttText, {
                 status: 200,
                 headers: {
-                    ...corsHeaders,
                     'Content-Type': 'text/vtt',
+                    'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'public, max-age=31536000'
                 }
             });
@@ -149,8 +129,8 @@ export const GET: APIRoute = async ({ url, request }) => {
 
         // Prepare headers to forward
         const headers: Record<string, string> = {
-            ...corsHeaders,
             'Content-Type': finalContentType,
+            'Access-Control-Allow-Origin': '*',
             'Cache-Control': 'public, max-age=31536000'
         };
 
