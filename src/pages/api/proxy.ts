@@ -19,8 +19,8 @@ export const GET: APIRoute = async ({ url, request }) => {
             } else {
                 try {
                     const parsed = JSON.parse(decrypted);
-                    if (parsed.url) targetUrl = parsed.url;
-                    else targetUrl = decrypted; // fallback
+                    // Handle both {videoUrl: '...'} (VideoPlayer prop) and {url: '...'} (potential other cases)
+                    targetUrl = parsed.videoUrl || parsed.url || decrypted;
                 } catch (e) {
                     targetUrl = decrypted;
                 }
