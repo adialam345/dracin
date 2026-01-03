@@ -16,6 +16,14 @@ import { encrypt } from '../utils/security';
 // Encrypt initial URL to hide it in DOM
 const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUrl }) : '';
 
+// Encrypt Poster
+let finalPoster = poster;
+if (poster && (poster.includes('http') || poster.includes('https'))) {
+    const encryptedPoster = encrypt(poster); // Encrypt the URL string directly
+    finalPoster = `/api/proxy?q=${encodeURIComponent(encryptedPoster)}`;
+}
+
+
 ---
 
 <div class="relative bg-black w-full h-full group overflow-hidden" id="video-container">
@@ -39,7 +47,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     class="w-full h-full object-contain opacity-0 transition-opacity duration-700"
     controls
     preload="metadata"
-    poster={poster}
+    poster={finalPoster}
     data-video-url={encryptedInitialUrl}
     data-source={source}
     data-book-id={bookId}
@@ -267,9 +275,6 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            !url.includes('/api/proxy') && 
            (source === 'dramawave' || source === 'dramaflickreels' || source === 'dramabox' || source === 'netshort' || source === 'radreel' || source === 'melolo')
        ) {
-           url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
-           // console.log('[VideoPlayer] Using Proxy: ...');
-       }
            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
            // console.log('[VideoPlayer] Using Proxy: ...');
        }
