@@ -71,16 +71,42 @@ export const GET: APIRoute = async ({ url, request }) => {
                 }
             }
 
-            response = await fetch(targetUrl, { headers });
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+            try {
+                response = await fetch(targetUrl, {
+                    headers,
+                    signal: controller.signal,
+                    // @ts-ignore - some environments support these
+                    redirect: 'follow',
+                    keepalive: false
+                });
+                clearTimeout(timeoutId);
+            } catch (err) {
+                clearTimeout(timeoutId);
+                throw err;
+            }
 
         } catch (fetchError: any) {
             console.error(`[Proxy] Fetch failed for URL:`, targetUrl);
             console.error(`[Proxy] Error details:`, fetchError);
+            console.error(`[Proxy] Error stack:`, fetchError.stack);
+
+            // Provide more specific error messages
+            let errorMsg = fetchError.message;
+            if (fetchError.name === 'AbortError') {
+                errorMsg = 'Request timeout (30s)';
+            } else if (errorMsg.includes('fetch failed')) {
+                errorMsg = 'Network error - CDN may be blocking server requests';
+            }
+
             // Return actual error message for debugging
-            return new Response(`Proxy fetch error: ${fetchError.message} | URL: ${targetUrl.substring(0, 100)}`, { status: 500 });
+            return new Response(`Proxy fetch error: ${errorMsg} | URL: ${targetUrl.substring(0, 100)}`, { status: 500 });
         }
 
-        // console.log(`[Proxy] Response status: ${response.status}`);
+        console.log(`[Proxy] Response status: ${response.status}`);
 
         const contentType = response.headers.get('content-type') || '';
 
