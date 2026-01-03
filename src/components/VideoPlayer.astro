@@ -55,15 +55,15 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     <div id="subtitle-text" class="text-center text-white font-semibold text-lg md:text-xl leading-relaxed max-w-[90%]" style="text-shadow: 2px 2px 2px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;"></div>
   </div>
 
-  {/* Custom Fullscreen Button for iOS - positioned at bottom right */}
-  <button id="ios-fullscreen-btn" class="hidden absolute bottom-4 right-4 z-30 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full transition-all backdrop-blur-sm" title="Fullscreen">
-    <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  {/* Custom Fullscreen Button for Mobile - shows on touch devices */}
+  <button id="ios-fullscreen-btn" class="absolute bottom-4 right-4 z-30 bg-black/70 hover:bg-black/90 active:bg-black text-white p-3 rounded-full transition-all" style="display: none;" title="Fullscreen">
+    <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="15 3 21 3 21 9"></polyline>
       <polyline points="9 21 3 21 3 15"></polyline>
       <line x1="21" y1="3" x2="14" y2="10"></line>
       <line x1="3" y1="21" x2="10" y2="14"></line>
     </svg>
-    <svg id="fs-icon-compress" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg id="fs-icon-compress" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="4 14 10 14 10 20"></polyline>
       <polyline points="20 10 14 10 14 4"></polyline>
       <line x1="14" y1="10" x2="21" y2="3"></line>
@@ -355,9 +355,16 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
     const fsIconCompress = document.getElementById('fs-icon-compress');
     let isIOSFullscreen = false;
     
-    if (isIOS && iosFullscreenBtn && videoContainer) {
-      // Show custom fullscreen button on iOS
-      iosFullscreenBtn.classList.remove('hidden');
+    // Detect mobile/touch devices for custom fullscreen button
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    console.log('[VideoPlayer] Mobile detection:', { isIOS, isSafari, isMobile, isTouchDevice });
+    
+    if ((isIOS || (isMobile && isTouchDevice)) && iosFullscreenBtn && videoContainer) {
+      // Show custom fullscreen button on mobile
+      iosFullscreenBtn.style.display = 'block';
+      console.log('[VideoPlayer] Custom fullscreen button enabled');
       
       const toggleIOSFullscreen = () => {
         isIOSFullscreen = !isIOSFullscreen;
@@ -366,8 +373,8 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
           // Enter fake fullscreen
           videoContainer.classList.add('ios-fullscreen');
           document.body.style.overflow = 'hidden';
-          fsIconExpand?.classList.add('hidden');
-          fsIconCompress?.classList.remove('hidden');
+          if (fsIconExpand) fsIconExpand.style.display = 'none';
+          if (fsIconCompress) fsIconCompress.style.display = 'block';
           
           // Try to lock orientation to landscape
           try {
@@ -376,13 +383,13 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
             }
           } catch (e) {}
           
-          console.log('[VideoPlayer] Entered iOS fake fullscreen');
+          console.log('[VideoPlayer] Entered fake fullscreen');
         } else {
           // Exit fake fullscreen
           videoContainer.classList.remove('ios-fullscreen');
           document.body.style.overflow = '';
-          fsIconExpand?.classList.remove('hidden');
-          fsIconCompress?.classList.add('hidden');
+          if (fsIconExpand) fsIconExpand.style.display = 'block';
+          if (fsIconCompress) fsIconCompress.style.display = 'none';
           
           // Unlock orientation
           try {
@@ -391,13 +398,17 @@ const { videoUrl: initialVideoUrl, title, poster, source, bookId, episodeId, nex
             }
           } catch (e) {}
           
-          console.log('[VideoPlayer] Exited iOS fake fullscreen');
+          console.log('[VideoPlayer] Exited fake fullscreen');
         }
       };
       
-      iosFullscreenBtn.addEventListener('click', toggleIOSFullscreen);
+      iosFullscreenBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleIOSFullscreen();
+      });
       
-      // Handle back button / escape key to exit fullscreen
+      // Handle escape key to exit fullscreen
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isIOSFullscreen) {
           toggleIOSFullscreen();
