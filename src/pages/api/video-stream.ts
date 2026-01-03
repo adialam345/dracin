@@ -4,11 +4,17 @@ import { encrypt, decrypt } from '../../utils/security';
 
 export const GET: APIRoute = async ({ url, request }) => {
     // Basic Security Check
+    // Basic Security Check
     const referer = request.headers.get('referer');
-    const host = request.headers.get('host') || '';
+    // Check X-Forwarded-Host first (standard for reverse proxies like Nginx/aaPanel), then Host
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
 
-    // Allow local dev and same-origin
-    const isAllowed = !referer || referer.includes(host) || referer.includes('localhost') || referer.includes('127.0.0.1');
+    // Allow local dev, same-origin, and known deployment domains
+    const isAllowed = !referer ||
+        referer.includes(host) ||
+        referer.includes('localhost') ||
+        referer.includes('127.0.0.1') ||
+        referer.includes('qzz.io'); // Explicitly allow deployment domain suffix
 
     if (!isAllowed) {
         return new Response(JSON.stringify({ error: 'Unauthorized Access' }), { status: 403 });
