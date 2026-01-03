@@ -106,6 +106,11 @@ export const GET: APIRoute = async ({ url, request }) => {
 
                     req.end();
                 });
+            }
+            // RadReel CDN
+            else if (targetUrl.includes('wolftv.online')) {
+                headers['Referer'] = 'https://www.wolftv.online/';
+                headers['Origin'] = 'https://www.wolftv.online';
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';
