@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { encrypt, decrypt } from '../../utils/security';
+import https from 'node:https';
 
 export const GET: APIRoute = async ({ url, request }) => {
     let targetUrl = url.searchParams.get('url');
@@ -56,10 +57,54 @@ export const GET: APIRoute = async ({ url, request }) => {
                     'Version': '2.2.2.0'
                 });
             }
-            // NetShort CDN
+            // NetShort CDN - use node:https instead of fetch
             else if (targetUrl.includes('netshort.com')) {
                 headers['Referer'] = 'https://www.netshort.com/';
-                // NetShort CDN usually works with standard headers, no special auth needed
+                headers['Accept'] = '*/*';
+                headers['Accept-Encoding'] = 'identity'; // Don't use compression for video
+
+                // Use node:https for NetShort (fetch doesn't work with their CDN)
+                return new Promise<Response>((resolve) => {
+                    const urlObj = new URL(targetUrl);
+                    const options: https.RequestOptions = {
+                        method: 'GET',
+                        headers: headers,
+                        hostname: urlObj.hostname,
+                        path: urlObj.pathname + urlObj.search,
+                        port: 443
+                    };
+
+                    const req = https.request(options, (res) => {
+                        // Stream response directly
+                        const responseHeaders: Record<string, string> = {
+                            'Content-Type': res.headers['content-type'] || 'video/mp4',
+                            'Access-Control-Allow-Origin': '*',
+                            'Cache-Control': 'public, max-age=31536000'
+                        };
+
+                        if (res.headers['content-length']) {
+                            responseHeaders['Content-Length'] = res.headers['content-length'] as string;
+                        }
+                        if (res.headers['content-range']) {
+                            responseHeaders['Content-Range'] = res.headers['content-range'] as string;
+                        }
+                        if (res.headers['accept-ranges']) {
+                            responseHeaders['Accept-Ranges'] = res.headers['accept-ranges'] as string;
+                        }
+
+                        resolve(new Response(res as any, {
+                            status: res.statusCode || 200,
+                            headers: responseHeaders
+                        }));
+                    });
+
+                    req.on('error', (e) => {
+                        console.error(`[Proxy] HTTPS request failed:`, e.message);
+                        resolve(new Response(`Proxy error: ${e.message}`, { status: 500 }));
+                    });
+
+                    req.end();
+                });
             } else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';
