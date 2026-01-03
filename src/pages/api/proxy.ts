@@ -32,24 +32,40 @@ export const GET: APIRoute = async ({ url, request }) => {
 
     // console.log(`[Proxy] Request received`); 
 
+    // DEBUG: Log decrypted URL to verify it's correct
+    // console.log(`[Proxy] Target: ${targetUrl}`);
+
     try {
         let response;
         try {
-            response = await fetch(targetUrl, {
-                headers: {
-                    'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    ...((request.headers.get('Range') && !targetUrl.includes('.m3u8')) ? { 'Range': request.headers.get('Range')! } : {}),
-                    // 'Referer': new URL(targetUrl).origin, // Sometimes needed, sometimes harmful
-                    ...(targetUrl.includes('farsunpteltd.com') ? {
-                        'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
-                        'bundleIdentifier': 'com.farsun.shortplay',
-                        'Version': '2.2.2.0'
-                    } : {})
-                }
-            });
+            const headers: Record<string, string> = {
+                'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                ...((request.headers.get('Range') && !targetUrl.includes('.m3u8')) ? { 'Range': request.headers.get('Range')! } : {})
+            };
+
+            // DramaWave Referer
+            if (targetUrl.includes('mydramawave.com')) {
+                headers['Referer'] = 'https://www.mydramawave.com/';
+                headers['Origin'] = 'https://www.mydramawave.com';
+            }
+            // FlickReels Token (Farsun)
+            else if (targetUrl.includes('farsunpteltd.com')) {
+                Object.assign(headers, {
+                    'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
+                    'bundleIdentifier': 'com.farsun.shortplay',
+                    'Version': '2.2.2.0'
+                });
+            } else {
+                // Default Referer to origin of target (often helps with generic CDNs)
+                headers['Referer'] = new URL(targetUrl).origin + '/';
+            }
+
+            response = await fetch(targetUrl, { headers });
+
         } catch (fetchError: any) {
             console.error(`[Proxy] Fetch failed:`, fetchError.message);
-            return new Response(`Proxy fetch error`, { status: 500 });
+            // Return actual error message for debugging
+            return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
         }
 
         // console.log(`[Proxy] Response status: ${response.status}`);
