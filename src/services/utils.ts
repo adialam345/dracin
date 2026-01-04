@@ -9,6 +9,9 @@ if (dns.setDefaultResultOrder) {
 
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
+// Cloudflare Worker Proxy URL - Routes requests through Cloudflare to bypass IP blocking
+const WORKER_URL = 'https://twilight-wildflower-192b.mrxnexsus.workers.dev';
+
 // Simple in-memory cache for server-side requests
 const serverCache = new Map<string, { data: any, expiry: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -21,8 +24,8 @@ const httpsAgent = new https.Agent({
     keepAlive: true,
     keepAliveMsecs: 3000,
     timeout: 30000,
-    rejectUnauthorized: true, // Keep SSL verification on
-    family: 4 // Force IPv4
+    rejectUnauthorized: true,
+    family: 4
 });
 
 /**
@@ -126,8 +129,12 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
         }
 
         try {
-            // Use custom https request instead of fetch for better compatibility
-            const text = await httpsRequest(url);
+            // Route through Cloudflare Worker if configured, otherwise use direct connection
+            const targetUrl = WORKER_URL
+                ? `${WORKER_URL}?url=${encodeURIComponent(url)}`
+                : url;
+
+            const text = await httpsRequest(targetUrl);
             const data = JSON.parse(text);
 
             // Flexible empty check for various API structures
