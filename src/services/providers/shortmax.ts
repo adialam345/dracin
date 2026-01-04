@@ -107,6 +107,52 @@ export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
     }
 }
 
+/**
+ * Get signed video URL with auth_key for playback
+ * Uses external API that provides authenticated streaming URLs
+ */
+const SHORTMAX_PLAY_API = 'https://sapimu.au/shortmax/api/v1/play';
+const SHORTMAX_PLAY_TOKEN = '14dcdd925122153afdb1e6e51d6c496e42d38c4149b9974d83eb5b8cb2eef8bb';
+
+export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: number): Promise<string> {
+    try {
+        // Use external API to get signed video URL
+        const url = `${SHORTMAX_PLAY_API}/${shortPlayId}?lang=id&ep=${episodeNum}`;
+
+        console.log(`[ShortMax] Fetching video URL from external API: ep=${episodeNum}`);
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`[ShortMax] External API error: ${response.status}`);
+            return '';
+        }
+
+        const data = await response.json();
+
+        if (data && data.data && data.data.video) {
+            const video = data.data.video;
+            // Prioritize 720p -> 1080p -> 480p
+            const videoUrl = video.video_720 || video.video_1080 || video.video_480 || '';
+
+            console.log(`[ShortMax] Got signed video URL for episode ${episodeNum}`);
+            return videoUrl;
+        }
+
+        console.error('[ShortMax] Failed to get signed video URL from external API');
+        return '';
+    } catch (e) {
+        console.error('[ShortMax] Error getting video URL:', e);
+        return '';
+    }
+}
+
+
 export async function getShortMaxDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
     try {
         const data = await callShortMaxApi('/app/cmsShortPlay/queryDetail', {

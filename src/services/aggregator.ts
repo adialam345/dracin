@@ -371,13 +371,20 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 }
             }
         } else if (source === 'shortmax') {
-            // Fetch detail to get fresh URL
-            // If bookId looks like a code (6 digits), we might need to find its ID if API requires ID.
-            // But let's assume API might handle code or we need to fix it.
-            const { episodes } = await ShortMax.getShortMaxDetail(bookId);
-            const ep = episodes.find(e => String(e.id) === String(episodeId));
-            if (ep && ep.raw && ep.raw.videoUrl) {
-                videoUrl = ep.raw.videoUrl;
+            // episodeId format: "{dramaId}_{episodeNum}" e.g., "14643_1"
+            const parts = episodeId.split('_');
+            const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
+
+            // Use dedicated function to get signed video URL with auth_key
+            videoUrl = await ShortMax.getShortMaxVideoUrl(bookId, episodeNum);
+
+            // Fallback to episode list if direct call failed
+            if (!videoUrl) {
+                const { episodes } = await ShortMax.getShortMaxDetail(bookId);
+                const ep = episodes.find(e => String(e.id) === String(episodeId));
+                if (ep && ep.raw && ep.raw.videoUrl) {
+                    videoUrl = ep.raw.videoUrl;
+                }
             }
         }
 

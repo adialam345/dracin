@@ -280,7 +280,12 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
        // console.log(`[VideoPlayer] Loading: ...`);
        const decodedUrl = decodeURIComponent(url);
-       const isHLS = (decodedUrl.includes('.m3u8') || decodedUrl.includes('playlist.m3u8')) && !decodedUrl.includes('.mp4');
+       // Check for HLS extension OR specific providers that always/mostly use HLS
+       const isHLS = (decodedUrl.includes('.m3u8') || decodedUrl.includes('playlist.m3u8') || 
+                      source === 'shortmax' || 
+                      source === 'dramawave' ||
+                      source === 'dramaflickreels' ||
+                      source === 'dramadash') && !decodedUrl.includes('.mp4');
 
        if (loader) {
          loader.style.display = 'flex';
@@ -300,8 +305,11 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           // Detect iOS/Safari for native HLS support
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          const useNativeHLS = isIOS || isSafari || videoElement.canPlayType('application/vnd.apple.mpegurl');
           
+          // STRICTLY use native HLS only on iOS/Safari where it's robust/required
+          // On Desktop Chrome/Edge/Firefox, we prefer HLS.js specifically for encryption support
+          const useNativeHLS = isIOS || isSafari; 
+
           if (useNativeHLS && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
              // Native HLS support (Safari iOS/macOS, some Android browsers)
              console.log('[VideoPlayer] Using Native HLS Player');
