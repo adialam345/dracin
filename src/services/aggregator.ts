@@ -1,4 +1,4 @@
-import { fetchCached, API_BASE } from './utils';
+import { fetchCached, API_BASE, withCache } from './utils';
 import { type UnifiedDrama } from './adapter';
 
 // Import Providers
@@ -37,11 +37,11 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         Netshort.getNetshortForYou(),
         Melolo.getMeloloTrending(),
         Melolo.getMeloloLatest(),
-        RadReel.getRadReelForYou(),
-        DramaWave.getDramaWaveForYou(),
-        FlickReels.getFlickReelsForYou(),
-        DramaDash.getDramaDashForYou(),
-        ShortMax.getShortMaxForYou(),
+        withCache('rr_home', () => RadReel.getRadReelForYou()),
+        withCache('dw_home', () => DramaWave.getDramaWaveForYou()),
+        withCache('fr_home', () => FlickReels.getFlickReelsForYou()),
+        withCache('dd_home', () => DramaDash.getDramaDashForYou()),
+        withCache('sm_home', () => ShortMax.getShortMaxForYou()),
     ]);
 
     // Cache items for Detail fallback
@@ -121,10 +121,10 @@ export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDram
     } else if (slug === 'vip') {
         // Collect VIP/Premium content from multiple providers
         const [dw, sm, fr, db] = await Promise.all([
-            DramaWave.getDramaWaveForYou(),
-            ShortMax.getShortMaxForYou(),
-            FlickReels.getFlickReelsForYou(),
-            Dramabox.getDramaboxForYou()
+            withCache('dw_home', () => DramaWave.getDramaWaveForYou()),
+            withCache('sm_home', () => ShortMax.getShortMaxForYou()),
+            withCache('fr_home', () => FlickReels.getFlickReelsForYou()),
+            Dramabox.getDramaboxForYou() // Already cached internally
         ]);
         list = [...dw, ...sm, ...fr, ...db];
     } else {

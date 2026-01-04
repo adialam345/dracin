@@ -9,8 +9,6 @@ if (dns.setDefaultResultOrder) {
 
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
-// Cloudflare Worker Proxy URL - Routes requests through Cloudflare to bypass IP blocking
-// Use environment variable PROXY_URL if set, otherwise fallback to the Vercel proxy
 const WORKER_URL = process.env.PROXY_URL || 'https://vercel-proxy-adialam345s-projects.vercel.app/api';
 // Example proxies:
 // const WORKER_URL = 'https://your-vercel-proxy.vercel.app/api?url=';
@@ -19,6 +17,26 @@ const WORKER_URL = process.env.PROXY_URL || 'https://vercel-proxy-adialam345s-pr
 // Simple in-memory cache for server-side requests
 const serverCache = new Map<string, { data: any, expiry: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function withCache<T>(key: string, fetcher: () => Promise<T>, ttl: number = CACHE_TTL): Promise<T> {
+    const cached = serverCache.get(key);
+    if (cached && cached.expiry > Date.now()) {
+        return cached.data;
+    }
+
+    try {
+        const data = await fetcher();
+        // Only cache if data is valid (truthy and not empty array if it's an array)
+        const isValid = data && (!Array.isArray(data) || data.length > 0);
+        if (isValid) {
+            serverCache.set(key, { data, expiry: Date.now() + ttl });
+        }
+        return data;
+    } catch (e) {
+        console.error(`[Cache] Error fetching ${key}:`, e);
+        throw e;
+    }
+}
 
 // Global state to handle rate limiting
 let globalBackoffuntil = 0;
