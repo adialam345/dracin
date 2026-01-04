@@ -1,3 +1,10 @@
+import dns from 'node:dns';
+
+// Force IPv4 to avoid ECONNRESET on some hosting providers where IPv6 is flaky
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
 // Simple in-memory cache for server-side requests
@@ -31,7 +38,9 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
         try {
             const response = await fetch(url, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://sansekai.my.id/',
+                    'Origin': 'https://sansekai.my.id'
                 }
             });
 
