@@ -59,8 +59,10 @@ function httpsRequest(url: string): Promise<string> {
                 'Sec-Fetch-Site': 'same-site',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
-                'Referer': 'https://sansekai.my.id/',
-                'Origin': 'https://sansekai.my.id'
+                ...(url.includes('api.sansekai.my.id') ? {
+                    'Referer': 'https://sansekai.my.id/',
+                    'Origin': 'https://sansekai.my.id'
+                } : {})
             },
             timeout: 15000
         };
