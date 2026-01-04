@@ -29,7 +29,11 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
         }
 
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
 
             if (response.status === 429) {
                 console.warn('[fetchFromEndpoint] rate limited(429) for: ' + url + '. Backing off...');

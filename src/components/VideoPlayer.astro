@@ -346,8 +346,67 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                window.hlsInstance.destroy();
             }
             
+            // --- Video Decryption Logic for ShortMax ---
+            async function decryptTs(arrayBuffer) {
+                try {
+                    const buf = new Uint8Array(arrayBuffer);
+                    // Check Header 'shortmax'
+                    const header = new TextDecoder().decode(buf.slice(0, 8)); // Just check start
+                    if (!header.startsWith('shortmax')) return arrayBuffer;
+
+                    const fullHeader = new TextDecoder().decode(buf.slice(0, 24));
+                    const keyOffset = parseInt(fullHeader.slice(16, 20));
+                    const dataOffset = parseInt(fullHeader.slice(20, 24));
+                    
+                    if (isNaN(keyOffset) || isNaN(dataOffset)) return arrayBuffer;
+
+                    const key = buf.slice(keyOffset, keyOffset + 16);
+                    const iv = new TextEncoder().encode('shortmax00000000');
+                    // Data to decrypt usually starts at 1024 offset from start? 
+                    // User snippet: encData = buf.slice(1024, dataOffset + 1024);
+                    const encData = buf.slice(1024, dataOffset + 1024);
+
+                    const cryptoKey = await window.crypto.subtle.importKey('raw', key, 'AES-CBC', false, ['decrypt']);
+                    const dec = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv }, cryptoKey, encData);
+
+                    // Reconstruct: Decrypted Data + Remainder of file (unencrypted parts)
+                    // User logic: result = decrypted + buf.slice(dataOffset + 1024)
+                    // Note: original 'encData' length determined by dataOffset
+                    const remainder = buf.slice(dataOffset + 1024);
+                    const result = new Uint8Array(dec.byteLength + remainder.length);
+                    result.set(new Uint8Array(dec), 0);
+                    result.set(remainder, dec.byteLength);
+
+                    return result.buffer;
+                } catch (e) {
+                    console.error('Decryption error:', e);
+                    return arrayBuffer;
+                }
+            }
+
+            // Custom Loader extending default to intercept Success callback
+            class DecryptLoader extends Hls.DefaultConfig.loader {
+                constructor(config) {
+                    super(config);
+                    const originalLoad = this.load.bind(this);
+                    this.load = (context, config, callbacks) => {
+                        const originalOnSuccess = callbacks.onSuccess;
+                        callbacks.onSuccess = async (response, stats, context) => {
+                            if (response.data instanceof ArrayBuffer) {
+                                response.data = await decryptTs(response.data);
+                            }
+                            originalOnSuccess(response, stats, context);
+                        };
+                        originalLoad(context, config, callbacks);
+                    };
+                }
+            }
+
             // SIMPLIFIED HLS CONFIG for better mobile compatibility
             const hlsConfig = {
+              // Custom Loader for Decryption
+              loader: DecryptLoader,
+
               // Core settings
               enableWorker: true,
               lowLatencyMode: false,
