@@ -4,7 +4,7 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax';
     raw?: any;
 }
 
@@ -129,7 +129,19 @@ export function normalizeFlickReels(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' = 'dramabox'): UnifiedDrama {
+export function normalizeShortMax(data: any): UnifiedDrama {
+    return {
+        id: String(data.id || data.dramaId || ''),
+        title: data.name || data.title || '',
+        cover: data.cover || data.poster || data.coverUrl || '',
+        description: data.description || data.intro || data.introduction || '',
+        source: 'shortmax',
+        chapterCount: data.episodeCount || data.chapterCount || 0,
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -138,6 +150,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'dramawave') return normalizeDramaWave(data);
     if (defaultSource === 'dramaflickreels') return normalizeFlickReels(data);
     if (defaultSource === 'dramadash') return normalizeDramaDash(data);
+    if (defaultSource === 'shortmax') return normalizeShortMax(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);

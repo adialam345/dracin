@@ -5,4 +5,5 @@ export * from './radreel';
 export * from './dramawave';
 export * from './dramaflickreels';
 export * from './dramadash';
+export * from './shortmax';
 

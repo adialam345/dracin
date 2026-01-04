@@ -122,7 +122,13 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers['User-Agent'] = 'DramaDash/50 CFNetwork/1474 Darwin/23.0.0';
                 headers['Origin'] = 'https://dramadash.app';
                 headers['Referer'] = 'https://dramadash.app/';
-            } else {
+            }
+            // ShortMax
+            else if (targetUrl.includes('shorttv.live')) {
+                headers['Origin'] = 'https://www.shorttv.live';
+                headers['Referer'] = 'https://www.shorttv.live/';
+            }
+            else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';
             }
@@ -159,12 +165,14 @@ export const GET: APIRoute = async ({ url, request }) => {
             const baseUrl = new URL('.', targetUrl).href;
 
             // Determine correct origin (handling reverse proxies)
+            // Determine correct origin (handling reverse proxies)
             let origin = new URL(request.url).origin;
-            const protocol = request.headers.get('x-forwarded-proto') || 'https';
-            const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+            // Only trust forwarded headers if they exist, otherwise rely on request url
+            const forwardedProto = request.headers.get('x-forwarded-proto');
+            const forwardedHost = request.headers.get('x-forwarded-host');
 
-            if (host) {
-                origin = `${protocol}://${host}`;
+            if (forwardedProto && forwardedHost) {
+                origin = `${forwardedProto}://${forwardedHost}`;
             }
 
             const newText = text.split('\n').map(line => {

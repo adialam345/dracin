@@ -263,13 +263,15 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
 
        // --- PROXY LOGIC FOR ALL PROVIDERS ---
+       // --- PROXY LOGIC FOR ALL PROVIDERS ---
        if (
            (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
            (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy')) ||
            (source === 'radreel' && url.includes('wolftv.online') && !url.includes('/api/proxy')) ||
            (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes('/api/proxy')) ||
            (source === 'dramadash' && !url.includes('/api/proxy')) ||
-           (source === 'dramabox' && !url.includes('/api/proxy'))
+           (source === 'dramabox' && !url.includes('/api/proxy')) ||
+           (source === 'shortmax' && !url.includes('/api/proxy'))
        ) {
            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
            // console.log('[VideoPlayer] Using Proxy: ...');
