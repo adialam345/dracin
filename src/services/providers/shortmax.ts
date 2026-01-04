@@ -92,7 +92,7 @@ const SHORTMAX_SEARCH_API = 'https://sapimu.au/shortmax/api/v1/search';
 export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
     try {
         console.log(`[ShortMax] Searching via external API: ${query}`);
-        const response = await fetch(`${SHORTMAX_SEARCH_API}?q=${encodeURIComponent(query)}&lang=en`, {
+        const response = await fetch(`${SHORTMAX_SEARCH_API}?q=${encodeURIComponent(query)}&lang=id`, {
             headers: {
                 'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
                 'Accept': 'application/json'
@@ -137,6 +137,7 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 
         console.log(`[ShortMax] Fetching video URL from external API: ep=${episodeNum}`);
 
+
         const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
@@ -171,48 +172,87 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 
 export async function getShortMaxDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
     try {
-        const data = await callShortMaxApi('/app/cmsShortPlay/queryDetail', {
-            shortPlayId: id
+        console.log(`[ShortMax] Fetching detail via Play API for: ${id}`);
+        // Fetch valid info by trying to play Episode 1
+        // This gives us the 'total' episode count and basic info
+        const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Accept': 'application/json'
+            }
         });
 
-        if (!data || data.code !== 0 || !data.data) return { drama: null, episodes: [] };
+        if (!response.ok) {
+            console.error(`[ShortMax] Detail fetch error: ${response.status}`);
+            return { drama: null, episodes: [] };
+        }
 
-        const d = data.data;
+        const json = await response.json();
 
-        // Extract Drama Info
+        if (!json || !json.data) {
+            return { drama: null, episodes: [] };
+        }
+
+        const d = json.data;
+        // d structure: { id, name, episode, total, video: {...}, ... }
+
+        // 🔍 Fetch Cover via Search (since Play API doesn't return it)
+        let coverUrl = '';
+        if (d.name) {
+            try {
+                // Remove [Dubbed] prefix for better search results
+                const cleanName = d.name.replace(/^\[.*?\]\s*/, '').trim();
+                const searchResults = await searchShortMax(cleanName);
+
+                // Try to find matching ID or Title
+                const match = searchResults.find(s =>
+                    String(s.id) === String(id) ||
+                    s.title.toLowerCase() === d.name.toLowerCase() ||
+                    s.title.toLowerCase().includes(cleanName.toLowerCase())
+                );
+
+                if (match) {
+                    coverUrl = match.cover;
+                } else if (searchResults.length > 0) {
+                    // Fallback to first result if it seems relevant (optional, but risky)
+                    coverUrl = searchResults[0].cover;
+                }
+            } catch (err) {
+                console.warn('[ShortMax] Failed to fetch cover via search:', err);
+            }
+        }
+
         const drama = {
-            id: d.shortPlayCode || d.shortPlayId,
-            title: d.shortPlayName,
-            cover: d.coverId || d.coverUrl,
+            id: id, // Pass through the ID used to fetch
+            title: d.name || d.title,
+            cover: coverUrl || '',
             description: d.summary || '',
-            chapterCount: d.episodeList ? d.episodeList.length : 0,
-            labels: (d.labelList || []).map((l: any) => l.name),
+            chapterCount: d.total || 0,
+            labels: [],
             source: 'shortmax'
         };
 
-        // Extract Episodes
-        const episodes = (d.episodeList || []).map((ep: any) => {
-            let videoUrl = '';
-
-            // Parse encryptedVideoUrl JSON
-            if (ep.encryptedVideoUrl) {
-                try {
-                    const videoMap = JSON.parse(ep.encryptedVideoUrl);
-                    // Prioritize 720 -> 540 -> 480 -> any
-                    videoUrl = videoMap.video_720 || videoMap.video_540 || videoMap.video_480 || Object.values(videoMap)[0] || '';
-                } catch (e) {
-                    // console.warn('[ShortMax] Failed to parse video URL JSON from encryptedVideoUrl');
+        // Generate Episodes List based on Total
+        const episodes = [];
+        const total = d.total || 0;
+        for (let i = 1; i <= total; i++) {
+            episodes.push({
+                id: `${id}_${i}`, // Standard ID format for ShortMax aggregator: {dramaId}_{epNum}
+                name: `Episode ${i}`,
+                index: i, // 1-based index for display, or 0-based? 
+                // Our Adapter typings say: index: number.
+                // Usually 0-based index is preferred for array access, but display usually +1.
+                // Let's use 1-based logic consistent with getShortMaxVideoUrl expectation.
+                unlock: true, // Optimistically unlock all since we have the Play API
+                raw: {
+                    episodeNum: i,
+                    // For item 1, we have video data!
+                    ...(i === 1 ? { videoUrl: d.video?.video_720 || d.video?.video_480 } : {})
                 }
-            }
-
-            return {
-                id: `${drama.id}_${ep.episodeNum}`, // Construct unique ID for aggregator
-                name: `Episode ${ep.episodeNum}`,
-                index: ep.episodeNum,
-                unlock: !!videoUrl, // Only unlock if we have a video URL
-                raw: { ...ep, videoUrl }
-            };
-        });
+            });
+        }
 
         return { drama, episodes };
     } catch (e) {

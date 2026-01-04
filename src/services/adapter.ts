@@ -131,12 +131,12 @@ export function normalizeFlickReels(data: any): UnifiedDrama {
 
 export function normalizeShortMax(data: any): UnifiedDrama {
     return {
-        id: String(data.id || data.dramaId || ''),
+        id: String(data.dramaId || data.id || ''),
         title: data.name || data.title || '',
         cover: data.cover || data.poster || data.coverUrl || '',
-        description: data.description || data.intro || data.introduction || '',
+        description: data.summary || data.description || data.intro || data.introduction || '',
         source: 'shortmax',
-        chapterCount: data.episodeCount || data.chapterCount || 0,
+        chapterCount: data.total || data.episodeCount || data.chapterCount || 0,
         raw: data
     };
 }
