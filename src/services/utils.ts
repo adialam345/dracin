@@ -1,5 +1,6 @@
 import dns from 'node:dns';
 import https from 'node:https';
+import zlib from 'node:zlib';
 
 // Force IPv4 to avoid ECONNRESET on some hosting providers where IPv6 is flaky
 if (dns.setDefaultResultOrder) {
@@ -39,22 +40,43 @@ function httpsRequest(url: string): Promise<string> {
             agent: httpsAgent,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://sansekai.my.id/',
-                'Origin': 'https://sansekai.my.id'
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-site',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             },
             timeout: 15000
         };
 
         const req = https.request(options, (res) => {
-            let data = '';
+            const chunks: Buffer[] = [];
 
-            res.on('data', (chunk) => {
-                data += chunk;
+            // Handle compressed responses
+            let stream: NodeJS.ReadableStream = res;
+            const encoding = res.headers['content-encoding'];
+
+            if (encoding === 'gzip') {
+                stream = res.pipe(zlib.createGunzip());
+            } else if (encoding === 'deflate') {
+                stream = res.pipe(zlib.createInflate());
+            } else if (encoding === 'br') {
+                stream = res.pipe(zlib.createBrotliDecompress());
+            }
+
+            stream.on('data', (chunk: Buffer) => {
+                chunks.push(chunk);
             });
 
-            res.on('end', () => {
+            stream.on('end', () => {
+                const data = Buffer.concat(chunks).toString('utf8');
                 if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                     resolve(data);
                 } else if (res.statusCode === 429) {
@@ -62,6 +84,10 @@ function httpsRequest(url: string): Promise<string> {
                 } else {
                     reject(new Error(`HTTP ${res.statusCode}`));
                 }
+            });
+
+            stream.on('error', (e) => {
+                reject(e);
             });
         });
 
