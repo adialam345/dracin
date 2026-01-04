@@ -10,8 +10,8 @@ if (dns.setDefaultResultOrder) {
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
 // Cloudflare Worker Proxy URL - Routes requests through Cloudflare to bypass IP blocking
-// Use environment variable PROXY_URL if set, otherwise fallback to empty (direct) or a specific proxy
-const WORKER_URL = process.env.PROXY_URL || '';
+// Use environment variable PROXY_URL if set, otherwise fallback to the Vercel proxy
+const WORKER_URL = process.env.PROXY_URL || 'https://vercel-proxy-adialam345s-projects.vercel.app/api';
 // Example proxies:
 // const WORKER_URL = 'https://your-vercel-proxy.vercel.app/api?url=';
 

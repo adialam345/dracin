@@ -118,6 +118,15 @@ export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDram
     } else if (slug === 'terbaru') {
         const [db, ml] = await Promise.all([Dramabox.getDramaboxLatest(), Melolo.getMeloloLatest()]);
         list = [...db, ...ml];
+    } else if (slug === 'vip') {
+        // Collect VIP/Premium content from multiple providers
+        const [dw, sm, fr, db] = await Promise.all([
+            DramaWave.getDramaWaveForYou(),
+            ShortMax.getShortMaxForYou(),
+            FlickReels.getFlickReelsForYou(),
+            Dramabox.getDramaboxForYou()
+        ]);
+        list = [...dw, ...sm, ...fr, ...db];
     } else {
         // Fallback
         const [db, ns] = await Promise.all([Dramabox.getDramaboxForYou(), Netshort.getNetshortForYou()]);
