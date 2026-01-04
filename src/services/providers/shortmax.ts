@@ -94,7 +94,7 @@ export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
         console.log(`[ShortMax] Searching via external API: ${query}`);
         const response = await fetch(`${SHORTMAX_SEARCH_API}?q=${encodeURIComponent(query)}&lang=id`, {
             headers: {
-                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Authorization': `Bearer ${getRandomToken()}`,
                 'Accept': 'application/json'
             }
         });
@@ -128,7 +128,18 @@ export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
  * Uses external API that provides authenticated streaming URLs
  */
 const SHORTMAX_PLAY_API = 'https://sapimu.au/shortmax/api/v1/play';
-const SHORTMAX_PLAY_TOKEN = '14dcdd925122153afdb1e6e51d6c496e42d38c4149b9974d83eb5b8cb2eef8bb';
+
+// Pool of tokens to rotate to avoid rate limits (100 req/min, 2000/day per token)
+const API_TOKENS = [
+    '14dcdd925122153afdb1e6e51d6c496e42d38c4149b9974d83eb5b8cb2eef8bb', // Original
+    'ba3f5eb1a23ef0c00dee764bd05cee7bc6606453deca551185301200cf35b941', // kido345
+    '8c02960a5aa268ac4ca89b9e86d9d93ea4bb257ed9dc89bc584e3e4aa87c9d8d', // nxxzzz286919
+    'b53a335e49b725f092cda317fee26c2707c5eb2f5bc87a60eb1a1367aa6b090e'  // nexsus72
+];
+
+function getRandomToken() {
+    return API_TOKENS[Math.floor(Math.random() * API_TOKENS.length)];
+}
 
 export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: number): Promise<string> {
     try {
@@ -140,7 +151,7 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Authorization': `Bearer ${getRandomToken()}`,
                 'Accept': 'application/json'
             }
         });
@@ -170,37 +181,37 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 }
 
 
-export async function getShortMaxDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
+export async function getShortMaxDetail(id: string, knownCover?: string): Promise<{ drama: any, episodes: any[] } | null> {
     try {
-        console.log(`[ShortMax] Fetching detail via Play API for: ${id}`);
+        console.log(`[ShortMax] Fetching detail via Play API for: ${id} (Cover known: ${!!knownCover})`);
         // Fetch valid info by trying to play Episode 1
         // This gives us the 'total' episode count and basic info
         const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;
 
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Authorization': `Bearer ${getRandomToken()}`,
                 'Accept': 'application/json'
             }
         });
 
         if (!response.ok) {
             console.error(`[ShortMax] Detail fetch error: ${response.status}`);
-            return { drama: null, episodes: [] };
+            return null;
         }
 
         const json = await response.json();
 
         if (!json || !json.data) {
-            return { drama: null, episodes: [] };
+            return null;
         }
 
         const d = json.data;
         // d structure: { id, name, episode, total, video: {...}, ... }
 
-        // 🔍 Fetch Cover via Search (since Play API doesn't return it)
-        let coverUrl = '';
-        if (d.name) {
+        // 🔍 Fetch Cover: Use known cover or Search (since Play API doesn't return it)
+        let coverUrl = knownCover || '';
+        if (!coverUrl && d.name) {
             try {
                 // Remove [Dubbed] prefix for better search results
                 const cleanName = d.name.replace(/^\[.*?\]\s*/, '').trim();
@@ -257,6 +268,6 @@ export async function getShortMaxDetail(id: string): Promise<{ drama: any, episo
         return { drama, episodes };
     } catch (e) {
         console.error('[ShortMax] Error fetching detail:', e);
-        return { drama: null, episodes: [] };
+        return null;
     }
 }

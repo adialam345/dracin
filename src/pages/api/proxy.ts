@@ -128,6 +128,12 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers['Origin'] = 'https://www.shorttv.live';
                 headers['Referer'] = 'https://www.shorttv.live/';
             }
+            // FreeShort / DramaWave Video Domain
+            else if (targetUrl.includes('mydramawave.com')) {
+                // IMPORTANT: DramaWave/FreeShort videos require specific Referer/Origin to avoid 403/CORS
+                headers['Origin'] = 'https://www.mydramawave.com';
+                headers['Referer'] = 'https://www.mydramawave.com/';
+            }
             else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';

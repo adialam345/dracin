@@ -4,7 +4,7 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort';
     raw?: any;
 }
 
@@ -141,6 +141,18 @@ export function normalizeShortMax(data: any): UnifiedDrama {
     };
 }
 
+export function normalizeFreeShort(data: any): UnifiedDrama {
+    return {
+        id: String(data.id || data.dramaId || ''),
+        title: data.title || data.name || '',
+        cover: data.cover || data.poster || '',
+        description: data.description || data.summary || '',
+        source: 'freeshort',
+        chapterCount: data.total_episodes || data.total || data.episode_count || 0,
+        raw: data
+    };
+}
+
 export function normalizeStarShort(data: any): UnifiedDrama {
     // ID format: fakeId_compilationsId
     // Logic similar to RadReel
@@ -162,7 +174,7 @@ export function normalizeStarShort(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' = 'dramabox'): UnifiedDrama {
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -173,6 +185,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'dramadash') return normalizeDramaDash(data);
     if (defaultSource === 'shortmax') return normalizeShortMax(data);
     if (defaultSource === 'starshort') return normalizeStarShort(data);
+    if (defaultSource === 'freeshort') return normalizeFreeShort(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);

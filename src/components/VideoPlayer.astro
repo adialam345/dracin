@@ -203,7 +203,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
         track.label = sub.label;
         track.srclang = sub.lang;
         // Use proxy only for DramaWave (NetShort CDN has proper CORS headers)
-        track.src = (source === 'dramawave') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
+        track.src = (source === 'dramawave' || source === 'freeshort') ? '/api/proxy?url=' + encodeURIComponent(sub.url) : sub.url;
         
         // Auto-select ID
         if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
@@ -309,7 +309,8 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes('/api/proxy')) ||
            (source === 'dramadash' && !url.includes('/api/proxy')) ||
            (source === 'dramabox' && !url.includes('/api/proxy')) ||
-           (source === 'shortmax' && !url.includes('/api/proxy'))
+           (source === 'shortmax' && !url.includes('/api/proxy')) ||
+           (source === 'freeshort' && !url.includes('/api/proxy'))
        ) {
            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
            // console.log('[VideoPlayer] Using Proxy: ...');
@@ -323,6 +324,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                       source === 'shortmax' || 
                       source === 'dramawave' ||
                       source === 'dramaflickreels' ||
+                      source === 'freeshort' ||
                       source === 'dramadash') && !decodedUrl.includes('.mp4');
 
        if (loader) {
@@ -364,7 +366,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                  track.kind = 'subtitles';
                  track.label = sub.label;
                  track.srclang = sub.lang;
-                 track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
+                 track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
                  
                  if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                    track.default = true;
@@ -525,7 +527,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                       track.kind = 'subtitles';
                       track.label = sub.label;
                       track.srclang = sub.lang;
-                      track.src = (source === 'dramawave' || source === 'netshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
+                      track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
                       
                       if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                           track.default = true;
