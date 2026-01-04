@@ -86,23 +86,39 @@ export async function getShortMaxForYou(): Promise<UnifiedDrama[]> {
 /**
  * Search Drama
  */
+// External APIs
+const SHORTMAX_SEARCH_API = 'https://sapimu.au/shortmax/api/v1/search';
+
 export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
     try {
-        const data = await callShortMaxApi('/app/search/search', {
-            keyword: query
+        console.log(`[ShortMax] Searching via external API: ${query}`);
+        const response = await fetch(`${SHORTMAX_SEARCH_API}?q=${encodeURIComponent(query)}&lang=en`, {
+            headers: {
+                'Authorization': `Bearer ${SHORTMAX_PLAY_TOKEN}`,
+                'Accept': 'application/json'
+            }
         });
 
-        if (!data || data.code !== 0 || !data.data) return [];
+        if (!response.ok) {
+            console.error(`[ShortMax] Search error: ${response.status}`);
+            return [];
+        }
 
-        return data.data.map((item: any) => normalizeShortMax({
-            id: String(item.shortPlayId),
-            dramaId: item.shortPlayId,
-            title: item.shortPlayName,
-            cover: item.coverId || item.coverUrl, // API Search biasanya return cover
-            shortPlayCode: item.shortPlayCode,
+        const json = await response.json();
+
+        if (!json || !json.data || !Array.isArray(json.data)) return [];
+
+        return json.data.map((item: any) => normalizeShortMax({
+            id: String(item.code || item.id), // Prefer code (shortPlayId) if available
+            dramaId: item.code || item.id,
+            title: item.name,
+            cover: item.cover,
+            description: item.summary,
+            // External API structure is slightly different, adapt normalizer or pass necessary fields
             raw: item
         }));
     } catch (e) {
+        console.error('[ShortMax] Search exception:', e);
         return [];
     }
 }
