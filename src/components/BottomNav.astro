@@ -26,7 +26,7 @@ const navItems = [
 ---
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-t border-white/5 md:hidden pb-safe" style="-webkit-backdrop-filter: blur(24px);">
-  <div class="flex items-center justify-around h-16">
+  <div class="flex items-center justify-around h-[60px]">
     {navItems.map((item) => {
       const isActive = currentPath === item.href || (item.href !== '/' && item.href !== '#search' && currentPath.startsWith(item.href));
       const isDonasi = item.label === 'DONASI';
@@ -36,9 +36,9 @@ const navItems = [
         return (
           <button 
             data-open-search
-            class="flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 text-zinc-500 hover:text-zinc-300"
+            class="flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-300 text-zinc-500 hover:text-zinc-300"
           >
-            <div class="w-6 h-6 transition-transform duration-300" set:html={item.icon} />
+            <div class="w-[22px] h-[22px] transition-transform duration-300" set:html={item.icon} />
             <span class="text-[10px] font-medium tracking-wide">{item.label}</span>
           </button>
         );
@@ -47,11 +47,11 @@ const navItems = [
       return (
         <a 
           href={item.href} 
-          class={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 ${
+          class={`flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-300 ${
             isActive ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'
           } ${isDonasi ? 'animate-bounce-short' : ''}`}
         >
-          <div class={`w-6 h-6 transition-transform duration-300 ${isActive ? 'scale-110' : ''} ${isDonasi && !isActive ? 'animate-pulse text-yellow-500' : ''}`} set:html={item.icon} />
+          <div class={`w-[22px] h-[22px] transition-transform duration-300 ${isActive ? 'scale-110' : ''} ${isDonasi && !isActive ? 'animate-pulse text-yellow-500' : ''}`} set:html={item.icon} />
           <span class={`text-[10px] font-medium tracking-wide ${isDonasi ? 'font-bold text-yellow-500' : ''}`}>{item.label}</span>
         </a>
       );

@@ -252,10 +252,7 @@ export async function getShortMaxDetail(id: string, knownCover?: string): Promis
             episodes.push({
                 id: `${id}_${i}`, // Standard ID format for ShortMax aggregator: {dramaId}_{epNum}
                 name: `Episode ${i}`,
-                index: i, // 1-based index for display, or 0-based? 
-                // Our Adapter typings say: index: number.
-                // Usually 0-based index is preferred for array access, but display usually +1.
-                // Let's use 1-based logic consistent with getShortMaxVideoUrl expectation.
+                index: i - 1,
                 unlock: true, // Optimistically unlock all since we have the Play API
                 raw: {
                     episodeNum: i,

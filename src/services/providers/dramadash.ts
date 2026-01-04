@@ -75,7 +75,7 @@ export async function getDramaDashDetail(id: string): Promise<{ drama: any, epis
         const episodes = (dramaData.episodes || []).map((ep: any) => ({
             id: String(ep.id),
             name: `Episode ${ep.episodeNumber}`,
-            index: ep.episodeNumber,
+            index: ep.episodeNumber - 1,
             unlock: !ep.isLocked || !!ep.videoUrl,
             raw: {
                 ...ep,

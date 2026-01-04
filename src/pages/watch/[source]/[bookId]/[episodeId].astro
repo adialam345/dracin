@@ -89,20 +89,19 @@ const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.i
               {episodes.map((episode: any, index: number) => {
                 const isActive = episode.id === episodeId;
                 return (
-                  <a
-                    href={`/watch/${source}/${bookId}/${episode.id}`}
-                    class={`group relative flex items-center justify-center aspect-square rounded-lg text-sm font-semibold transition-all duration-300 border ${
-                      isActive
-                        ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-105 z-10'
-                        : 'bg-zinc-800/50 border-white/5 text-zinc-400 hover:bg-zinc-700/80 hover:text-white hover:border-white/20'
-                    }`}
-                  >
+                    <a
+                      href={`/watch/${source}/${bookId}/${episode.id}`}
+                      data-episode-id={episode.id}
+                      class={`group relative flex items-center justify-center aspect-square rounded-lg text-sm font-semibold transition-all duration-300 border ${
+                        isActive
+                          ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-105 z-10'
+                          : 'bg-zinc-800/50 border-white/5 text-zinc-400 hover:bg-zinc-700/80 hover:text-white hover:border-white/20'
+                      }`}
+                    >
                     {index + 1}
                     
                     {/* VIP/Lock Indicator if needed in future */}
-                    {!episode.unlock && !isActive && (
-                      <div class="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
-                    )}
+
                   </a>
                 );
               })}
@@ -130,3 +129,41 @@ const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.i
     }
   </style>
 </Layout>
+
+<script>
+  function updateWatchedEpisodes() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    // Expected: ['watch', source, bookId, episodeId]
+    if(parts.length < 3 || parts[0] !== 'watch') return;
+    
+    const source = parts[1];
+    const bookId = parts[2];
+    // We don't need episodeId here, we check all of them
+    
+    const key = `watched:${source}:${bookId}`;
+    let watchedList = [];
+    try {
+        watchedList = JSON.parse(localStorage.getItem(key) || '[]');
+    } catch(e) { console.error(e); }
+    
+    if (!Array.isArray(watchedList)) return;
+
+    const episodeLinks = document.querySelectorAll('a[data-episode-id]');
+    
+    episodeLinks.forEach(link => {
+       const id = link.getAttribute('data-episode-id');
+       const isActive = link.classList.contains('bg-cyan-500'); // Check if it's the currently playing one
+       
+       if (watchedList.includes(id) && !isActive) {
+           // Apply Watched Style (Orange)
+           link.classList.remove('bg-zinc-800/50', 'text-zinc-400', 'border-white/5', 'hover:bg-zinc-700/80', 'hover:text-white', 'hover:border-white/20');
+           link.classList.add('bg-orange-700', 'text-orange-100', 'border-orange-500', 'hover:bg-orange-600');
+       }
+    });
+  }
+
+  // Run on initial load, navigation, and when history updates
+  document.addEventListener('astro:page-load', updateWatchedEpisodes);
+  document.addEventListener('DOMContentLoaded', updateWatchedEpisodes); // Fallback
+  window.addEventListener('watched-episode-added', updateWatchedEpisodes);
+</script>

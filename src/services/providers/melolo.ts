@@ -40,7 +40,7 @@ export async function getMeloloDetail(id: string): Promise<{ drama: any, episode
 
     const episodes = (data.data?.video_data?.video_list || []).map((ep: any, idx: number) => ({
         id: ep.vid,
-        name: ep.title,
+        name: '', // ep.title often contains full synopsis/intro which is too long
         index: idx,
         unlock: true
     }));

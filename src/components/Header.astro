@@ -3,15 +3,15 @@ const currentPath = Astro.url.pathname;
 ---
 
 <header class="fixed top-0 left-0 right-0 z-50 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 transition-all duration-300" style="-webkit-backdrop-filter: blur(24px);">
-  <div class="container mx-auto px-4 py-4">
+  <div class="container mx-auto px-4 py-3 md:py-4">
     <div class="flex items-center justify-between">
-      <a href="/" class="flex items-center gap-1 group">
-        <div class="relative flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500 mr-1">
-           <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" class="text-[#E50914] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)] filter">
+      <a href="/" class="flex items-center gap-2 group">
+        <div class="relative flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-[29px] h-[29px] md:w-[30px] md:h-[30px] text-[#E50914] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)] filter">
               <path d="M5 3.868v16.264c0 .882.991 1.405 1.715.908l13.011-8.132a1.06 1.06 0 0 0 0-1.816L6.715 2.96C5.991 2.463 5 2.986 5 3.868z" />
            </svg>
         </div>
-        <div class="flex items-baseline font-black tracking-tighter text-2xl filter drop-shadow-[2px_2px_2px_rgba(0,0,0,0.9)]">
+        <div class="flex items-baseline font-black tracking-tighter text-[22px] md:text-2xl filter drop-shadow-[2px_2px_2px_rgba(0,0,0,0.9)]">
           <span class="bg-gradient-to-b from-white via-gray-200 to-gray-500 bg-clip-text text-transparent">Drama</span>
           <span class="text-[#E50914]">Ku</span>
         </div>

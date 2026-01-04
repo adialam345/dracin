@@ -135,6 +135,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
         const currentEp = episodes.find(e => e.id == currentEpisodeId);
         const episodeLabel = currentEp ? `Episode ${currentEp.index + 1}` : 'Lanjutkan Menonton';
 
+        // 1. Save Last Watched (Global)
         const historyData = {
           source,
           bookId,
@@ -146,6 +147,24 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
         };
         
         localStorage.setItem('dramaku_last_watched', JSON.stringify(historyData));
+        
+        // 2. Save to Watched List (Per Book)
+        const watchedKey = `watched:${source}:${bookId}`;
+        let watchedList = [];
+        try {
+            watchedList = JSON.parse(localStorage.getItem(watchedKey) || '[]');
+        } catch(e) { watchedList = []; }
+        
+        if (!watchedList.includes(currentEpisodeId)) {
+            watchedList.push(currentEpisodeId);
+            localStorage.setItem(watchedKey, JSON.stringify(watchedList));
+            
+            // Dispatch event so UI can update immediately
+            window.dispatchEvent(new CustomEvent('watched-episode-added', { 
+                detail: { source, bookId, episodeId: currentEpisodeId } 
+            }));
+        }
+
         console.log('[VideoPlayer] Saved history:', historyData);
         
         // Dispatch event so other components (like ContinueWatching) can update immediately if they are listening

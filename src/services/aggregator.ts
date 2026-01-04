@@ -219,7 +219,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             // Use withCache for the detail call too? Maybe just for the fetch.
             // But getShortMaxDetail is complex. Let's just pass the cover.
             // If we cache the whole result, we save even more.
-            const smResult = await withCache(`sm_detail_${id}`, () => ShortMax.getShortMaxDetail(id, smCover), 10 * 60 * 1000);
+            const smResult = await withCache(`sm_detail_v2_${id}`, () => ShortMax.getShortMaxDetail(id, smCover), 10 * 60 * 1000);
 
             // Check if result is valid
             if ((!smResult || !smResult.drama) && cached) {

@@ -154,7 +154,7 @@ export async function getFreeShortDetail(id: string): Promise<{ drama: UnifiedDr
                 episodes.push({
                     id: `${id}_${epIndex}`,
                     name: `Episode ${epIndex}`,
-                    index: epIndex,
+                    index: epIndex - 1,
                     unlock: true, // Assumed free or explicit logic
                     raw: ep
                 });
@@ -166,7 +166,7 @@ export async function getFreeShortDetail(id: string): Promise<{ drama: UnifiedDr
                 episodes.push({
                     id: `${id}_${i}`,
                     name: `Episode ${i}`,
-                    index: i,
+                    index: i - 1,
                     unlock: true,
                     raw: { episodeNum: i }
                 });
