@@ -3,33 +3,11 @@ import type { APIRoute } from 'astro';
 
 const API_BASE = 'https://api.sansekai.my.id/api';
 
-async function fetchWithRetry(url: string, retries: number = 2): Promise<any> {
-    for (let i = 0; i <= retries; i++) {
-        try {
-            const res = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Referer': 'https://sansekai.my.id/'
-                }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                // Check if data is truly empty or error response
-                const isEmpty = !data ||
-                    (Array.isArray(data) && data.length === 0) ||
-                    (data.data?.bookList && data.data.bookList.length === 0) ||
-                    (data.searchCodeSearchResult && data.searchCodeSearchResult.length === 0);
+import { fetchCached } from '../../services/utils';
 
-                if (!isEmpty) return data;
-                console.warn(`[SearchAPI] Attempt ${i + 1}: Empty data for ${url}`);
-            }
-        } catch (e) {
-            console.error(`[SearchAPI] Attempt ${i + 1}: Fetch failed for ${url}`, e);
-        }
-        if (i < retries) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
-    }
-    return null;
+// Delegate to central fetch utility which handles headers and proxies
+async function fetchWithRetry(url: string, retries: number = 2): Promise<any> {
+    return fetchCached(url, retries);
 }
 
 export const GET: APIRoute = async ({ request }) => {

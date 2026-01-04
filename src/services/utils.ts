@@ -10,8 +10,11 @@ if (dns.setDefaultResultOrder) {
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
 // Cloudflare Worker Proxy URL - Routes requests through Cloudflare to bypass IP blocking
-// NOTE: The worker is currently blocked by api.sansekai.my.id (403 Forbidden), so we use direct connection.
-const WORKER_URL = ''; // 'https://twilight-wildflower-192b.mrxnexsus.workers.dev';
+// Use environment variable PROXY_URL if set, otherwise fallback to empty (direct) or a specific proxy
+const WORKER_URL = process.env.PROXY_URL || '';
+// Example proxies:
+// const WORKER_URL = 'https://your-vercel-proxy.vercel.app/api?url=';
+
 
 // Simple in-memory cache for server-side requests
 const serverCache = new Map<string, { data: any, expiry: number }>();
@@ -55,7 +58,9 @@ function httpsRequest(url: string): Promise<string> {
                 'Sec-Fetch-Mode': 'cors',
                 'Sec-Fetch-Site': 'same-site',
                 'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
+                'Pragma': 'no-cache',
+                'Referer': 'https://sansekai.my.id/',
+                'Origin': 'https://sansekai.my.id'
             },
             timeout: 15000
         };
