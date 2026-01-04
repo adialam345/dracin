@@ -6,4 +6,4 @@ export * from './dramawave';
 export * from './dramaflickreels';
 export * from './dramadash';
 export * from './shortmax';
-
+export * from './starshort';

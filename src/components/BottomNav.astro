@@ -18,26 +18,41 @@ const navItems = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' 
   },
   { 
-    label: 'VIP', 
-    href: '/category/vip', 
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><rect width="12" height="12" x="6" y="6" rx="2"/></svg>' 
+    label: 'DONASI', 
+    href: '/donasi', 
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' 
   },
 ];
 ---
 
-<nav class="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-t border-white/5 md:hidden pb-safe">
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-t border-white/5 md:hidden pb-safe" style="-webkit-backdrop-filter: blur(24px);">
   <div class="flex items-center justify-around h-16">
     {navItems.map((item) => {
-      const isActive = currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href));
+      const isActive = currentPath === item.href || (item.href !== '/' && item.href !== '#search' && currentPath.startsWith(item.href));
+      const isDonasi = item.label === 'DONASI';
+      const isSearch = item.label === 'Cari';
+      
+      if (isSearch) {
+        return (
+          <button 
+            data-open-search
+            class="flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 text-zinc-500 hover:text-zinc-300"
+          >
+            <div class="w-6 h-6 transition-transform duration-300" set:html={item.icon} />
+            <span class="text-[10px] font-medium tracking-wide">{item.label}</span>
+          </button>
+        );
+      }
+      
       return (
         <a 
           href={item.href} 
           class={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 ${
             isActive ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'
-          }`}
+          } ${isDonasi ? 'animate-bounce-short' : ''}`}
         >
-          <div class={`w-6 h-6 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} set:html={item.icon} />
-          <span class="text-[10px] font-medium tracking-wide">{item.label}</span>
+          <div class={`w-6 h-6 transition-transform duration-300 ${isActive ? 'scale-110' : ''} ${isDonasi && !isActive ? 'animate-pulse text-yellow-500' : ''}`} set:html={item.icon} />
+          <span class={`text-[10px] font-medium tracking-wide ${isDonasi ? 'font-bold text-yellow-500' : ''}`}>{item.label}</span>
         </a>
       );
     })}
@@ -48,5 +63,13 @@ const navItems = [
   /* Safe area padding for iPhones with home indicator */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  @keyframes bounce-short {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15%); }
+  }
+  .animate-bounce-short {
+    animation: bounce-short 2s infinite;
   }
 </style>

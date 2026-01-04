@@ -2,7 +2,7 @@
 const currentPath = Astro.url.pathname;
 ---
 
-<header class="fixed top-0 left-0 right-0 z-50 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
+<header class="fixed top-0 left-0 right-0 z-50 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 transition-all duration-300" style="-webkit-backdrop-filter: blur(24px);">
   <div class="container mx-auto px-4 py-4">
     <div class="flex items-center justify-between">
       <a href="/" class="flex items-center gap-1 group">
@@ -27,18 +27,22 @@ const currentPath = Astro.url.pathname;
         <a href="/category/terbaru" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/terbaru') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
           Terbaru
         </a>
-        <a href="/category/vip" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/vip') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
-          VIP
+        <a href="/donasi" class={`text-sm font-bold transition-all duration-300 relative ${currentPath === '/donasi' ? 'text-yellow-400' : 'text-yellow-500/80 hover:text-yellow-400'} animate-pulse`}>
+          DONASI
+          <span class="absolute -top-1 -right-1 flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+          </span>
         </a>
       </nav>
 
       <div class="hidden md:flex items-center gap-4">
-        <a href="/search" class="p-2.5 hover:bg-white/10 rounded-full transition-all duration-300 text-zinc-400 hover:text-white" aria-label="Cari drama">
+        <button data-open-search class="p-2.5 hover:bg-white/10 rounded-full transition-all duration-300 text-zinc-400 hover:text-white" aria-label="Cari drama">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.3-4.3"></path>
           </svg>
-        </a>
+        </button>
       </div>
     </div>
   </div>

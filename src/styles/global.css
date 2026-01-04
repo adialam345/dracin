@@ -80,3 +80,23 @@
     transform: translateX(100%);
   }
 }
+
+/* iOS Safari backdrop-blur fix */
+@supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+  .backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+  }
+  .backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
+  .backdrop-blur-xl,
+  .backdrop-blur-sm {
+    background-color: rgba(9, 9, 11, 0.95) !important;
+  }
+}

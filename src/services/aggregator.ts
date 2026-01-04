@@ -10,6 +10,7 @@ import * as DramaWave from './providers/dramawave';
 import * as FlickReels from './providers/dramaflickreels';
 import * as DramaDash from './providers/dramadash';
 import * as ShortMax from './providers/shortmax';
+import * as StarShort from './providers/starshort';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -42,13 +43,17 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         withCache('fr_home', () => FlickReels.getFlickReelsForYou()),
         withCache('dd_home', () => DramaDash.getDramaDashForYou()),
         withCache('sm_home', () => ShortMax.getShortMaxForYou()),
+        withCache('ss_home', () => StarShort.getStarShortForYou()),
     ]);
 
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
     [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou].forEach(list => cacheItems(list));
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou]);
+    const ssForYou = (await Promise.resolve(StarShort.getStarShortForYou())) || [];
+    cacheItems(ssForYou);
+
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -58,7 +63,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList] = await Promise.all([
         Dramabox.searchDramabox(query),
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
@@ -66,16 +71,17 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         DramaWave.searchDramaWave(query, 20), // Fetch up to 20 pages
         FlickReels.searchFlickReels(query),
         DramaDash.searchDramaDash(query),
-        ShortMax.searchShortMax(query)
+        ShortMax.searchShortMax(query),
+        StarShort.searchStarShort(query)
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -85,6 +91,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (frList[i]) candidates.push(frList[i]);
         if (ddList[i]) candidates.push(ddList[i]);
         if (smList[i]) candidates.push(smList[i]);
+        if (ssList[i]) candidates.push(ssList[i]);
     }
 
     // Deduplicate
@@ -216,6 +223,8 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
                 };
             }
             return smResult;
+        case 'starshort':
+            return StarShort.getStarShortDetail(id);
         default:
             return { drama: null, episodes: [] };
     }
@@ -393,6 +402,43 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 const ep = episodes.find(e => String(e.id) === String(episodeId));
                 if (ep && ep.raw && ep.raw.videoUrl) {
                     videoUrl = ep.raw.videoUrl;
+                }
+            }
+        } else if (source === 'starshort') {
+            // Identical logic to RadReel but with StarShort fetcher and domains
+            // Priority 1: Check cache/direct
+            if (episodeId === '0') {
+                const cached = dramaDetailsCache.get('starshort_' + bookId);
+                if (cached && cached.raw?.videoUrl) return cached.raw.videoUrl;
+            }
+
+            // Priority 2: Use list endpoint to find match
+            const parts = bookId.split('_');
+            const fakeId = parts[0];
+            const url = 'https://cdp.starshort.online/content/state_res/episodic_movie/movies/' + fakeId;
+            const data = await StarShort.fetchStarShort(url);
+
+            if (data && Array.isArray(data)) {
+                const ep = data.find((e: any) => e.videoFakeId === episodeId);
+                if (ep) {
+                    if (ep.videoUrl) videoUrl = ep.videoUrl;
+                    else {
+                        // Attempt to fetch detail
+                        const videoDetailUrl = 'https://cdp.starshort.online/content/movie/v5/' + ep.videoFakeId + '?compilationsId=' + ep.compilationsId + '&episodicDramaId=' + (ep.id) + '&videoFakeId=' + ep.videoFakeId;
+                        const detailData = await StarShort.fetchStarShort(videoDetailUrl);
+
+                        if (detailData) {
+                            let list = [];
+                            if (Array.isArray(detailData.videoFiles)) list = detailData.videoFiles;
+                            else if (detailData.definitionList) list = detailData.definitionList;
+                            else if (detailData.videoFiles?.definitionList) list = detailData.videoFiles.definitionList;
+
+                            if (list.length > 0) {
+                                const target = list.find((d: any) => d.definition === 'SD') || list[0];
+                                videoUrl = target.videoUrl || target.url || target.videoUri || '';
+                            }
+                        }
+                    }
                 }
             }
         }

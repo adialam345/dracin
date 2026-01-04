@@ -1,0 +1,44 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Dukung Kami - DramaKu" hideFooter={true}>
+  <div class="fixed inset-0 flex items-center justify-center p-4 bg-zinc-950">
+    
+    <div class="w-full max-w-sm text-center">
+      
+      <!-- Simple Header -->
+      <h1 class="text-2xl font-bold text-yellow-500 mb-2">Traktir Kopi ☕</h1>
+      <p class="text-zinc-400 text-sm mb-6">
+        Bantu kami agar tetap semangat update konten!
+      </p>
+
+      <!-- Clean QR Section -->
+      <div class="bg-white p-4 rounded-xl shadow-2xl mx-auto w-64 h-64 mb-4">
+        <img 
+          src="/qris_donasi.jpg" 
+          alt="QRIS Code" 
+          class="w-full h-full object-contain"
+        />
+      </div>
+
+      <p class="text-xs text-zinc-500 font-mono tracking-wider mb-8">
+        SCAN QRIS (ALL E-WALLET)
+      </p>
+
+      <!-- Footer Note -->
+      <p class="text-[10px] text-zinc-600 italic">
+        "Donasi untuk bayar server & kopi fix bug" ✌️
+      </p>
+
+    </div>
+  </div>
+</Layout>
+
+
+
+<style>
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+</style>
