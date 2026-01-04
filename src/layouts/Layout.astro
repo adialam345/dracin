@@ -3,6 +3,7 @@ import { ViewTransitions } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import BottomNav from '../components/BottomNav.astro';
+import ContinueWatching from '../components/ContinueWatching.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -52,6 +53,7 @@ const {
     </main>
     <Footer />
     <BottomNav />
+    <ContinueWatching />
     
     {/* Global Loading Bar */}
     <div id="loading-bar" class="loading-bar"></div>

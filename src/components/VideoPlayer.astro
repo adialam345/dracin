@@ -45,6 +45,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     data-book-id={bookId}
     data-episode-id={episodeId}
     data-next-episode-url={nextEpisodeUrl}
+    data-title={title}
     playsinline
     webkit-playsinline
     x5-playsinline
@@ -123,6 +124,43 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     const bookId = videoElement.getAttribute('data-book-id');
     let videoUrl = videoElement.getAttribute('data-video-url');
     let currentFetchController: AbortController | null = null;
+
+    // Save Watch History
+    const saveWatchHistory = () => {
+      try {
+        const title = videoElement.getAttribute('data-title');
+        const poster = videoElement.getAttribute('poster');
+        
+        // Find current episode index/number for display
+        const currentEp = episodes.find(e => e.id == currentEpisodeId);
+        const episodeLabel = currentEp ? `Episode ${currentEp.index + 1}` : 'Lanjutkan Menonton';
+
+        const historyData = {
+          source,
+          bookId,
+          episodeId: currentEpisodeId,
+          title,
+          poster,
+          label: episodeLabel,
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('dramaku_last_watched', JSON.stringify(historyData));
+        console.log('[VideoPlayer] Saved history:', historyData);
+        
+        // Dispatch event so other components (like ContinueWatching) can update immediately if they are listening
+        window.dispatchEvent(new CustomEvent('history-updated', { detail: historyData }));
+      } catch (e) {
+        console.error('Failed to save watch history:', e);
+      }
+    };
+
+    videoElement.addEventListener('play', saveWatchHistory);
+    videoElement.addEventListener('timeupdate', () => {
+       // Optional: Save every 30s so we don't lose progress if they don't pause?
+       // For now 'play' and 'pause' might be enough, or just 'play' is fine to capture that they are here.
+       // Actually 'play' on each new video load (seamless) is handled because loadAndPlay calls .play()
+    });
     
     // Helper to find next episode ID
     const getNextEpisodeId = (currentId) => {

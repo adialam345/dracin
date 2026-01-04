@@ -1,0 +1,127 @@
+---
+---
+
+<div id="continue-watching-video" class="fixed bottom-24 md:bottom-8 right-4 z-50 transform translate-y-full opacity-0 transition-opacity duration-500 ease-out hidden flex items-center gap-3 bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md max-w-sm w-full cursor-pointer hover:bg-zinc-800/95 group">
+  <button id="close-continue-watching" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-colors z-10" aria-label="Close">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  </button>
+  
+  <div class="relative shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-zinc-800 shadow-inner">
+     <img id="cw-poster" src="" alt="Poster" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+     <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+     <div class="absolute inset-0 flex items-center justify-center">
+        <div class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-white ml-0.5">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+           </svg>
+        </div>
+     </div>
+  </div>
+  
+  <div class="flex-1 min-w-0 pr-2">
+    <p class="text-xs text-red-500 font-medium uppercase tracking-wider mb-0.5">Lanjutkan Menonton</p>
+    <h4 id="cw-title" class="text-sm font-bold text-white leading-tight truncate">Judul Drama</h4>
+    <p id="cw-episode" class="text-xs text-zinc-400 mt-1 truncate">Episode 1</p>
+  </div>
+</div>
+
+<script>
+  function initContinueWatching() {
+    const container = document.getElementById('continue-watching-video');
+    const closeBtn = document.getElementById('close-continue-watching');
+    const posterEl = document.getElementById('cw-poster') as HTMLImageElement;
+    const titleEl = document.getElementById('cw-title');
+    const episodeEl = document.getElementById('cw-episode');
+    
+    if (!container) return;
+
+    // Load State
+    const updateUI = (data) => {
+      // Don't show if we are currently on the watch page for this specific video
+      // simple check: if url contains bookId? No, maybe user wants to navigate back to it?
+      // Better: if we are exactly on the watch page, hide it?
+      // For now, let's just show it everywhere, except if we are actually watching THAT video right now.
+      
+      const currentPath = window.location.pathname;
+      const watchPath = `/watch/${data.source}/${data.bookId}/${data.episodeId}`;
+      
+      // If we are on the exact watching URL, hide the floater
+      if (currentPath.includes(`/watch/${data.source}/${data.bookId}`)) {
+         hide();
+         return;
+      }
+      
+      if (posterEl) posterEl.src = data.poster || '/placeholder.jpg';
+      if (titleEl) titleEl.textContent = data.title;
+      if (episodeEl) episodeEl.textContent = data.label;
+      
+      container.onclick = (e) => {
+        // Prevent click if clicking close button
+        if ((e.target as Element).closest('#close-continue-watching')) return;
+        
+        window.location.href = watchPath;
+      };
+      
+      show();
+    };
+    
+    const show = () => {
+      container.classList.remove('hidden');
+      // Small delay to allow display:flex to apply before transition
+      requestAnimationFrame(() => {
+        container.classList.remove('translate-y-full', 'opacity-0');
+      });
+    };
+    
+    const hide = () => {
+      container.classList.add('translate-y-full', 'opacity-0');
+      setTimeout(() => {
+        container.classList.add('hidden');
+      }, 500); // match duration
+    };
+
+    const loadFromStorage = () => {
+       try {
+         const raw = localStorage.getItem('dramaku_last_watched');
+         if (raw) {
+            const data = JSON.parse(raw);
+            // Optional: Check if expired (e.g. > 7 days)
+            // if (Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) return;
+            updateUI(data);
+         }
+       } catch(e) { console.error(e); }
+    };
+
+    // Initial Load
+    loadFromStorage();
+    
+    // Listen for updates (from VideoPlayer)
+    // Use a named function to allow removal or just handle cleanup
+    const handleHistoryUpdate = (e: any) => {
+       if (e.detail) {
+          updateUI(e.detail);
+       }
+    };
+    
+    window.addEventListener('history-updated', handleHistoryUpdate);
+    
+    // Cleanup on navigation to prevent duplicate listeners
+    const cleanup = () => {
+      window.removeEventListener('history-updated', handleHistoryUpdate);
+      document.removeEventListener('astro:before-preparation', cleanup);
+    };
+    document.addEventListener('astro:before-preparation', cleanup);
+    
+    // Close handler
+    closeBtn?.addEventListener('click', (e) => {
+       e.stopPropagation();
+       hide();
+    });
+  }
+
+  // Run on load and transitions
+  document.addEventListener('astro:page-load', initContinueWatching);
+</script>
