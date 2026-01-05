@@ -61,7 +61,9 @@ export async function getDramaDashDetail(id: string): Promise<{ drama: any, epis
 
         if (!data || !data.drama) return { drama: null, episodes: [] };
 
+
         const dramaData = data.drama;
+
 
         const dramaInfo = {
             title: dramaData.name,

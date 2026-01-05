@@ -28,6 +28,7 @@ const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.i
     <div class="container mx-auto px-4 py-8 md:py-12 relative z-10 animate-fade-in-up">
       {/* Navigation Bar */}
       <nav class="flex items-center justify-between mb-8">
+        {/* Left: Back button */}
         <a 
           href={`/movie/${source}/${bookId}`} 
           class="group flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 backdrop-blur-sm transition-all duration-300 hover:pr-6"
@@ -39,7 +40,32 @@ const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.i
           </div>
           <span class="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">Kembali ke Detail</span>
         </a>
+        
+        {/* Right: Error Report Button */}
+        <button 
+          id="reportErrorBtn"
+          class="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/30 hover:border-orange-500/60 backdrop-blur-sm transition-all duration-300"
+          title="Laporkan jika video error"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-400 group-hover:text-orange-200 transition-colors">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span class="text-xs font-medium text-orange-300 group-hover:text-orange-100 transition-colors">Error?</span>
+        </button>
       </nav>
+      
+      {/* Toast Notification */}
+      <div id="errorToast" class="fixed top-4 right-4 z-50 transform translate-x-full opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-green-600/30 flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span class="font-medium">Laporan terkirim! Halaman akan di-refresh...</span>
+        </div>
+      </div>
 
       <div class="max-w-5xl mx-auto">
         
@@ -171,4 +197,48 @@ const nextEpisodeUrl = nextEpisode ? `/watch/${source}/${bookId}/${nextEpisode.i
   document.addEventListener('astro:page-load', updateWatchedEpisodes);
   document.addEventListener('DOMContentLoaded', updateWatchedEpisodes); // Fallback
   window.addEventListener('watched-episode-added', updateWatchedEpisodes);
+
+  // Error Report Button Handler
+  function initErrorReportButton() {
+    const reportBtn = document.getElementById('reportErrorBtn');
+    const toast = document.getElementById('errorToast');
+    
+    if (reportBtn && toast) {
+      reportBtn.addEventListener('click', async () => {
+        // Disable button to prevent spam
+        reportBtn.setAttribute('disabled', 'true');
+        reportBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
+        try {
+          // Send error report to admin
+          await fetch('/api/admin/error-reports', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              url: window.location.href
+            })
+          });
+          
+          // Show success toast
+          toast.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
+          toast.classList.add('translate-x-0', 'opacity-100');
+          
+          // Refresh page after delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          
+        } catch (error) {
+          console.error('Failed to send error report:', error);
+          // Still refresh even if report fails
+          window.location.reload();
+        }
+      });
+    }
+  }
+  
+  document.addEventListener('astro:page-load', initErrorReportButton);
+  document.addEventListener('DOMContentLoaded', initErrorReportButton);
 </script>

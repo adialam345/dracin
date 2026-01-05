@@ -45,7 +45,7 @@
   }
 
   // Extract drama info from current page
-  function getDramaInfo(): { title?: string; source?: string; episodeNumber?: number } {
+  function getDramaInfo(): { dramaTitle?: string; dramaSource?: string; episodeNumber?: number } {
     const path = window.location.pathname;
     
     // Only track on watch or movie pages
@@ -61,8 +61,8 @@
     const dramaDataEl = document.querySelector('[data-drama-title]') as HTMLElement;
     if (dramaDataEl?.dataset?.dramaTitle) {
       return {
-        title: dramaDataEl.dataset.dramaTitle,
-        source: dramaDataEl.dataset.dramaSource || source,
+        dramaTitle: dramaDataEl.dataset.dramaTitle,
+        dramaSource: dramaDataEl.dataset.dramaSource || source,
         episodeNumber: dramaDataEl.dataset.episodeNumber ? 
           parseInt(dramaDataEl.dataset.episodeNumber) : episodeNumber
       };
@@ -79,8 +79,8 @@
     }
     
     return {
-      title: title || 'Unknown Drama',
-      source,
+      dramaTitle: title || 'Unknown Drama',
+      dramaSource: source,
       episodeNumber
     };
   }
@@ -119,7 +119,7 @@
       const isWatchPage = path.includes('/watch/') || path.includes('/movie/');
       
       // If on watch page but no title found yet, retry
-      if (isWatchPage && !dramaInfo.title && retryCount < maxRetries) {
+      if (isWatchPage && !dramaInfo.dramaTitle && retryCount < maxRetries) {
         trackWithDelay(retryCount + 1);
         return;
       }
