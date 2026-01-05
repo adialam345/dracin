@@ -322,7 +322,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
        // --- PROXY LOGIC FOR ALL PROVIDERS ---
        if (
            (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
-           (source === 'dramaflickreels' && url.includes('farsunpteltd.com') && !url.includes('/api/proxy')) ||
+           (source === 'dramaflickreels' && !url.includes('/api/proxy')) ||
            (source === 'radreel' && url.includes('wolftv.online') && !url.includes('/api/proxy')) ||
            (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes('/api/proxy')) ||
            (source === 'dramadash' && !url.includes('/api/proxy')) ||
@@ -363,12 +363,16 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           // Detect iOS/Safari for native HLS support
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          const isAndroid = /Android/.test(navigator.userAgent);
           
           // STRICTLY use native HLS only on iOS/Safari where it's robust/required
           // On Desktop Chrome/Edge/Firefox, we prefer HLS.js specifically for encryption support
-          const useNativeHLS = isIOS || isSafari; 
+          // UPDATE: Allow Android to use Native HLS if supported, as it's often more stable for standard streams than hls.js
+          const requiresCustomHLS = (source === 'shortmax'); // ShortMax needs hls.js for AES decryption
+          
+          const useNativeHLS = (isIOS || isSafari || (isAndroid && videoElement.canPlayType('application/vnd.apple.mpegurl'))) && !requiresCustomHLS;
 
-          if (useNativeHLS && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          if (useNativeHLS) {
              // Native HLS support (Safari iOS/macOS, some Android browsers)
              console.log('[VideoPlayer] Using Native HLS Player');
              videoElement.src = url;

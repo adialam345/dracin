@@ -54,7 +54,8 @@ export const GET: APIRoute = async ({ url, request }) => {
                 Object.assign(headers, {
                     'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
                     'bundleIdentifier': 'com.farsun.shortplay',
-                    'Version': '2.2.2.0'
+                    'Version': '2.2.2.0',
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
                 });
             }
             // NetShort CDN - use node:https instead of fetch
