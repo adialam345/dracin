@@ -319,18 +319,21 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
 
        // --- PROXY LOGIC FOR ALL PROVIDERS ---
-       // --- PROXY LOGIC FOR ALL PROVIDERS ---
+       // Bandwidth Saving: Use Cloudflare Worker Proxy
+       const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
+
        if (
-           (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes('/api/proxy')) ||
-           (source === 'dramaflickreels' && !url.includes('/api/proxy')) ||
-           (source === 'radreel' && url.includes('wolftv.online') && !url.includes('/api/proxy')) ||
-           (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes('/api/proxy')) ||
-           (source === 'dramadash' && !url.includes('/api/proxy')) ||
-           (source === 'dramabox' && !url.includes('/api/proxy')) ||
-           (source === 'shortmax' && !url.includes('/api/proxy')) ||
-           (source === 'freeshort' && !url.includes('/api/proxy'))
+           (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes(PROXY_BASE)) ||
+           (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
+           (source === 'radreel' && url.includes('wolftv.online') && !url.includes(PROXY_BASE)) ||
+           (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes(PROXY_BASE)) ||
+           (source === 'dramadash' && !url.includes(PROXY_BASE)) ||
+           (source === 'dramabox' && !url.includes(PROXY_BASE)) ||
+           (source === 'shortmax' && !url.includes(PROXY_BASE)) ||
+           (source === 'freeshort' && !url.includes(PROXY_BASE))
        ) {
-           url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
+           // Use Worker Proxy with raw URL (worker handles headers)
+           url = PROXY_BASE + '?url=' + encodeURIComponent(url);
            // console.log('[VideoPlayer] Using Proxy: ...');
        }
        // ---------------------------------
@@ -365,12 +368,15 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
           const isAndroid = /Android/.test(navigator.userAgent);
           
-          // STRICTLY use native HLS only on iOS/Safari where it's robust/required
+             // STRICTLY use native HLS only on iOS/Safari where it's robust/required
           // On Desktop Chrome/Edge/Firefox, we prefer HLS.js specifically for encryption support
           // UPDATE: Allow Android to use Native HLS if supported, as it's often more stable for standard streams than hls.js
           const requiresCustomHLS = (source === 'shortmax'); // ShortMax needs hls.js for AES decryption
           
           const useNativeHLS = (isIOS || isSafari || (isAndroid && videoElement.canPlayType('application/vnd.apple.mpegurl'))) && !requiresCustomHLS;
+
+          // Bandwidth Saving: Use Cloudflare Worker Proxy
+          const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
 
           if (useNativeHLS) {
              // Native HLS support (Safari iOS/macOS, some Android browsers)
@@ -388,7 +394,8 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                  track.kind = 'subtitles';
                  track.label = sub.label;
                  track.srclang = sub.lang;
-                 track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
+                 // Use Worker Proxy
+                 track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? PROXY_BASE + '?url=' + encodeURIComponent(sub.url) : sub.url;
                  
                  if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                    track.default = true;
@@ -549,7 +556,8 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                       track.kind = 'subtitles';
                       track.label = sub.label;
                       track.srclang = sub.lang;
-                      track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? '/api/proxy?q=' + encodeURIComponent(encrypt(sub.url)) : sub.url;
+                      // Use Worker Proxy
+                      track.src = (source === 'dramawave' || source === 'netshort' || source === 'freeshort') ? PROXY_BASE + '?url=' + encodeURIComponent(sub.url) : sub.url;
                       
                       if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
                           track.default = true;
@@ -625,8 +633,8 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
          // Route through encrypted proxy to hide URL
-         if (source === 'netshort' && !url.includes('/api/proxy')) {
-            url = '/api/proxy?q=' + encodeURIComponent(encrypt(url));
+         if (source === 'netshort' && !url.includes(PROXY_BASE)) {
+            url = PROXY_BASE + '?url=' + encodeURIComponent(url);
          }
          
          videoElement.src = url;

@@ -44,6 +44,10 @@ export const GET: APIRoute = async ({ url, request }) => {
                 ...((request.headers.get('Range') && !targetUrl.includes('.m3u8')) ? { 'Range': request.headers.get('Range')! } : {})
             };
 
+            // Forward Conditional Request Headers (Saves Bandwidth)
+            if (request.headers.get('if-none-match')) headers['If-None-Match'] = request.headers.get('if-none-match')!;
+            if (request.headers.get('if-modified-since')) headers['If-Modified-Since'] = request.headers.get('if-modified-since')!;
+
             // DramaWave Referer
             if (targetUrl.includes('mydramawave.com')) {
                 headers['Referer'] = 'https://www.mydramawave.com/';
@@ -77,6 +81,20 @@ export const GET: APIRoute = async ({ url, request }) => {
                     };
 
                     const req = https.request(options, (res) => {
+                        // Handle 304 Not Modified
+                        if (res.statusCode === 304) {
+                            resolve(new Response(null, {
+                                status: 304,
+                                headers: {
+                                    'Access-Control-Allow-Origin': '*',
+                                    'Cache-Control': 'public, max-age=31536000',
+                                    ...(res.headers['etag'] ? { 'ETag': res.headers['etag'] as string } : {}),
+                                    ...(res.headers['last-modified'] ? { 'Last-Modified': res.headers['last-modified'] as string } : {})
+                                }
+                            }));
+                            return;
+                        }
+
                         // Stream response directly
                         const responseHeaders: Record<string, string> = {
                             'Content-Type': res.headers['content-type'] || 'video/mp4',
@@ -84,15 +102,11 @@ export const GET: APIRoute = async ({ url, request }) => {
                             'Cache-Control': 'public, max-age=31536000'
                         };
 
-                        if (res.headers['content-length']) {
-                            responseHeaders['Content-Length'] = res.headers['content-length'] as string;
-                        }
-                        if (res.headers['content-range']) {
-                            responseHeaders['Content-Range'] = res.headers['content-range'] as string;
-                        }
-                        if (res.headers['accept-ranges']) {
-                            responseHeaders['Accept-Ranges'] = res.headers['accept-ranges'] as string;
-                        }
+                        if (res.headers['content-length']) responseHeaders['Content-Length'] = res.headers['content-length'] as string;
+                        if (res.headers['content-range']) responseHeaders['Content-Range'] = res.headers['content-range'] as string;
+                        if (res.headers['accept-ranges']) responseHeaders['Accept-Ranges'] = res.headers['accept-ranges'] as string;
+                        if (res.headers['etag']) responseHeaders['ETag'] = res.headers['etag'] as string;
+                        if (res.headers['last-modified']) responseHeaders['Last-Modified'] = res.headers['last-modified'] as string;
 
                         resolve(new Response(res as any, {
                             status: res.statusCode || 200,
@@ -142,6 +156,19 @@ export const GET: APIRoute = async ({ url, request }) => {
 
             response = await fetch(targetUrl, { headers });
 
+            // Handle 304 Not Modified from Upstream
+            if (response.status === 304) {
+                return new Response(null, {
+                    status: 304,
+                    headers: {
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'public, max-age=31536000',
+                        ...(response.headers.get('ETag') ? { 'ETag': response.headers.get('ETag')! } : {}),
+                        ...(response.headers.get('Last-Modified') ? { 'Last-Modified': response.headers.get('Last-Modified')! } : {})
+                    }
+                });
+            }
+
         } catch (fetchError: any) {
             console.error(`[Proxy] Fetch failed for:`, targetUrl?.substring(0, 100), fetchError.message);
             // Return actual error message for debugging
@@ -172,7 +199,6 @@ export const GET: APIRoute = async ({ url, request }) => {
             const baseUrl = new URL('.', targetUrl).href;
 
             // Determine correct origin (handling reverse proxies)
-            // Determine correct origin (handling reverse proxies)
             let origin = new URL(request.url).origin;
             // Only trust forwarded headers if they exist, otherwise rely on request url
             const forwardedProto = request.headers.get('x-forwarded-proto');
@@ -181,6 +207,12 @@ export const GET: APIRoute = async ({ url, request }) => {
             if (forwardedProto && forwardedHost) {
                 origin = `${forwardedProto}://${forwardedHost}`;
             }
+
+            // Check if VOD (Video on Demand) or Live
+            const isVOD = text.includes('#EXT-X-ENDLIST');
+            const cacheControl = isVOD
+                ? 'public, max-age=3600' // VOD: Cache for 1 hour
+                : 'public, max-age=15';  // Live: Cache for 15 seconds
 
             const newText = text.split('\n').map(line => {
                 const trimmed = line.trim();
@@ -215,6 +247,7 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers: {
                     'Content-Type': 'application/vnd.apple.mpegurl',
                     'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': cacheControl
                 }
             });
         }
@@ -265,15 +298,11 @@ export const GET: APIRoute = async ({ url, request }) => {
             'Cache-Control': 'public, max-age=31536000'
         };
 
-        if (response.headers.has('Content-Length')) {
-            headers['Content-Length'] = response.headers.get('Content-Length')!;
-        }
-        if (response.headers.has('Content-Range')) {
-            headers['Content-Range'] = response.headers.get('Content-Range')!;
-        }
-        if (response.headers.has('Accept-Ranges')) {
-            headers['Accept-Ranges'] = response.headers.get('Accept-Ranges')!;
-        }
+        if (response.headers.has('Content-Length')) headers['Content-Length'] = response.headers.get('Content-Length')!;
+        if (response.headers.has('Content-Range')) headers['Content-Range'] = response.headers.get('Content-Range')!;
+        if (response.headers.has('Accept-Ranges')) headers['Accept-Ranges'] = response.headers.get('Accept-Ranges')!;
+        if (response.headers.has('ETag')) headers['ETag'] = response.headers.get('ETag')!;
+        if (response.headers.has('Last-Modified')) headers['Last-Modified'] = response.headers.get('Last-Modified')!;
 
         return new Response(response.body, {
             status: response.status,
