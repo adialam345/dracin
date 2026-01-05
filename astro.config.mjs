@@ -16,7 +16,12 @@ export default defineConfig({
   vite: {
     server: {
       // Allow the tunnel hostname
-      allowedHosts: ['dracin.antarixa.qzz.io', 'qzz.io', '.qzz.io', 'localhost']
+      allowedHosts: ['dracin.antarixa.qzz.io', 'qzz.io', '.qzz.io', 'localhost'],
+      hmr: {
+        host: 'dracin.antarixa.qzz.io',
+        clientPort: 443,
+        protocol: 'wss',
+      }
     }
   }
 });
