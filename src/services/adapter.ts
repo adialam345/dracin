@@ -4,7 +4,7 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort';
     raw?: any;
 }
 
@@ -186,7 +186,19 @@ export function normalizeStarShort(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' = 'dramabox'): UnifiedDrama {
+export function normalizeGoodShort(data: any): UnifiedDrama {
+    return {
+        id: String(data.bookId || data.id || ''),
+        title: data.bookName || data.name || data.title || data.alias1 || '',
+        cover: data.cover || data.bookDetailCover || '',
+        description: data.introduction || data.desc || '',
+        source: 'goodshort',
+        chapterCount: data.chapterCount || data.chapterCnt || data.serializationStatus || 0,
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -199,6 +211,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'starshort') return normalizeStarShort(data);
     if (defaultSource === 'freeshort') return normalizeFreeShort(data);
     if (defaultSource === 'hishort') return normalizeHiShort(data);
+    if (defaultSource === 'goodshort') return normalizeGoodShort(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
@@ -208,6 +221,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.id && data.name && data.series_tag) return normalizeDramaWave(data); // Search format
     if (data.playlet_id && data.title) return normalizeFlickReels(data);
     if (data.poster && data.videoUrl) return normalizeDramaDash(data); // Crude heuristic
+    if (data.bookId && (data.alias1 || data.columnId)) return normalizeGoodShort(data); // GoodShort heuristic
 
     return normalizeDramabox(data);
 }

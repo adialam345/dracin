@@ -13,6 +13,7 @@ import * as ShortMax from './providers/shortmax';
 import * as StarShort from './providers/starshort';
 import * as FreeShort from './providers/freeshort';
 import * as HiShort from './providers/hishort';
+import * as GoodShort from './providers/goodshort';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -35,7 +36,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         smForYou,
         ssForYou,
         fsForYou,
-        hsForYou
+        hsForYou,
+        gsForYou
     ] = await Promise.all([
         Dramabox.getDramaboxForYou(),
         Dramabox.getDramaboxTrending(),
@@ -51,17 +53,18 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         withCache('ss_home', () => StarShort.getStarShortForYou()),
         withCache('fs_home', () => FreeShort.getFreeShortForYou()),
         withCache('hs_home', () => HiShort.getHiShortHome()),
+        withCache('gs_home', () => GoodShort.getGoodShortHome()),
     ]);
 
     // Cache items for Detail fallback
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou].forEach(list => cacheItems(list || []));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou].forEach(list => cacheItems(list || []));
 
     // const ssForYou = (await Promise.resolve(StarShort.getStarShortForYou())) || []; // Removed redundant call
     // cacheItems(ssForYou);
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -71,7 +74,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList] = await Promise.all([
         Dramabox.searchDramabox(query),
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
@@ -82,16 +85,17 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         ShortMax.searchShortMax(query),
         StarShort.searchStarShort(query),
         FreeShort.searchFreeShort(query),
-        HiShort.searchHiShort(query)
+        HiShort.searchHiShort(query),
+        GoodShort.searchGoodShort(query)
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length, gsList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -104,6 +108,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (ssList[i]) candidates.push(ssList[i]);
         if (fsList[i]) candidates.push(fsList[i]);
         if (hsList[i]) candidates.push(hsList[i]);
+        if (gsList[i]) candidates.push(gsList[i]);
     }
 
     // Deduplicate
@@ -247,6 +252,45 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             return (await FreeShort.getFreeShortDetail(id)) || { drama: null, episodes: [] };
         case 'hishort':
             return (await HiShort.getHiShortDetail(id)) || { drama: null, episodes: [] };
+        case 'goodshort':
+            const gsResult = await GoodShort.getGoodShortDetail(id);
+            if ((!gsResult || !gsResult.drama) && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: cached.chapterCount || 0,
+                        labels: [],
+                        source: 'goodshort'
+                    },
+                    episodes: []
+                };
+            }
+
+            // If we got result but episodes are empty, or if we are falling back completely
+            const finalDrama = (gsResult && gsResult.drama) ? gsResult.drama : (cached ? {
+                title: cached.title,
+                cover: cached.cover,
+                description: cached.description || '',
+                chapterCount: cached.chapterCount || 0,
+                labels: [],
+                source: 'goodshort'
+            } : null);
+
+            let finalEpisodes = (gsResult && gsResult.episodes && gsResult.episodes.length > 0) ? gsResult.episodes : [];
+
+            // Synthetic generation
+            if (finalEpisodes.length === 0 && finalDrama && finalDrama.chapterCount && finalDrama.chapterCount > 0) {
+                finalEpisodes = Array.from({ length: finalDrama.chapterCount }, (_, i) => ({
+                    id: String(i + 1),
+                    name: 'Episode ' + (i + 1),
+                    index: i,
+                    unlock: true
+                }));
+            }
+
+            return { drama: finalDrama, episodes: finalEpisodes };
         default:
             return { drama: null, episodes: [] };
     }
@@ -363,7 +407,16 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
 
                 console.log('[Aggregator] DramaWave video URL found:', videoUrl ? 'YES' : 'NO', videoUrl.substring(0, 100));
 
-                if (episode.raw.subtitle_list && Array.isArray(episode.raw.subtitle_list)) {
+                if (episode.raw.vtt_list && Array.isArray(episode.raw.vtt_list)) {
+                    return JSON.stringify({
+                        videoUrl: videoUrl,
+                        subtitles: episode.raw.vtt_list.map((sub: any) => ({
+                            label: sub.display_name,
+                            lang: sub.language,
+                            url: sub.vtt
+                        }))
+                    });
+                } else if (episode.raw.subtitle_list && Array.isArray(episode.raw.subtitle_list)) {
                     return JSON.stringify({
                         videoUrl: videoUrl,
                         subtitles: episode.raw.subtitle_list.map((sub: any) => ({
@@ -472,6 +525,8 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             videoUrl = await FreeShort.getFreeShortVideoUrl(bookId, episodeNum);
         } else if (source === 'hishort') {
             videoUrl = await HiShort.getHiShortVideoUrl(episodeId);
+        } else if (source === 'goodshort') {
+            videoUrl = await GoodShort.getGoodShortVideoUrl(bookId, episodeId);
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));

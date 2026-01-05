@@ -8,7 +8,7 @@ const { source, bookId } = Astro.params;
 const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 
 if (!drama) {
-  return Astro.redirect('/');
+  return new Response("Drama not found or API error. Please try again later.", { status: 404 });
 }
 ---
 

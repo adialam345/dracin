@@ -4,7 +4,7 @@ interface Props {
   title: string;
   posterUrl: string;
   description?: string;
-  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort';
+  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort';
 }
 
 const { bookId, title, posterUrl, description, source } = Astro.props;
@@ -21,6 +21,7 @@ const sourceLabels = {
   starshort: { label: 'SS', color: 'bg-emerald-600/90' },
   freeshort: { label: 'FS', color: 'bg-indigo-600/90' },
   hishort: { label: 'HS', color: 'bg-fuchsia-600/90' },
+  goodshort: { label: 'GS', color: 'bg-teal-500/90' },
 };
 
 const badge = source ? sourceLabels[source] : null;
