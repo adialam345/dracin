@@ -1,0 +1,155 @@
+---
+// Analytics tracker component - embeds in all pages to track user activity
+---
+
+<script>
+  // Generate or retrieve session ID
+  function getSessionId(): string {
+    let sessionId = sessionStorage.getItem('_sid_v1');
+    if (!sessionId) {
+      sessionId = 'u_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      sessionStorage.setItem('_sid_v1', sessionId);
+    }
+    return sessionId;
+  }
+
+  // Extract source from URL path
+  function getSourceFromPath(): string {
+    const path = window.location.pathname;
+    const parts = path.split('/').filter(Boolean);
+    
+    // URL format: /watch/{source}/{bookId}/{episodeId} or /movie/{source}/{bookId}
+    if ((parts[0] === 'watch' || parts[0] === 'movie') && parts[1]) {
+      return parts[1];
+    }
+    return 'unknown';
+  }
+
+  // Extract episode number from URL or DOM
+  function getEpisodeFromPath(): number | undefined {
+    const path = window.location.pathname;
+    const parts = path.split('/').filter(Boolean);
+    
+    // URL format: /watch/{source}/{bookId}/{episodeId}
+    if (parts[0] === 'watch' && parts.length >= 4) {
+      // Try to get from DOM first (more accurate)
+      const episodeEl = document.querySelector('[data-episode-number]') as HTMLElement;
+      if (episodeEl?.dataset?.episodeNumber) {
+        return parseInt(episodeEl.dataset.episodeNumber);
+      }
+      
+      // Fallback: try to find episode index from URL
+      return undefined;
+    }
+    return undefined;
+  }
+
+  // Extract drama info from current page
+  function getDramaInfo(): { title?: string; source?: string; episodeNumber?: number } {
+    const path = window.location.pathname;
+    
+    // Only track on watch or movie pages
+    if (!path.includes('/watch/') && !path.includes('/movie/')) {
+      return {};
+    }
+    
+    // Get source from URL (most reliable)
+    const source = getSourceFromPath();
+    const episodeNumber = getEpisodeFromPath();
+    
+    // Try to get title from data attributes first
+    const dramaDataEl = document.querySelector('[data-drama-title]') as HTMLElement;
+    if (dramaDataEl?.dataset?.dramaTitle) {
+      return {
+        title: dramaDataEl.dataset.dramaTitle,
+        source: dramaDataEl.dataset.dramaSource || source,
+        episodeNumber: dramaDataEl.dataset.episodeNumber ? 
+          parseInt(dramaDataEl.dataset.episodeNumber) : episodeNumber
+      };
+    }
+    
+    // Fallback: get title from h1 or page title
+    const titleEl = document.querySelector('h1');
+    let title = titleEl?.textContent?.trim();
+    
+    if (!title) {
+      // Extract from page title (format: "Drama Title - Episode X - DramaIn")
+      const pageTitle = document.title;
+      title = pageTitle.split(' - ')[0];
+    }
+    
+    return {
+      title: title || 'Unknown Drama',
+      source,
+      episodeNumber
+    };
+  }
+
+  // Send analytics event
+  async function sendAnalytics(action: 'pageview' | 'heartbeat' | 'leave') {
+    const sessionId = getSessionId();
+    const dramaInfo = getDramaInfo();
+    
+    try {
+      await fetch('/api/admin/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          sessionId,
+          page: window.location.pathname,
+          ...dramaInfo
+        }),
+        // Use keepalive for leave event to ensure it's sent
+        keepalive: action === 'leave'
+      });
+    } catch (e) {
+      // Silently fail - analytics should not break the app
+    }
+  }
+
+  // Delayed tracking to ensure DOM is ready with retry logic
+  function trackWithDelay(retryCount = 0) {
+    const maxRetries = 3;
+    const delays = [300, 800, 1500]; // Progressive delays
+    
+    setTimeout(() => {
+      const dramaInfo = getDramaInfo();
+      const path = window.location.pathname;
+      const isWatchPage = path.includes('/watch/') || path.includes('/movie/');
+      
+      // If on watch page but no title found yet, retry
+      if (isWatchPage && !dramaInfo.title && retryCount < maxRetries) {
+        trackWithDelay(retryCount + 1);
+        return;
+      }
+      
+      sendAnalytics('pageview');
+    }, delays[retryCount] || 300);
+  }
+
+  // Track page view on load
+  document.addEventListener('DOMContentLoaded', () => trackWithDelay(0));
+
+  // For Astro View Transitions
+  document.addEventListener('astro:page-load', () => trackWithDelay(0));
+
+  // Send heartbeat every 15 seconds to keep session alive and update drama info
+  setInterval(() => {
+    sendAnalytics('heartbeat');
+  }, 15000);
+
+  // Track when user leaves
+  window.addEventListener('beforeunload', () => {
+    sendAnalytics('leave');
+  });
+
+  // Also handle visibility change (mobile)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      sendAnalytics('leave');
+    } else if (document.visibilityState === 'visible') {
+      trackWithDelay();
+    }
+  });
+</script>

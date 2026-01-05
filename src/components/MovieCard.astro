@@ -4,22 +4,23 @@ interface Props {
   title: string;
   posterUrl: string;
   description?: string;
-  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort';
+  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort';
 }
 
 const { bookId, title, posterUrl, description, source } = Astro.props;
 
 const sourceLabels = {
-  dramabox: { label: 'DB', color: 'bg-red-500/80' },
-  netshort: { label: 'NS', color: 'bg-blue-500/80' },
-  melolo: { label: 'ML', color: 'bg-green-500/80' },
-  radreel: { label: 'RR', color: 'bg-purple-500/80' },
-  dramawave: { label: 'DW', color: 'bg-orange-500/80' },
-  dramaflickreels: { label: 'FR', color: 'bg-pink-500/80' },
-  dramadash: { label: 'DD', color: 'bg-cyan-500/80' },
-  shortmax: { label: 'SM', color: 'bg-yellow-500/80' },
-  starshort: { label: 'SS', color: 'bg-emerald-500/80' },
-  freeshort: { label: 'FS', color: 'bg-indigo-500/80' },
+  dramabox: { label: 'DB', color: 'bg-red-600/90' },
+  netshort: { label: 'NS', color: 'bg-blue-600/90' },
+  melolo: { label: 'ML', color: 'bg-lime-600/90' },
+  radreel: { label: 'RR', color: 'bg-purple-600/90' },
+  dramawave: { label: 'DW', color: 'bg-orange-500/90' },
+  dramaflickreels: { label: 'FR', color: 'bg-pink-600/90' },
+  dramadash: { label: 'DD', color: 'bg-cyan-600/90' },
+  shortmax: { label: 'SM', color: 'bg-yellow-500/90' },
+  starshort: { label: 'SS', color: 'bg-emerald-600/90' },
+  freeshort: { label: 'FS', color: 'bg-indigo-600/90' },
+  hishort: { label: 'HS', color: 'bg-fuchsia-600/90' },
 };
 
 const badge = source ? sourceLabels[source] : null;

@@ -38,15 +38,44 @@
     
     if (!container) return;
 
+    // Check if user dismissed the floater in this session
+    const isDismissed = () => {
+      try {
+        const dismissed = sessionStorage.getItem('cw_dismissed');
+        if (!dismissed) return false;
+        
+        const { episodeId, timestamp } = JSON.parse(dismissed);
+        const lastWatched = localStorage.getItem('dramaku_last_watched');
+        
+        if (lastWatched) {
+          const lastData = JSON.parse(lastWatched);
+          // If the dismissed episode is different from current last watched, show it
+          if (lastData.episodeId !== episodeId) {
+            sessionStorage.removeItem('cw_dismissed');
+            return false;
+          }
+        }
+        
+        // Dismissed state expires after 30 minutes
+        if (Date.now() - timestamp > 30 * 60 * 1000) {
+          sessionStorage.removeItem('cw_dismissed');
+          return false;
+        }
+        
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
     // Load State
-    const updateUI = (data) => {
-      // Don't show if we are currently on the watch page for this specific video
-      // simple check: if url contains bookId? No, maybe user wants to navigate back to it?
-      // Better: if we are exactly on the watch page, hide it?
-      // For now, let's just show it everywhere, except if we are actually watching THAT video right now.
+    const updateUI = (data: any) => {
+      // Don't show if user dismissed it
+      if (isDismissed()) {
+        return;
+      }
       
       const currentPath = window.location.pathname;
-      const watchPath = `/watch/${data.source}/${data.bookId}/${data.episodeId}`;
       
       // If we are on the exact watching URL, hide the floater
       if (currentPath.includes(`/watch/${data.source}/${data.bookId}`)) {
@@ -62,6 +91,10 @@
         // Prevent click if clicking close button
         if ((e.target as Element).closest('#close-continue-watching')) return;
         
+        // Clear dismissed state when user clicks to watch
+        sessionStorage.removeItem('cw_dismissed');
+        
+        const watchPath = `/watch/${data.source}/${data.bookId}/${data.episodeId}`;
         window.location.href = watchPath;
       };
       
@@ -84,12 +117,15 @@
     };
 
     const loadFromStorage = () => {
+       // Check if dismissed first
+       if (isDismissed()) {
+         return;
+       }
+       
        try {
          const raw = localStorage.getItem('dramaku_last_watched');
          if (raw) {
             const data = JSON.parse(raw);
-            // Optional: Check if expired (e.g. > 7 days)
-            // if (Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) return;
             updateUI(data);
          }
        } catch(e) { console.error(e); }
@@ -99,8 +135,10 @@
     loadFromStorage();
     
     // Listen for updates (from VideoPlayer)
-    // Use a named function to allow removal or just handle cleanup
     const handleHistoryUpdate = (e: any) => {
+       // When video player updates, clear dismissed state for new content
+       sessionStorage.removeItem('cw_dismissed');
+       
        if (e.detail) {
           updateUI(e.detail);
        }
@@ -115,9 +153,22 @@
     };
     document.addEventListener('astro:before-preparation', cleanup);
     
-    // Close handler
+    // Close handler - save dismissed state
     closeBtn?.addEventListener('click', (e) => {
        e.stopPropagation();
+       
+       // Save dismissed state with the current episode ID
+       try {
+         const raw = localStorage.getItem('dramaku_last_watched');
+         if (raw) {
+           const data = JSON.parse(raw);
+           sessionStorage.setItem('cw_dismissed', JSON.stringify({
+             episodeId: data.episodeId,
+             timestamp: Date.now()
+           }));
+         }
+       } catch (e) {}
+       
        hide();
     });
   }

@@ -12,6 +12,7 @@ import * as DramaDash from './providers/dramadash';
 import * as ShortMax from './providers/shortmax';
 import * as StarShort from './providers/starshort';
 import * as FreeShort from './providers/freeshort';
+import * as HiShort from './providers/hishort';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -33,7 +34,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         ddForYou,
         smForYou,
         ssForYou,
-        fsForYou
+        fsForYou,
+        hsForYou
     ] = await Promise.all([
         Dramabox.getDramaboxForYou(),
         Dramabox.getDramaboxTrending(),
@@ -48,17 +50,18 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         withCache('sm_home', () => ShortMax.getShortMaxForYou()),
         withCache('ss_home', () => StarShort.getStarShortForYou()),
         withCache('fs_home', () => FreeShort.getFreeShortForYou()),
+        withCache('hs_home', () => HiShort.getHiShortHome()),
     ]);
 
     // Cache items for Detail fallback
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou].forEach(list => cacheItems(list || []));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou].forEach(list => cacheItems(list || []));
 
     // const ssForYou = (await Promise.resolve(StarShort.getStarShortForYou())) || []; // Removed redundant call
     // cacheItems(ssForYou);
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -68,7 +71,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList] = await Promise.all([
         Dramabox.searchDramabox(query),
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
@@ -78,16 +81,17 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         DramaDash.searchDramaDash(query),
         ShortMax.searchShortMax(query),
         StarShort.searchStarShort(query),
-        FreeShort.searchFreeShort(query)
+        FreeShort.searchFreeShort(query),
+        HiShort.searchHiShort(query)
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -99,6 +103,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (smList[i]) candidates.push(smList[i]);
         if (ssList[i]) candidates.push(ssList[i]);
         if (fsList[i]) candidates.push(fsList[i]);
+        if (hsList[i]) candidates.push(hsList[i]);
     }
 
     // Deduplicate
@@ -240,6 +245,8 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             return StarShort.getStarShortDetail(id);
         case 'freeshort':
             return (await FreeShort.getFreeShortDetail(id)) || { drama: null, episodes: [] };
+        case 'hishort':
+            return (await HiShort.getHiShortDetail(id)) || { drama: null, episodes: [] };
         default:
             return { drama: null, episodes: [] };
     }
@@ -463,6 +470,8 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             const parts = episodeId.split('_');
             const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
             videoUrl = await FreeShort.getFreeShortVideoUrl(bookId, episodeNum);
+        } else if (source === 'hishort') {
+            videoUrl = await HiShort.getHiShortVideoUrl(episodeId);
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));

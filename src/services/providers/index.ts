@@ -8,3 +8,4 @@ export * from './dramadash';
 export * from './shortmax';
 export * from './starshort';
 export * from './freeshort';
+export * from './hishort';
