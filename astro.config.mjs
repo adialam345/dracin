@@ -17,7 +17,10 @@ export default defineConfig({
     server: {
       // Allow the tunnel hostname
       allowedHosts: ['dracin.antarixa.qzz.io', 'qzz.io', '.qzz.io', 'localhost'],
-      hmr: false
+      hmr: {
+        // Disable HMR overlay and use default port handling
+        overlay: false
+      }
     }
   }
 });
