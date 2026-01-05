@@ -17,6 +17,7 @@ function getRandomToken() {
 
 async function fetchFromApi(endpoint: string) {
     try {
+        console.log(`[HiShort] Fetching: ${endpoint}`);
         const response = await fetch(`${API_BASE}${endpoint}`, {
             headers: {
                 'Authorization': `Bearer ${getRandomToken()}`,
@@ -121,9 +122,16 @@ export async function getHiShortVideoUrl(episodeId: string): Promise<string> {
 
     if (!data) return '';
 
+    // Debug logging
+    console.log(`[HiShort] Response for ${episodeId}: keys=${Object.keys(data).join(',')}`);
+
     // Structure: { sources: [{ url, type }], subtitles: [] }
-    if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-        const videoUrl = data.sources[0].url;
+    // Or: { servers: [{ name, url, type }], ... }
+    const sources = data.sources || data.servers;
+
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+        console.log(`[HiShort] Found ${sources.length} sources/servers`);
+        const videoUrl = sources[0].url;
 
         // Handle Subtitles
         if (data.subtitles && Array.isArray(data.subtitles) && data.subtitles.length > 0) {
@@ -138,6 +146,8 @@ export async function getHiShortVideoUrl(episodeId: string): Promise<string> {
         }
 
         return videoUrl;
+    } else {
+        console.log('[HiShort] No sources/servers found in data');
     }
 
     return data.videoUrl || data.url || '';
