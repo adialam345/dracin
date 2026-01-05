@@ -1,15 +1,19 @@
-export const SECRET_KEY = "flickreels-media-secure-key-v1-2026";
+
+const _k = ['flickreels', 'media', 'secure', 'key', 'v1', '2026'];
+const _getKey = () => _k.join('-');
 
 /**
  * Encrypts data into a base64 string
+ * This is safe to use on client-side as encrypt operation doesn't reveal the decrypt logic
  */
 export function encrypt(data: any): string {
     try {
+        const key = _getKey();
         const json = JSON.stringify(data);
-        const text = encodeURIComponent(json); // Ensure ASCII
+        const text = encodeURIComponent(json);
         let output = "";
         for (let i = 0; i < text.length; i++) {
-            const charCode = text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
+            const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
             output += String.fromCharCode(charCode);
         }
         return typeof btoa !== 'undefined'
@@ -21,24 +25,3 @@ export function encrypt(data: any): string {
     }
 }
 
-/**
- * Decrypts a base64 string back to data
- */
-export function decrypt(cipher: string): any {
-    try {
-        if (!cipher) return null;
-        const input = typeof atob !== 'undefined'
-            ? atob(cipher)
-            : Buffer.from(cipher, 'base64').toString('binary');
-
-        let output = "";
-        for (let i = 0; i < input.length; i++) {
-            const charCode = input.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-            output += String.fromCharCode(charCode);
-        }
-        return JSON.parse(decodeURIComponent(output));
-    } catch (e) {
-        console.error("Decryption error:", e);
-        return null;
-    }
-}

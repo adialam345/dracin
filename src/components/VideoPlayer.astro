@@ -107,7 +107,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
 <script>
   import Hls from 'hls.js';
-  import { encrypt, decrypt } from '../utils/security';
+  import { encrypt } from '../utils/security';
 
   async function initPlayer() {
     const videoElement = document.getElementById('video-player') as HTMLVideoElement;
@@ -243,19 +243,18 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     };
 
 
-    // Helper to decode response/payload
+    // Helper to decode response/payload (server returns JSON directly now)
     const processPayload = (rawPayload) => {
         if (!rawPayload) return null;
         try {
-            // Try decrypting first
-            const decrypted = decrypt(rawPayload);
-            if (decrypted) return decrypted;
-            
-            // Fallback: try parsing as JSON (legacy/cleartext)
+            // Server returns JSON directly (decryption happens on server)
+            if (typeof rawPayload === 'object') return rawPayload;
             return JSON.parse(rawPayload);
         } catch (e) {
             // If it's just a string url, return object
-            if (rawPayload.startsWith('http')) return { videoUrl: rawPayload };
+            if (typeof rawPayload === 'string' && rawPayload.startsWith('http')) {
+                return { videoUrl: rawPayload };
+            }
             return null;
         }
     };

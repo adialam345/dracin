@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { encrypt, decrypt } from '../../utils/security';
+import { encrypt, decrypt } from '../../utils/security.server';
 import https from 'node:https';
 
 export const GET: APIRoute = async ({ url, request }) => {

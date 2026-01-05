@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { fetchVideoUrl } from '../../services/aggregator';
-import { encrypt, decrypt } from '../../utils/security';
+import { decrypt } from '../../utils/security.server';
 
 export const GET: APIRoute = async ({ url, request }) => {
     // Basic Security Check
@@ -43,13 +43,12 @@ export const GET: APIRoute = async ({ url, request }) => {
     try {
         const videoUrl = await fetchVideoUrl(source, bookId, episodeId);
 
-        // Encrypt the response so it's not visible in DevTools Network tab as JSON
-        const encryptedResponse = encrypt({ videoUrl });
-
-        return new Response(encryptedResponse, {
+        // Return JSON directly - the real video URL is hidden because it goes through /api/proxy
+        // The videoUrl returned here is either already a proxy URL or will be proxied by the player
+        return new Response(JSON.stringify({ videoUrl }), {
             status: 200,
             headers: {
-                'Content-Type': 'text/plain', // Hide that it's JSON
+                'Content-Type': 'application/json',
                 'Cache-Control': 'public, max-age=600'
             }
         });
