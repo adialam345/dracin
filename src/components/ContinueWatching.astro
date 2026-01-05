@@ -1,30 +1,30 @@
 ---
 ---
 
-<div id="continue-watching-video" class="fixed bottom-24 md:bottom-8 right-4 z-50 transform translate-y-full opacity-0 transition-opacity duration-500 ease-out hidden flex items-center gap-3 bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md max-w-sm w-full cursor-pointer hover:bg-zinc-800/95 group">
-  <button id="close-continue-watching" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-colors z-10" aria-label="Close">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<div id="continue-watching-video" class="fixed bottom-24 md:bottom-8 right-2 md:right-4 z-50 transform translate-y-full opacity-0 transition-opacity duration-500 ease-out hidden flex items-center gap-2 md:gap-3 bg-zinc-900/95 border border-white/10 p-2 md:p-3 rounded-lg md:rounded-xl shadow-2xl backdrop-blur-md max-w-[260px] md:max-w-sm w-full cursor-pointer hover:bg-zinc-800/95 group">
+  <button id="close-continue-watching" class="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 bg-red-600 text-white rounded-full p-0.5 md:p-1 shadow-lg hover:bg-red-700 transition-colors z-10" aria-label="Close">
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="md:w-4 md:h-4">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   </button>
   
-  <div class="relative shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-zinc-800 shadow-inner">
+  <div class="relative shrink-0 w-10 h-14 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden bg-zinc-800 shadow-inner">
      <img id="cw-poster" src="" alt="Poster" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
      <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
      <div class="absolute inset-0 flex items-center justify-center">
-        <div class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-white ml-0.5">
+        <div class="w-5 h-5 md:w-8 md:h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="text-white ml-0.5 md:w-4 md:h-4">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
            </svg>
         </div>
      </div>
   </div>
   
-  <div class="flex-1 min-w-0 pr-2">
-    <p class="text-xs text-red-500 font-medium uppercase tracking-wider mb-0.5">Lanjutkan Menonton</p>
-    <h4 id="cw-title" class="text-sm font-bold text-white leading-tight truncate">Judul Drama</h4>
-    <p id="cw-episode" class="text-xs text-zinc-400 mt-1 truncate">Episode 1</p>
+  <div class="flex-1 min-w-0 pr-1 md:pr-2">
+    <p class="text-[10px] md:text-xs text-red-500 font-medium uppercase tracking-wider mb-0.5">Lanjutkan Menonton</p>
+    <h4 id="cw-title" class="text-xs md:text-sm font-bold text-white leading-tight truncate">Judul Drama</h4>
+    <p id="cw-episode" class="text-[10px] md:text-xs text-zinc-400 mt-0.5 md:mt-1 truncate">Episode 1</p>
   </div>
 </div>
 
