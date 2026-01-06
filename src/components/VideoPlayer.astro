@@ -203,6 +203,13 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
     // Bandwidth Saving: Use Cloudflare Worker Proxy
     const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
+    const VPS_PROXY = '/api/proxy'; // Fallback for SSL issues
+    
+    // Helper to check if URL should use fallback proxy
+    const shouldUseFallback = (url: string, source: string) => {
+      // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
+      return source === 'netshort' && url.includes('awscdn.netshort.com');
+    };
 
     // Helper to add subtitle tracks
     const addSubtitleTracks = () => {
@@ -227,10 +234,12 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
         // Use proxy for SRT conversion (DramaWave/FreeShort) OR if non-VTT
         const isSrt = sub.url.includes('.srt');
         if (isSrt || source === 'dramawave' || source === 'freeshort') {
-             track.src = '/api/proxy?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+             track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+        } else if (source === 'netshort') {
+             // NetShort: Use VPS proxy for SSL compatibility
+             track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url);
         } else {
-             // NetShort and others
-             track.src = (source === 'netshort') ? PROXY_BASE + '?url=' + encodeURIComponent(sub.url) : sub.url;
+             track.src = sub.url;
         }
         
         // Auto-select ID
@@ -329,7 +338,11 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
        // --- PROXY LOGIC FOR ALL PROVIDERS ---
        
-       if (
+       // NetShort: Use VPS proxy for awscdn.netshort.com (SSL issues with Worker)
+       if (source === 'netshort' && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
+           url = VPS_PROXY + '?url=' + encodeURIComponent(url);
+           console.log('[VideoPlayer] Using VPS Proxy for NetShort (SSL fallback)');
+       } else if (
            (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes(PROXY_BASE)) ||
            (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
            (source === 'radreel' && url.includes('wolftv.online') && !url.includes(PROXY_BASE)) ||
@@ -403,9 +416,11 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                  // UPDATED: FreeShort/DramaWave/SRT: Use local proxy
                  const isSrt = sub.url.includes('.srt');
                  if (isSrt || source === 'dramawave' || source === 'freeshort') {
-                      track.src = '/api/proxy?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+                      track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+                 } else if (source === 'netshort') {
+                      track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url);
                  } else {
-                      track.src = (source === 'netshort') ? PROXY_BASE + '?url=' + encodeURIComponent(sub.url) : sub.url;
+                      track.src = sub.url;
                  }
                  
                  if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
@@ -571,9 +586,11 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                       // UPDATED: FreeShort/DramaWave/SRT: Use local proxy
                       const isSrt = sub.url.includes('.srt');
                       if (isSrt || source === 'dramawave' || source === 'freeshort') {
-                          track.src = '/api/proxy?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+                          track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
+                      } else if (source === 'netshort') {
+                          track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url);
                       } else {
-                          track.src = (source === 'netshort') ? PROXY_BASE + '?url=' + encodeURIComponent(sub.url) : sub.url;
+                          track.src = sub.url;
                       }
                       
                       if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
@@ -649,9 +666,9 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           }
        } else {
          // Non-HLS video (MP4, e.g., NetShort)
-         // Route through encrypted proxy to hide URL
-         if (source === 'netshort' && !url.includes(PROXY_BASE)) {
-            url = PROXY_BASE + '?url=' + encodeURIComponent(url);
+         // NetShort: Use VPS proxy for SSL compatibility
+         if (source === 'netshort' && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
+            url = VPS_PROXY + '?url=' + encodeURIComponent(url);
          }
          
          videoElement.src = url;

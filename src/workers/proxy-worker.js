@@ -73,10 +73,15 @@ export default {
         }
 
         try {
+            // Cloudflare Workers fetch options
+            // Note: Workers don't support cf.ssl.strict option
+            // Instead, we can use cf.cacheTtl or other valid options
             const response = await fetch(targetUrl, {
                 method: request.method,
                 headers: headers,
-                redirect: 'follow'
+                redirect: 'follow',
+                // Remove invalid SSL option - Workers handle SSL automatically
+                // If you need to bypass SSL verification, you may need to use a different approach
             });
 
             // Cloning headers to modify them
@@ -124,7 +129,25 @@ export default {
             });
 
         } catch (e) {
-            return new Response('Proxy Error: ' + e.message, { status: 500 });
+            // Enhanced error logging for debugging
+            console.error('Proxy Error:', {
+                message: e.message,
+                targetUrl: targetUrl,
+                stack: e.stack
+            });
+
+            return new Response(JSON.stringify({
+                error: 'Proxy Error',
+                message: e.message,
+                targetUrl: targetUrl,
+                hint: 'If this is a 526 error, the upstream server may have an invalid SSL certificate'
+            }), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
         }
     }
 };
