@@ -1,220 +1,124 @@
-import https from 'https';
-import zlib from 'zlib';
 import { normalizeDramaWave, type UnifiedDrama } from '../adapter';
 
-const DRAMAWAVE_BASE_AUTH = {
-    // OLD TOKEN (Validation passes)
-    oauth_signature: 'cca7cf0fb4c05ec354e08b59993360d9',
-    oauth_token: 'uqLUbfoAbgOpjSqXaWzq41b27czoEYag'
-};
+// API CONSTANTS
+const API_BASE = 'https://sapimu.au/dramawave/api/v1';
 
-function getDramaWaveHeaders(isVipMode: boolean = false): Record<string, string> {
-    const timestamp = '1767280565428';
+// Token Rotation (Shared with ShortMax)
+const API_TOKENS = [
+    '14dcdd925122153afdb1e6e51d6c496e42d38c4149b9974d83eb5b8cb2eef8bb', // Original
+    'ba3f5eb1a23ef0c00dee764bd05cee7bc6606453deca551185301200cf35b941', // kido345
+    '8c02960a5aa268ac4ca89b9e86d9d93ea4bb257ed9dc89bc584e3e4aa87c9d8d', // nxxzzz286919
+    'b53a335e49b725f092cda317fee26c2707c5eb2f5bc87a60eb1a1367aa6b090e'  // nexsus72
+];
 
-    // Config for Library Access (Suami Sewaan exists here)
-    const LIB_APP = {
-        name: 'com.dramabuzz.app',
-        ver: '1.7.00',
-        ua: 'DramaWave/1.7.00 (iPhone; iOS 17.0.3; Scale/3.00)',
-        appsflyer: '1767263420779-3169624'
-    };
-
-    // Config for VIP Access (Premium actually works here)
-    const VIP_APP = {
-        name: 'com.freereels.app',
-        ver: '2.1.00',
-        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0.1 Mobile/15E148 Safari/604.1',
-        appsflyer: '1767286674238-964377822658472300'
-    };
-
-    const SELECTED = isVipMode ? VIP_APP : LIB_APP;
-
-    return {
-        // PERMANENT VIP CREDENTIALS (Session & Device)
-        'session-id': '1bf35e42-4f79-4ff9-a9de-689316ccf138',
-        'device-id': 'af25a4fb-5739-4b3b-bee5-068add56cac3',
-
-        // AUTH
-        'Authorization': `oauth_signature=${DRAMAWAVE_BASE_AUTH.oauth_signature},oauth_token=${DRAMAWAVE_BASE_AUTH.oauth_token},ts=${timestamp}`,
-
-        // DYNAMIC APP IDENTITY
-        'app-name': SELECTED.name,
-        'app-version': SELECTED.ver,
-        'User-Agent': SELECTED.ua,
-        'x-appsflyer_id': SELECTED.appsflyer,
-        'appsflyer-id': SELECTED.appsflyer,
-
-        // DEVICE (Shared)
-        'device': 'ios',
-        'x-device-model': 'iPhone',
-
-        // STANDARD HEADERS
-        'language': 'id-ID',
-        'country': 'ID',
-        'timezone': '+7',
-        'screen-width': '390',
-        'screen-height': '844',
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive'
-    };
+function getRandomToken() {
+    return API_TOKENS[Math.floor(Math.random() * API_TOKENS.length)];
 }
 
-// Add extra arg to fetch function to pass mode
-export function fetchDramaWave(endpoint: string, method: string = 'GET', body: any = null, isVipMode: boolean = false): Promise<any> {
-    return new Promise((resolve) => {
-        try {
-            const urlObj = new URL(endpoint);
-            const headers = getDramaWaveHeaders(isVipMode); // PASS MODE
-            headers['Accept-Encoding'] = 'gzip, deflate, br';
-            headers['Connection'] = 'keep-alive';
+async function fetchInternal(endpoint: string): Promise<any> {
+    const url = `${API_BASE}${endpoint}`;
+    const token = getRandomToken();
 
-            if (body) {
-                headers['Content-Type'] = 'application/json';
+    console.log(`[DramaWave] Fetching: ${url}`);
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
+        });
 
-            // ... rest of fetch implementation
-
-            const options: https.RequestOptions = {
-                method: method,
-                headers: headers,
-                hostname: urlObj.hostname,
-                path: urlObj.pathname + urlObj.search,
-                port: 443
-            };
-
-            const req = https.request(options, (res) => {
-                let chunks: any[] = [];
-                res.on('data', (chunk) => chunks.push(chunk));
-                res.on('end', () => {
-                    if (res.statusCode !== 200) {
-                        console.warn('[fetchDramaWave] HTTP Error:', res.statusCode);
-                        resolve(null);
-                        return;
-                    }
-
-                    try {
-                        let buffer = Buffer.concat(chunks);
-                        const encoding = res.headers['content-encoding'];
-                        if (encoding === 'gzip') {
-                            buffer = zlib.gunzipSync(buffer);
-                        } else if (encoding === 'deflate') {
-                            buffer = zlib.inflateSync(buffer);
-                        } else if (encoding === 'br') {
-                            buffer = zlib.brotliDecompressSync(buffer);
-                        }
-
-                        const text = buffer.toString();
-                        const data = JSON.parse(text);
-
-                        if (data.code && data.code !== 200) {
-                            console.warn('[fetchDramaWave] API Error: ' + JSON.stringify(data));
-                            resolve(null);
-                            return;
-                        }
-
-                        resolve(data.data || null);
-                    } catch (e) {
-                        console.error('[fetchDramaWave] Parse Error:', e);
-                        resolve(null);
-                    }
-                });
-            });
-
-            req.on('error', (e) => {
-                console.error('[fetchDramaWave] Req Error:', e);
-                resolve(null);
-            });
-
-            if (body) {
-                req.write(JSON.stringify(body));
-            }
-            req.end();
-
-        } catch (e) {
-            console.error('[fetchDramaWave] Setup Error:', e);
-            resolve(null);
+        if (!response.ok) {
+            console.error(`[DramaWave] HTTP Error ${response.status} for ${endpoint}`);
+            return null;
         }
-    });
+
+        const data = await response.json();
+        return data;
+    } catch (e) {
+        console.error(`[DramaWave] Network Error for ${endpoint}:`, e);
+        return null;
+    }
 }
 
 export async function getDramaWaveForYou(): Promise<UnifiedDrama[]> {
-    const data = await fetchDramaWave('https://api.mydramawave.com/dm-api/foryou/feed?next=');
-    return extractList(data);
+    // URL: https://sapimu.au/dramawave/api/v1/feed/popular?lang=in&page=1&lang=id-ID
+    const data = await fetchInternal('/feed/popular?lang=in&page=1&lang=id-ID');
+
+    if (!data || !data.data || !Array.isArray(data.data.items)) return [];
+
+    let allItems: any[] = [];
+
+    // The feed returns a list of modules (banner, vertical list, horizontal list, etc.)
+    // We need to extract the actual drama items from inside these modules.
+    data.data.items.forEach((module: any) => {
+        if (module.items && Array.isArray(module.items)) {
+            allItems = allItems.concat(module.items);
+        } else if (module.list && Array.isArray(module.list)) {
+            allItems = allItems.concat(module.list);
+        }
+    });
+
+    // Remove duplicates based on ID/Key
+    const uniqueItems = new Map();
+    allItems.forEach(item => {
+        const id = item.key || item.id;
+        if (id && !uniqueItems.has(id)) {
+            uniqueItems.set(id, item);
+        }
+    });
+
+    return Array.from(uniqueItems.values())
+        .map((item: any) => normalizeDramaWave(item))
+        .filter((i: UnifiedDrama) => i.id);
 }
 
-export async function searchDramaWave(query: string, maxPages: number = 20): Promise<UnifiedDrama[]> {
-    let allItems: any[] = [];
-    let nextCursor = '';
-    let page = 0;
+export async function searchDramaWave(query: string): Promise<UnifiedDrama[]> {
+    // URL: https://sapimu.au/dramawave/api/v1/search?lang=in&q=cinta-ID
+    const data = await fetchInternal(`/search?lang=in&q=${encodeURIComponent(query)}`);
 
-    while (page < maxPages) {
-        const res = await fetchDramaWave('https://api.mydramawave.com/dm-api/search/drama', 'POST', {
-            keyword: query,
-            timestamp: Math.floor(Date.now() / 1000).toString(),
-            next: nextCursor
-        });
+    if (!data) return [];
 
-        if (res && res.items) {
-            allItems = allItems.concat(res.items);
-            if (res.page_info && res.page_info.has_more && res.page_info.next) {
-                nextCursor = res.page_info.next;
-                page++;
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
-    }
-    return extractList({ items: allItems });
+    let list = [];
+    if (Array.isArray(data)) list = data;
+    else if (Array.isArray(data.data)) list = data.data;
+    else if (data.data && Array.isArray(data.data.items)) list = data.data.items; // Search items are here
+    else if (data.data && Array.isArray(data.data.result_list)) list = data.data.result_list; // Possible variation
+
+    return list.map((item: any) => normalizeDramaWave(item)).filter((i: UnifiedDrama) => i.id);
 }
 
 export async function getDramaWaveDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
-    const detailUrl = `https://api.mydramawave.com/dm-api/drama/info_v2?campaign=&series_id=${id}`;
+    // URL: https://sapimu.au/dramawave/api/v1/dramas/xuyr3DtXPt?lang=in&lang=id-ID
+    const data = await fetchInternal(`/dramas/${id}?lang=in&lang=id-ID`);
 
-    // TRY VIP MODE FIRST (for VIP library dramas)
-    let detailData = await fetchDramaWave(detailUrl, 'GET', null, true);
-    let usedVipMode = true;
-
-    // If VIP mode fails or returns no episodes, try Library mode
-    if (!detailData || !detailData.info || !detailData.info.episode_list || detailData.info.episode_list.length === 0) {
-        console.log('[DramaWave] VIP mode failed, trying Library mode...');
-        detailData = await fetchDramaWave(detailUrl, 'GET', null, false);
-        usedVipMode = false;
+    if (!data || !data.data) {
+        return { drama: null, episodes: [] };
     }
 
-    if (detailData && detailData.info) {
-        const info = detailData.info;
-        const dramaInfo = {
-            title: info.name,
-            cover: info.cover,
-            description: info.desc,
-            chapterCount: info.episode_count || info.episode_list?.length || 0,
-            labels: info.series_tag || [],
-            source: 'dramawave'
-        };
+    // The API returns { data: { info: { ... } } }
+    const info = data.data.info || data.data;
 
-        const episodes = (info.episode_list || []).map((ep: any, index: number) => ({
-            id: ep.id,
-            name: ep.name || `Episode ${index + 1}`,
-            index: index,
-            unlock: true, // We unlock everything via headers
-            raw: ep
-        }));
+    const dramaInfo = {
+        title: info.name || info.title,
+        cover: info.cover,
+        description: info.desc || info.introduction || info.summary,
+        chapterCount: info.episode_count || (info.episode_list && info.episode_list.length) || 0,
+        labels: info.tags || info.series_tag || [],
+        source: 'dramawave'
+    };
 
-        console.log(`[DramaWave] Successfully fetched detail using ${usedVipMode ? 'VIP' : 'Library'} mode`);
-        return { drama: dramaInfo, episodes };
-    }
-    return { drama: null, episodes: [] };
-}
+    const rawEpisodes = info.episode_list || info.episodes || [];
+    const episodes = rawEpisodes.map((ep: any, index: number) => ({
+        id: ep.id,
+        name: ep.name || `Episode ${index + 1}`,
+        index: index,
+        unlock: true, // Proxied content is unlocked
+        raw: ep
+    }));
 
-function extractList(data: any): UnifiedDrama[] {
-    if (!data) return [];
-    let items: any[] = [];
-    if (data && data.items) items = data.items;
-    else if (data && data.list) items = data.list;
-    else if (Array.isArray(data)) items = data;
-
-    return items.map(item => normalizeDramaWave(item)).filter(i => i.id);
+    return { drama: dramaInfo, episodes };
 }

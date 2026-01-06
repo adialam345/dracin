@@ -1,7 +1,11 @@
 
 import { normalizeGoodShort, type UnifiedDrama } from '../adapter';
 
+// Mobile API for home feed
 const API_BASE = 'https://api-akm.goodreels.com/hwycclientreels';
+
+// Using the web API endpoint that provides m3u8 URLs directly
+const WEB_API_BASE = 'https://www.goodshort.com/hwycreels';
 
 // HARDCODED HEADERS FROM USER (May expire!)
 const HOME_HEADERS = {
@@ -37,17 +41,19 @@ const HOME_HEADERS = {
     "userId": "184491354"
 };
 
-const SEARCH_HEADERS = {
-    ...HOME_HEADERS,
-    "sign": "jXd6eAIcRdzOzSCWjbVWuHAnchUY7PtL+UiO18tnemw0pQ45qH0zrLRelqBJkrSdU+J7/Ij5/Vecgg3PZbAaVNfKmfLkff5SDWU7INOg6G4hgVCiBCSz32ilyisK23rq7+GrsFUP1PRZ35ncutu/QoQn5LncOLdPLfgfKVZJ4do7XIVtZTt79ET2pQOZQ8DN3uXDmdRRDQsDUvpIlBlwayEXXHKaNxSNCwLYWfXRyTVBTv16S+pKgfzSCnwemWkxTaG+R+wUr2Exq+y7iRtuwZeF3lTdUW0rB+2p/M8uHWyvzJOJkAt64EvaQfQ8FPSckosSZ1QQO7Dnra1hqUV0UQ=="
+// Web API headers (from browser network tab)
+const WEB_HEADERS = {
+    "accept": "application/json, text/plain, */*",
+    "accept-language": "id-ID,id;q=0.9,und;q=0.8,en;q=0.7",
+    "content-type": "application/json;charset=UTF-8",
+    "currentlanguage": "id",
+    "platform": "WEB",
+    "origin": "https://www.goodshort.com",
+    "referer": "https://www.goodshort.com/id",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 };
 
-const DETAIL_HEADERS = {
-    ...HOME_HEADERS,
-    "sign": "Q0CcYw+9Ma+h6hq16wNUUhxX8qS+FMzZmKZBX4OcBbnBAURWbL0NzVsX5aF4c8pv8dVN5ko8qdlkTdULtMF5mnufJ5+LTnjcA2k935RH3mfbEgUcfA+3Wh5ei87ykx+5TbrxeuBTMrBMnU6h8N06gQ1abLY1CC4Zmy2+QNjJE3zUfbu+YBC8ORsxhMTP0bwQZWJWqF4mt9AuR4AV6LLwKwaq4GlmP4QEYFec4FcqMECz56oQi2YGvkKEggqSvduHn5asS8Nl0lFiD6KADACQU8xQnA36hmX1bX2M+d7MAivU8InVwm2WRbolJTygynWlZDoJk/LysFXKu7L29A7tzA=="
-};
-
-async function fetchGoodShort(url: string, body: any, headers: any = HOME_HEADERS) {
+async function fetchGoodShort(url: string, body: any, headers: any = WEB_HEADERS) {
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -65,110 +71,98 @@ async function fetchGoodShort(url: string, body: any, headers: any = HOME_HEADER
     }
 }
 
+// Use web API with a workaround: fetch a popular drama and get recommendations
 export async function getGoodShortHome(): Promise<UnifiedDrama[]> {
-    const url = `${API_BASE}/home/index?timestamp=1767620758012`;
-    // Using simple body for Home
-    const body = {
-        "pageNo": 1,
-        "vipBookEnable": false,
-        "channelType": 1,
-        "pageSize": 30,
-        "channelId": "-1",
-        "index": ""
-    };
+    // Popular drama IDs to fetch recommendations from
+    const seedDramaIds = [
+        '31001223187', // Dapat 5 Anak, Ibunya Ratu
+        '31000914420', // Berawal dari Kesalahpahaman
+        '31001210540', // Titik Putus Sebuah Cinta
+        '31000767023', // Kembar Lima Bersatu
+    ];
 
-    const data = await fetchGoodShort(url, body, HOME_HEADERS);
-    if (!data || !data.data || !data.data.records) return [];
+    const allDramas: UnifiedDrama[] = [];
+    const seenIds = new Set<string>();
 
-    let allItems: any[] = [];
-    // Traverse sections
-    data.data.records.forEach((section: any) => {
-        if (section.items && Array.isArray(section.items)) {
-            allItems = [...allItems, ...section.items];
-        } else if (section.id && section.cover) {
-            // If the record itself is a drama (fallback)
-            allItems.push(section);
+    // Fetch recommendations from multiple seed dramas
+    for (const seedId of seedDramaIds) {
+        try {
+            const url = `${WEB_API_BASE}/book/detail`;
+            const body = { "bookId": seedId };
+            const data = await fetchGoodShort(url, body, WEB_HEADERS);
+
+            if (data && data.data) {
+                // Get recommendations from this drama
+                const recommends = data.data.recommends || [];
+                const guessLike = data.data.guessLike || [];
+
+                // Combine both lists
+                const combined = [...recommends, ...guessLike];
+
+                combined.forEach((item: any) => {
+                    const id = item.bookId || item.id;
+                    if (id && !seenIds.has(id)) {
+                        seenIds.add(id);
+                        allDramas.push(normalizeGoodShort(item));
+                    }
+                });
+            }
+        } catch (e) {
+            console.error('[GoodShort] Error fetching recommendations from', seedId, e);
         }
-    });
-
-    return allItems.map(normalizeGoodShort);
-}
-
-export async function searchGoodShort(query: string): Promise<UnifiedDrama[]> {
-    // WARNING: Signature is likely bound to the keyword.
-    // We try to use the provided sign for generic search, BUT if query changes, sign might be invalid.
-    // Since we don't have the signing algo, we try our best.
-    const url = `${API_BASE}/book/search1?timestamp=1767620763423`;
-    const body = {
-        "pageSize": 20,
-        "keyword": query,
-        "pageNo": 1
-    };
-
-    // Use SEARCH_HEADERS. If query is diff from 'suami', this might fail if server checks sign vs body.
-    const data = await fetchGoodShort(url, body, SEARCH_HEADERS);
-
-    if (!data || !data.data) return [];
-
-    // Check if data.data.searchResult.records exists or data.data.list
-    let list: any[] = [];
-    if (data.data.searchResult && Array.isArray(data.data.searchResult.records)) {
-        list = data.data.searchResult.records;
-    } else if (data.data.list && Array.isArray(data.data.list)) {
-        list = data.data.list;
-    } else if (data.data.records && Array.isArray(data.data.records)) {
-        list = data.data.records;
     }
 
-    return list.map(normalizeGoodShort);
+    console.log('[GoodShort] Home feed collected', allDramas.length, 'dramas from recommendations');
+    return allDramas;
+}
+
+// Search is disabled for now since we don't have a working endpoint
+export async function searchGoodShort(query: string): Promise<UnifiedDrama[]> {
+    console.warn('[GoodShort] Search not implemented for web API');
+    return [];
 }
 
 export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDrama, episodes: any[], videoUrl?: string } | null> {
-    const url = `${API_BASE}/book/quick/open?timestamp=1767620771981`;
+    const url = `${WEB_API_BASE}/book/detail`;
     const body = {
-        "bookId": id.toString(),
-        "chapterId": 0
+        "bookId": id
     };
 
-    // Use DETAIL_HEADERS
-    const data = await fetchGoodShort(url, body, DETAIL_HEADERS);
+    const data = await fetchGoodShort(url, body, WEB_HEADERS);
 
-    // data.data contains { book: {...}, list: [...] }
+    // Response structure: { data: { book: {...}, chapterVo: {...}, chapterVoList: [...] } }
     if (!data || !data.data) return null;
 
     const result = data.data;
-    const bookInfo = result.book || result; // Fallback if book is not nested
+    const bookInfo = result.book;
 
-    // Episodes are in result.list, NOT result.chapterList!
-    const episodeList = result.list || result.chapterList || [];
+    if (!bookInfo) return null;
 
-    // Normalize logic for detail response
+    // Normalize the drama info
     const drama = normalizeGoodShort({
-        ...bookInfo,
         bookId: bookInfo.bookId || id,
-        name: bookInfo.bookName || bookInfo.name || bookInfo.title,
-        introduction: bookInfo.introduction || bookInfo.desc || 'No description available',
-        cover: bookInfo.cover || bookInfo.bookDetailCover,
-        chapterCnt: bookInfo.chapterCount || bookInfo.chapterCnt || episodeList.length
+        name: bookInfo.bookName || bookInfo.name,
+        introduction: bookInfo.introduction || 'No description available',
+        cover: bookInfo.cover || bookInfo.cover2,
+        chapterCnt: bookInfo.chapterCount || result.chapterVoList?.length || 0,
+        viewCount: bookInfo.viewCount,
+        ratings: bookInfo.ratings,
+        writeStatus: bookInfo.writeStatus,
+        typeTwoNames: bookInfo.typeTwoNames
     });
 
-    let episodes: any[] = [];
-    if (episodeList && Array.isArray(episodeList)) {
-        episodes = episodeList.map((ep: any, index: number) => {
-            // Extract video URL from cdnList if available
-            let videoUrl = '';
-            if (ep.cdnList && Array.isArray(ep.cdnList) && ep.cdnList.length > 0) {
-                // cdnList[0] has { cdnDomain, videoPath }
-                const cdn = ep.cdnList[0];
-                videoUrl = cdn.videoPath || '';
-            }
+    // Episodes are in chapterVoList
+    const episodeList = result.chapterVoList || [];
 
+    let episodes: any[] = [];
+    if (Array.isArray(episodeList)) {
+        episodes = episodeList.map((ep: any, index: number) => {
             return {
                 id: ep.id ? ep.id.toString() : String(index + 1),
                 name: ep.chapterName || `Episode ${index + 1}`,
                 index: index,
-                unlock: ep.price === 0 || ep.status === 1,
-                raw: { ...ep, videoUrl }
+                unlock: ep.price === 0 || ep.price === undefined,
+                raw: ep  // Store the full episode data including m3u8Path
             };
         });
     }
@@ -178,29 +172,22 @@ export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDr
 }
 
 export async function getGoodShortVideoUrl(bookId: string, episodeId: string): Promise<string> {
-    // Call the detail API and find the episode with matching ID
-    const url = `${API_BASE}/book/quick/open?timestamp=1767620771981`;
+    // Get the detail which includes all episodes with their m3u8 URLs
+    const url = `${WEB_API_BASE}/book/detail`;
     const body = {
-        "bookId": bookId,
-        "chapterId": 0  // Get all episodes
+        "bookId": bookId
     };
 
-    const data = await fetchGoodShort(url, body, DETAIL_HEADERS);
+    const data = await fetchGoodShort(url, body, WEB_HEADERS);
 
-    if (data && data.data) {
-        const res = data.data;
-
-        // Episodes are in res.list
-        const episodeList = res.list || res.chapterList || [];
+    if (data && data.data && data.data.chapterVoList) {
+        const episodeList = data.data.chapterVoList;
 
         if (Array.isArray(episodeList)) {
             const ep = episodeList.find((e: any) => String(e.id) === String(episodeId));
-            if (ep && ep.cdnList && Array.isArray(ep.cdnList) && ep.cdnList.length > 0) {
-                // Return the videoPath from first CDN
-                const cdn = ep.cdnList[0];
-                const videoUrl = cdn.videoPath || '';
-                console.log("[GoodShort] Video URL found for episode", episodeId, ":", videoUrl.substring(0, 80));
-                return videoUrl;
+            if (ep && ep.m3u8Path) {
+                console.log("[GoodShort] Video URL found for episode", episodeId);
+                return ep.m3u8Path;
             }
         }
     }

@@ -79,7 +79,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         Netshort.searchNetshort(query),
         Melolo.searchMelolo(query),
         RadReel.searchRadReel(query),
-        DramaWave.searchDramaWave(query, 20), // Fetch up to 20 pages
+        DramaWave.searchDramaWave(query), // Fetch search results
         FlickReels.searchFlickReels(query),
         DramaDash.searchDramaDash(query),
         ShortMax.searchShortMax(query),

@@ -12,13 +12,5 @@ export default defineConfig({
   integrations: [tailwind()],
   devToolbar: {
     enabled: false
-  },
-  vite: {
-    server: {
-      // Allow the tunnel hostname
-      allowedHosts: ['dracin.antarixa.qzz.io', 'qzz.io', '.qzz.io', 'localhost'],
-      // Disable HMR to prevent WebSocket issues with tunnel and localhost
-      hmr: false
-    }
   }
 });
