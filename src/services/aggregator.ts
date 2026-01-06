@@ -483,42 +483,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 }
             }
         } else if (source === 'starshort') {
-            // Identical logic to RadReel but with StarShort fetcher and domains
-            // Priority 1: Check cache/direct
-            if (episodeId === '0') {
-                const cached = dramaDetailsCache.get('starshort_' + bookId);
-                if (cached && cached.raw?.videoUrl) return cached.raw.videoUrl;
-            }
-
-            // Priority 2: Use list endpoint to find match
-            const parts = bookId.split('_');
-            const fakeId = parts[0];
-            const url = 'https://cdp.starshort.online/content/state_res/episodic_movie/movies/' + fakeId;
-            const data = await StarShort.fetchStarShort(url);
-
-            if (data && Array.isArray(data)) {
-                const ep = data.find((e: any) => e.videoFakeId === episodeId);
-                if (ep) {
-                    if (ep.videoUrl) videoUrl = ep.videoUrl;
-                    else {
-                        // Attempt to fetch detail
-                        const videoDetailUrl = 'https://cdp.starshort.online/content/movie/v5/' + ep.videoFakeId + '?compilationsId=' + ep.compilationsId + '&episodicDramaId=' + (ep.id) + '&videoFakeId=' + ep.videoFakeId;
-                        const detailData = await StarShort.fetchStarShort(videoDetailUrl);
-
-                        if (detailData) {
-                            let list = [];
-                            if (Array.isArray(detailData.videoFiles)) list = detailData.videoFiles;
-                            else if (detailData.definitionList) list = detailData.definitionList;
-                            else if (detailData.videoFiles?.definitionList) list = detailData.videoFiles.definitionList;
-
-                            if (list.length > 0) {
-                                const target = list.find((d: any) => d.definition === 'SD') || list[0];
-                                videoUrl = target.videoUrl || target.url || target.videoUri || '';
-                            }
-                        }
-                    }
-                }
-            }
+            videoUrl = await StarShort.getStarShortVideoUrl(bookId, episodeId);
         } else if (source === 'freeshort') {
             const parts = episodeId.split('_');
             const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;

@@ -166,19 +166,16 @@ export function normalizeFreeShort(data: any): UnifiedDrama {
 }
 
 export function normalizeStarShort(data: any): UnifiedDrama {
-    // ID format: fakeId_compilationsId
-    // Logic similar to RadReel
-    const id = (data.fakeId && data.compilationsId)
-        ? `${data.fakeId}_${data.compilationsId}`
-        : (data.id || '');
+    // ID format: Prioritize fakeId (e.g. 1jG2) which matches sapimu API
+    const id = data.fakeId || data.id || String(data.drama_id || '');
 
     return {
         id: id,
-        title: stripHtml(data.title || ''),
-        cover: data.coverImgUrl || '',
-        description: stripHtml(data.introduction || data.introduce || ''),
+        title: stripHtml(data.title || data.name || ''),
+        cover: data.cover || data.coverImgUrl || data.poster || '',
+        description: stripHtml(data.introduction || data.introduce || data.description || data.desc || ''),
         source: 'starshort',
-        chapterCount: data.uploadOfEpisodes || 0,
+        chapterCount: data.uploadOfEpisodes || data.episodes_count || data.total_episodes || 0,
         raw: {
             ...data,
             videoUrl: data.videoUrl || ''
