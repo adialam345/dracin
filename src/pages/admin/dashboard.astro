@@ -1,5 +1,12 @@
 ---
 import '../../styles/global.css';
+import { validateSession } from '../../lib/admin';
+
+// Server Side Protection
+const sessionCookie = Astro.cookies.get('admin_session');
+if (!sessionCookie || !validateSession(sessionCookie.value)) {
+  return Astro.redirect('/admin/login');
+}
 ---
 
 <!doctype html>
@@ -259,12 +266,9 @@ import '../../styles/global.css';
     </div>
 
     <script>
-      // Check authentication
-      const authToken = sessionStorage.getItem('adminAuth');
-      if (!authToken) {
-        window.location.href = '/admin/login';
-      }
-
+      // Check authentication - Server side protected, but good for client redirect if session expires
+      // No need for client-side check anymore as the page is protected server-side
+      
       // Helper function to format time
       function formatTimeAgo(seconds: number): string {
         if (seconds < 60) return `${seconds}d yang lalu`;
@@ -295,14 +299,9 @@ import '../../styles/global.css';
 
       async function fetchAnalytics() {
         try {
-          const response = await fetch('/api/admin/analytics', {
-            headers: {
-              'Authorization': `Basic ${authToken}`
-            }
-          });
+          const response = await fetch('/api/admin/analytics');
 
           if (response.status === 401) {
-            sessionStorage.removeItem('adminAuth');
             window.location.href = '/admin/login';
             return;
           }
@@ -392,8 +391,8 @@ import '../../styles/global.css';
       });
 
       // Logout
-      document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        sessionStorage.removeItem('adminAuth');
+      document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        await fetch('/api/admin/login', { method: 'DELETE' });
         window.location.href = '/admin/login';
       });
 
@@ -410,11 +409,7 @@ import '../../styles/global.css';
 
       async function fetchErrorReports() {
         try {
-          const response = await fetch('/api/admin/error-reports', {
-            headers: {
-              'Authorization': `Basic ${authToken}`
-            }
-          });
+          const response = await fetch('/api/admin/error-reports');
 
           if (response.status === 401) return;
 
@@ -511,7 +506,6 @@ import '../../styles/global.css';
           await fetch('/api/admin/error-reports', {
             method: 'DELETE',
             headers: {
-              'Authorization': `Basic ${authToken}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({ id, action })
@@ -529,7 +523,6 @@ import '../../styles/global.css';
             await fetch('/api/admin/error-reports', {
               method: 'DELETE',
               headers: {
-                'Authorization': `Basic ${authToken}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({ action: 'clear-all' })

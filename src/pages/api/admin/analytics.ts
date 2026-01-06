@@ -136,28 +136,16 @@ export const POST: APIRoute = async ({ request }) => {
     }
 };
 
-export const GET: APIRoute = async ({ request }) => {
-    // Verify admin authentication
-    const authHeader = request.headers.get('authorization');
+import { validateSession } from '../../../lib/admin';
 
-    if (!authHeader) {
+// ... (existing imports and code)
+
+export const GET: APIRoute = async ({ cookies }) => {
+    // Verify admin authentication via Cookie
+    const sessionCookie = cookies.get('admin_session');
+
+    if (!sessionCookie || !validateSession(sessionCookie.value)) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    // Decode Basic auth
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = atob(base64Credentials);
-    const [username, password] = credentials.split(':');
-
-    // Admin credentials from environment variables
-    const ADMIN_USERNAME = import.meta.env.ADMIN_USERNAME || 'mrxnexsus';
-    const ADMIN_PASSWORD = import.meta.env.ADMIN_PASSWORD || 'DramaIn2026!Secure';
-
-    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-        return new Response(JSON.stringify({ error: 'Invalid credentials' }), {
             status: 401,
             headers: { 'Content-Type': 'application/json' }
         });

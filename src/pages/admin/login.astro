@@ -168,23 +168,27 @@ import '../../styles/global.css';
           <span>Memverifikasi...</span>
         `;
         (submitBtn as HTMLButtonElement).disabled = true;
+        errorMessage?.classList.add('hidden');
         
         try {
-          // Verify credentials by making a request to analytics endpoint
-          const response = await fetch('/api/admin/analytics', {
+          const response = await fetch('/api/admin/login', {
+            method: 'POST',
             headers: {
-              'Authorization': 'Basic ' + btoa(`${username}:${password}`)
-            }
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
           });
           
+          const data = await response.json();
+          
           if (response.ok) {
-            // Store credentials securely in session
-            sessionStorage.setItem('adminAuth', btoa(`${username}:${password}`));
-            
-            // Redirect to dashboard
+            // Redirect to dashboard (cookie is set automatically)
             window.location.href = '/admin/dashboard';
           } else {
+            // Show error
+            errorMessage!.textContent = data.error || 'Terjadi kesalahan';
             errorMessage?.classList.remove('hidden');
+            
             submitBtn!.innerHTML = `
               <span>Masuk</span>
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,6 +198,7 @@ import '../../styles/global.css';
             (submitBtn as HTMLButtonElement).disabled = false;
           }
         } catch (error) {
+          errorMessage!.textContent = 'Gagal menghubungi server';
           errorMessage?.classList.remove('hidden');
           submitBtn!.innerHTML = `
             <span>Masuk</span>
@@ -205,10 +210,6 @@ import '../../styles/global.css';
         }
       });
 
-      // Check if already logged in
-      if (sessionStorage.getItem('adminAuth')) {
-        window.location.href = '/admin/dashboard';
-      }
     </script>
   </body>
 </html>
