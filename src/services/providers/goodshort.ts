@@ -1,104 +1,186 @@
 
 import { normalizeGoodShort, type UnifiedDrama } from '../adapter';
+import crypto from 'node:crypto';
 
-// Mobile API for home feed
+// Mobile API endpoint
 const API_BASE = 'https://api-akm.goodreels.com/hwycclientreels';
-
-// Using the web API endpoint that provides m3u8 URLs directly
+// Web API endpoint (fallback for video parsing if needed)
 const WEB_API_BASE = 'https://www.goodshort.com/hwycreels';
 
-// HARDCODED HEADERS FROM USER (May expire!)
-const HOME_HEADERS = {
-    "Host": "api-akm.goodreels.com",
-    "channelCode": "GSASA00001",
-    "deviceId": "3d53f928d1aa4dbc9d50347e95f180ee",
-    "bigdataSession": "FB7F81F0-9FAC-4673-A273-D36937AD368E",
-    "platform": "IOS",
-    "Accept": "*/*",
-    "apn": "2",
-    "Content-Type": "application/json",
-    "User-Agent": "GoodShort/2.4.1 (iPhone; iOS 17.0.3; Scale/3.00)",
-    "pname": "com.newreading.goodreels",
-    "localTime": "2026-01-05 20:45:58.016 +0700",
-    "Cookie": 'RT="z=1&dm=api-akm.goodreels.com&si=cc888172-3aac-457a-8298-920eb1607219&ss=mk14veb5&sl=1&tt=11u&rl=1&ld=3e7"',
-    "brand": "apple",
-    "Accept-Language": "id-ID;q=1",
-    "lqa": "0",
-    "p": "186",
-    "currentLanguage": "in",
-    "model": "iPhone 12",
-    "ramSize": "3840163840",
-    "afid": "1767615583636-3539281",
-    "os": "17.0.3",
-    "Authorization": "Bearer ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKSVV6STFOaUo5LmV5SnlaV2RwYzNSbGNsUjVjR1VpT2lKVVJVMVFJaXdpZFhObGNrbGtJam94T0RRME9URXpOVFI5LkpuV0cwWmNfMmczZGVwWDF4YWZvc19VdXk1QnlneG10TXBGNVhCbHVjSmM=",
-    "sign": "tOATxkCi6oxWiTVKRrC4d60dSRAbZK/sl/EY8wmd4t6sJDqG+VvkunmKqiajMUvq3gC/wyHbosWT3HWyCiKVUMWJFUZH9HYWRcT6kmepBJPHZt2y7myeZCedGl6B66PgoWAmwet/U2SrtHofMqzOZ5Ux5nXuzfAW8eF6fCTlHmYkPaxWGZsjEGKESkU2pUWxMu8X/ab6TBj7EbgutFmHbwvno/qx5DMJu9p1HPqtrZJwUzDcZ6NwDu2sULzvT98+3slwd7mNe4S/VrmhMSl1Zdrx0j1OZiNuq5TS6MK9/MJImJDYAnRLhg8q4tJ8JifzgParjR/yfx8Bg6VRDlCNPw==",
-    "gender": "UNKNOWN",
-    "sysModel": "iPhone13,2",
-    "appVersion": "204010",
-    "romSize": "63870980096",
-    "language": "in",
-    "timeZone": "+0700",
-    "userId": "184491354"
-};
+// Private Key from Android App (sources/c/a.java)
+const PRIVATE_KEY_PEM = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDLwHQE9g2+/DJm
+iVtNS6v0SmHKAEzGaClFMHMNszfi5GDkrA9SjT1Z87tScD2feSSuuKJIoSYL1o3m
+qgmX2pCN/5rPzOifJ6gQjGZjLuvuxmvSRk8jHqsPoqj/QH6qhF5n2Mpr5oirGD9I
+Ug3RRtdy0RfRuXxHLCnYhKfXKP+TdcK/1Hi/vPONlCpJo7ph62KVeUD+qACYZUNj
+diZxklZZASac24OjBdFZOd/ZtINM4wOaHFpwHmnoq89qM1MP09gJc7tPlPONFoWI
+AVpfwjtjRsCbFuGQdBf7FlEsxivef2nHFN8J9Q+aqE1wr+ouNbbUkEebYqbt2ROT
+Pe7xCJnfAgMBAAECggEBAK3nFR8m45SerGXX1pWigKGA2vYOS3kMbi0frROEY67E
+Pe7u7CUJZ9Pes4MpSW9TdnuqGtjishZoibTWbFmvsrF/+CJkQieVMVzueHUvFzA1
+KtHOML1I77fonVU/Nt1THUCFSD/QA9YEW/7eCe0VCc51qF7YcbpNd2nVz2tVEs5H
+rb1Q0WSdxXaIIyFH4vNS9Xgx4ZY2ULzaJePCbEZcUwFLiJQtIWslGcCDALFyPMN6
+W9PKMFo96l0+KruleKfuiTCNzG94Vxe3ClAO64VIa65cSXu6DSUxiD1kedxDPRNE
+sZU9qfwNi2gFJCa97KUMBcL2M4VV8guIh4QXQwGoTAECgYEA896OhcFRQXryCAHR
+1+pLx3+aqM7qKf9qJWGh+lw/FWBB7cYQ3p+e9BomoQS5OdQcLGy2cTc38zMVvESN
+Ek+VS81VnCnVDTKC9vGPvuRItas5RKjNxAQEMJdudGlweEwQqkDlFRktuXwXIRfm
+zoA2iV+OUkJW5CDw81+hqMMsRpsCgYEA1eMJiw98fdeya1FJ9PE5x9lZyjyFIQ3y
+dsRtSetmeDIETX2AlkHC0HqySbjsIyXsxmq8AajfHraShf6eZeOBsP+sfOPS6J+j
+N9reS7gpVbl7EYL3D6OVMBuwZYv9ILkWj6lpfrFBvK8v32eRXgJjJ9LBkAXROBpC
+QPMHvPwpTA0CgYA989cPIbpLwTkFUbkGeg4AQ2l94vrX6nwDvRbSLGcWPhrhlcSp
+WbGe35napAGOMFVr7741asq67MpjxqJz+WW7GRHbl0D5llBw/ZL/8qyKAlKNH7kO
+R9rsoTu9NSAOX3yIU+4eewQDsAOMM6893JJ+OZlFSncag0fS/ANshRCVawKBgQCf
+rNUNCcyorgS29YK+5+948RyFTFUe7iia3d2xF5nyFXT83LrIceOcfFzpiLJRMxjmr
+/wXSRj49tfATOu3qPbDSrxcqEBmBfd11WGrKZtCMixcUGddN4RC3Aj+ZlncuhDLw
+2/Mc0xeLnMQ12LAygt4SXDTsmQU/BWGI2kdfyrdaQKBgDdzsoRSOh+tBtSRqEyc4
+BgtfK/FyU7VQy3fUlaaBJEUY6FxE8Icn34VVEeN6YOEmAewEcyMcQQX2ZwQ2wITv
+4NssL8uDJ0y4K/TlL+2bomXri/nobvyaDsMfrX6grlQXe4YzVpzGUFbcW+QValHp
+acnAjGejZkLM7KD2XaK1Ppf
+-----END PRIVATE KEY-----`;
 
-// Web API headers (from browser network tab)
-const WEB_HEADERS = {
-    "accept": "application/json, text/plain, */*",
-    "accept-language": "id-ID,id;q=0.9,und;q=0.8,en;q=0.7",
-    "content-type": "application/json;charset=UTF-8",
-    "currentlanguage": "id",
-    "platform": "WEB",
-    "origin": "https://www.goodshort.com",
-    "referer": "https://www.goodshort.com/id",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
-};
+// Helper: Generate UUID/Random Hex
+function randomHex(length: number) {
+    return crypto.randomBytes(length / 2).toString('hex');
+}
 
-async function fetchGoodShort(url: string, body: any, headers: any = WEB_HEADERS) {
+// Session Constants
+const DEVICE_ID = "3d53f928d1aa4dbc9d50347e95f180ee"; // Using user provided one or randomHex(32)
+const PACKAGE_NAME = "com.newreading.goodreels";
+// App Sig MD5 from Android implementation is usually checked. 
+// Since we are emulating, we try empty first or we might need the real hash.
+// Based on analysis, HttpGlobal.java uses empty string if it fails to get signature.
+const APP_SIGNATURE_MD5 = "";
+
+// Helper: Generate Signature
+function generateSignature(path: string, bodyObj: any, timestamp: string, token: string = '') {
+    // 1. Build Payload
+    // Format: timestamp=... + bodyJson + deviceId + androidId + token + appSigMD5 + packageName
+    let sb = `timestamp=${timestamp}`;
+
+    // Body (if exists, must be raw JSON string without spaces if that's how it's sent, 
+    // but usually standard stringify is fine as long as consistent)
+    // The previous analysis suggests 'Gson' default serialization which is standard JSON.
+    // NOTE: The Python script used separators=(',', ':') to remove spaces. Java Gson default might be compact?
+    // Let's assume compact JSON.
+    if (bodyObj && Object.keys(bodyObj).length > 0) {
+        sb += JSON.stringify(bodyObj);
+    }
+
+    sb += DEVICE_ID;
+    sb += ""; // androidId (empty in headers usually if not provided explicitly)
+
+    if (token) {
+        sb += token;
+    }
+
+    sb += APP_SIGNATURE_MD5.toUpperCase();
+    sb += PACKAGE_NAME;
+
+    console.log(`[GoodShort] Signing Path: ${path}, String: ${sb.substring(0, 50)}...`);
+
+    // 2. Sign with RSA-SHA256
+    const sign = crypto.createSign('SHA256');
+    sign.update(sb);
+    sign.end();
+    return sign.sign(PRIVATE_KEY_PEM, 'base64');
+}
+
+// Headers Generator
+// Headers Generator
+function getHeaders(path: string, body: any, token: string, timestamp: string) {
+    const signature = generateSignature(path, body, timestamp, token);
+
+    return {
+        "Host": "api-akm.goodreels.com",
+        "channelCode": "GSASA00001",
+        "deviceId": DEVICE_ID,
+        "platform": "ANDROID",
+        "Accept": "*/*",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "GoodReels/1.0.51 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+        "pname": PACKAGE_NAME,
+        "Authorization": token,
+        "sign": signature,
+        // "timestamp": timestamp, // Timestamp is typically only in URL based on Android code
+        "Accept-Language": "en-US",
+        "Connection": "keep-alive"
+    };
+}
+
+// Hardcoded token from recent conversation (should be refreshed if possible, but good start)
+const AUTH_TOKEN = "Bearer ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKSVV6STFOaUo5LmV5SnlaV2RwYzNSbGNsUjVjR1VpT2lKVVJVMVFJaXdpZFhObGNrbGtJam94T0RRME9URXpOVFI5LmZtenBYa21ndW9sOTZuaGpsY2FZUFRqcWQ2Rk5kUHRpRjJNdWwxQW9tRFE=";
+
+async function fetchMobileApi(path: string, body: any) {
+    const timestamp = Date.now().toString();
+    const url = `${API_BASE}${path}?timestamp=${timestamp}`;
+    const headers = getHeaders(path, body, AUTH_TOKEN, timestamp);
+
     try {
         const response = await fetch(url, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(body)
         });
+
         if (!response.ok) {
-            console.error('[GoodShort] API error:', response.status);
+            console.error(`[GoodShort] API Error ${response.status} for ${path}`);
             return null;
         }
+
         return await response.json();
     } catch (e) {
-        console.error('[GoodShort] Network error:', e);
+        console.error(`[GoodShort] Network Error for ${path}:`, e);
         return null;
     }
 }
 
-// Use web API with a workaround: fetch a popular drama and get recommendations
-export async function getGoodShortHome(): Promise<UnifiedDrama[]> {
-    // Popular drama IDs to fetch recommendations from
-    const seedDramaIds = [
-        '31001223187', // Dapat 5 Anak, Ibunya Ratu
-        '31000914420', // Berawal dari Kesalahpahaman
-        '31001210540', // Titik Putus Sebuah Cinta
-        '31000767023', // Kembar Lima Bersatu
-    ];
+// --- Adapters ---
 
+export async function getGoodShortHome(): Promise<UnifiedDrama[]> {
+    // API: /home/index
+    // Body needs channelType not rankType (from p0/d0 analysis)
+
+    const body = {
+        "channelId": "GSASA00001",
+        "channelType": 1,
+        "vipBookEnable": false,
+        "pageNo": 1,
+        "pageSize": 20
+    };
+
+    const data = await fetchMobileApi('/home/index', body);
+
+    if (data && data.data && data.data.list) {
+        return data.data.list.map((item: any) => normalizeGoodShort({
+            ...item,
+            bookId: item.bookId || item.id,
+            cover: item.cover || item.cover2,
+        }));
+    }
+
+    console.warn('[GoodShort] Home API returned no list, attempting Web API fallback');
+
+    // Web API Fallback (using the logic that was there before)
+    const seedDramaIds = ['31001223187', '31000914420'];
     const allDramas: UnifiedDrama[] = [];
     const seenIds = new Set<string>();
 
-    // Fetch recommendations from multiple seed dramas
     for (const seedId of seedDramaIds) {
         try {
             const url = `${WEB_API_BASE}/book/detail`;
-            const body = { "bookId": seedId };
-            const data = await fetchGoodShort(url, body, WEB_HEADERS);
+            const webBoxy = { "bookId": seedId };
+            const webRes = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    "content-type": "application/json;charset=UTF-8",
+                    "platform": "WEB",
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                },
+                body: JSON.stringify(webBoxy)
+            });
+            const webData = await webRes.json();
 
-            if (data && data.data) {
-                // Get recommendations from this drama
-                const recommends = data.data.recommends || [];
-                const guessLike = data.data.guessLike || [];
-
-                // Combine both lists
-                const combined = [...recommends, ...guessLike];
-
+            if (webData && webData.data) {
+                const combined = [...(webData.data.recommends || []), ...(webData.data.guessLike || [])];
                 combined.forEach((item: any) => {
                     const id = item.bookId || item.id;
                     if (id && !seenIds.has(id)) {
@@ -108,90 +190,165 @@ export async function getGoodShortHome(): Promise<UnifiedDrama[]> {
                 });
             }
         } catch (e) {
-            console.error('[GoodShort] Error fetching recommendations from', seedId, e);
+            console.error('[GoodShort] Web fallback error:', e);
         }
     }
-
-    console.log('[GoodShort] Home feed collected', allDramas.length, 'dramas from recommendations');
     return allDramas;
 }
 
-// Search is disabled for now since we don't have a working endpoint
 export async function searchGoodShort(query: string): Promise<UnifiedDrama[]> {
-    console.warn('[GoodShort] Search not implemented for web API');
+    // Java Code: RequestService.java -> B -> /book/search1
+    const body = {
+        "keyword": query,
+        "pageNo": 1,
+        "pageSize": 20,
+        "searchType": 1
+    };
+
+    const data = await fetchMobileApi('/book/search1', body);
+    if (data && data.data && data.data.list) {
+        return data.data.list.map((item: any) => normalizeGoodShort({
+            ...item,
+            bookId: item.bookId || item.id,
+            cover: item.cover || item.cover2
+        }));
+    }
     return [];
 }
 
 export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDrama, episodes: any[], videoUrl?: string } | null> {
-    const url = `${WEB_API_BASE}/book/detail`;
-    const body = {
-        "bookId": id
+    // 1. Try Mobile API
+    const epBody = {
+        "bookId": id,
+        "chapterCount": 500,
+        "latestChapterId": 0,
+        "needBookInfo": true
     };
 
-    const data = await fetchGoodShort(url, body, WEB_HEADERS);
+    const data = await fetchMobileApi('/chapter/list', epBody);
 
-    // Response structure: { data: { book: {...}, chapterVo: {...}, chapterVoList: [...] } }
-    if (!data || !data.data) return null;
+    if (data && data.data) {
+        const info = data.data.bookInfo || {};
+        const chapters = data.data.chapterList || [];
 
-    const result = data.data;
-    const bookInfo = result.book;
-
-    if (!bookInfo) return null;
-
-    // Normalize the drama info
-    const drama = normalizeGoodShort({
-        bookId: bookInfo.bookId || id,
-        name: bookInfo.bookName || bookInfo.name,
-        introduction: bookInfo.introduction || 'No description available',
-        cover: bookInfo.cover || bookInfo.cover2,
-        chapterCnt: bookInfo.chapterCount || result.chapterVoList?.length || 0,
-        viewCount: bookInfo.viewCount,
-        ratings: bookInfo.ratings,
-        writeStatus: bookInfo.writeStatus,
-        typeTwoNames: bookInfo.typeTwoNames
-    });
-
-    // Episodes are in chapterVoList
-    const episodeList = result.chapterVoList || [];
-
-    let episodes: any[] = [];
-    if (Array.isArray(episodeList)) {
-        episodes = episodeList.map((ep: any, index: number) => {
-            return {
-                id: ep.id ? ep.id.toString() : String(index + 1),
-                name: ep.chapterName || `Episode ${index + 1}`,
-                index: index,
-                unlock: ep.price === 0 || ep.price === undefined,
-                raw: ep  // Store the full episode data including m3u8Path
-            };
+        const drama = normalizeGoodShort({
+            bookId: info.bookId || id,
+            name: info.bookName || info.name || "Unknown Title",
+            cover: info.cover || info.cover2,
+            introduction: info.introduction,
+            chapterCnt: info.chapterCount,
+            ratings: info.score
         });
+
+        const episodes = chapters.map((ch: any, idx: number) => ({
+            id: ch.id?.toString(),
+            name: ch.chapterName || `Episode ${idx + 1}`,
+            index: idx,
+            unlock: ch.price === 0,
+            raw: ch
+        }));
+
+        return { drama, episodes };
     }
 
-    console.log("[GoodShort] Detail fetched for", id, "- Episodes:", episodes.length);
-    return { drama, episodes };
+    // 2. Web API Fallback
+    console.warn('[GoodShort] Mobile detail fetch failed, trying Web fallback...');
+    try {
+        const url = `${WEB_API_BASE}/book/detail`;
+        const webRes = await fetch(url, {
+            method: 'POST',
+            headers: {
+                "content-type": "application/json;charset=UTF-8",
+                "platform": "WEB",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            },
+            body: JSON.stringify({ "bookId": id })
+        });
+        const webData = await webRes.json();
+
+        if (webData && webData.data && webData.data.book) {
+            const result = webData.data;
+            const bookInfo = result.book;
+
+            const drama = normalizeGoodShort({
+                bookId: bookInfo.bookId || id,
+                name: bookInfo.bookName || bookInfo.name,
+                introduction: bookInfo.introduction || 'No description available',
+                cover: bookInfo.cover || bookInfo.cover2,
+                chapterCnt: bookInfo.chapterCount || result.chapterVoList?.length || 0,
+                viewCount: bookInfo.viewCount,
+                ratings: bookInfo.ratings,
+                writeStatus: bookInfo.writeStatus,
+                typeTwoNames: bookInfo.typeTwoNames
+            });
+
+            const episodeList = result.chapterVoList || [];
+            let episodes: any[] = [];
+            if (Array.isArray(episodeList)) {
+                episodes = episodeList.map((ep: any, index: number) => {
+                    return {
+                        id: ep.id ? ep.id.toString() : String(index + 1),
+                        name: ep.chapterName || `Episode ${index + 1}`,
+                        index: index,
+                        unlock: ep.price === 0 || ep.price === undefined,
+                        raw: ep
+                    };
+                });
+            }
+
+            return { drama, episodes };
+        }
+    } catch (e) {
+        console.error('[GoodShort] Web detail fallback error:', e);
+    }
+
+    return null;
 }
 
 export async function getGoodShortVideoUrl(bookId: string, episodeId: string): Promise<string> {
-    // Get the detail which includes all episodes with their m3u8 URLs
-    const url = `${WEB_API_BASE}/book/detail`;
+    // 1. Try Mobile API (likely failing now)
     const body = {
-        "bookId": bookId
+        "bookId": bookId,
+        "chapterId": parseInt(episodeId),
+        "autoPay": false,
+        "checkAutoPay": false
     };
 
-    const data = await fetchGoodShort(url, body, WEB_HEADERS);
+    const data = await fetchMobileApi('/chapter/load', body);
 
-    if (data && data.data && data.data.chapterVoList) {
-        const episodeList = data.data.chapterVoList;
+    if (data && data.data) {
+        const ch = data.data.currentChapter;
+        if (ch && ch.chapterContent && ch.chapterContent.m3u8Path) {
+            return ch.chapterContent.m3u8Path;
+        }
+        if (ch && ch.m3u8Path) return ch.m3u8Path;
+    }
 
-        if (Array.isArray(episodeList)) {
-            const ep = episodeList.find((e: any) => String(e.id) === String(episodeId));
+    // 2. Fallback to Web API
+    console.warn('[GoodShort] Mobile video load failed, trying Web fallback...');
+    try {
+        const url = `${WEB_API_BASE}/book/detail`;
+        const webRes = await fetch(url, {
+            method: 'POST',
+            headers: {
+                "content-type": "application/json;charset=UTF-8",
+                "platform": "WEB",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            },
+            body: JSON.stringify({ "bookId": bookId })
+        });
+        const webData = await webRes.json();
+
+        if (webData && webData.data && webData.data.chapterVoList) {
+            const ep = webData.data.chapterVoList.find((e: any) => String(e.id) === String(episodeId));
             if (ep && ep.m3u8Path) {
-                console.log("[GoodShort] Video URL found for episode", episodeId);
                 return ep.m3u8Path;
             }
         }
+    } catch (e) {
+        console.error('[GoodShort] Web video fallback error:', e);
     }
 
-    console.warn("[GoodShort] Video URL not found for", bookId, episodeId);
+    console.error('[GoodShort] Failed to load video url for', bookId, episodeId);
     return '';
 }
