@@ -22,7 +22,7 @@ const {
   hideFooter = false
 } = Astro.props;
 
-const socialImageURL = new URL(image, Astro.url.origin).href;
+const socialImageURL = new URL(image, Astro.site).href;
 ---
 
 <!doctype html>
