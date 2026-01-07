@@ -82,7 +82,7 @@ function httpsRequest(url: string): Promise<string> {
                     'Origin': 'https://sansekai.my.id'
                 } : {})
             },
-            timeout: 8000
+            timeout: 20000
         };
 
         const req = https.request(options, (res) => {
