@@ -21,6 +21,16 @@ const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
 const dramaDetailsCache = new Map<string, UnifiedDrama>();
 const episodeDetailsCache = new Map<string, any[]>();
 
+// Helper to safely execute a promise and return empty array on failure
+async function safeExecute<T>(promise: Promise<T[]>, name: string): Promise<T[]> {
+    try {
+        return await promise;
+    } catch (e) {
+        console.error(`[Aggregator] Error fetching ${name}:`, e);
+        return [];
+    }
+}
+
 
 // --- AGGREGATION FUNCTIONS ---
 
@@ -39,21 +49,21 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         hsForYou,
         gsForYou
     ] = await Promise.all([
-        Dramabox.getDramaboxForYou(),
-        Dramabox.getDramaboxTrending(),
-        Dramabox.getDramaboxLatest(),
-        Netshort.getNetshortForYou(),
-        Melolo.getMeloloTrending(),
-        Melolo.getMeloloLatest(),
-        withCache('rr_home', () => RadReel.getRadReelForYou()),
-        withCache('dw_home', () => DramaWave.getDramaWaveForYou()),
-        withCache('fr_home', () => FlickReels.getFlickReelsForYou()),
-        withCache('dd_home', () => DramaDash.getDramaDashForYou()),
-        withCache('sm_home', () => ShortMax.getShortMaxForYou()),
-        withCache('ss_home', () => StarShort.getStarShortForYou()),
-        withCache('fs_home', () => FreeShort.getFreeShortForYou()),
-        withCache('hs_home', () => HiShort.getHiShortHome()),
-        withCache('gs_home', () => GoodShort.getGoodShortHome()),
+        safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
+        safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
+        safeExecute(Dramabox.getDramaboxLatest(), 'Dramabox Latest'),
+        safeExecute(Netshort.getNetshortForYou(), 'Netshort ForYou'),
+        safeExecute(Melolo.getMeloloTrending(), 'Melolo Trending'),
+        safeExecute(Melolo.getMeloloLatest(), 'Melolo Latest'),
+        safeExecute(withCache('rr_home', () => RadReel.getRadReelForYou()), 'RadReel ForYou'),
+        safeExecute(withCache('dw_home', () => DramaWave.getDramaWaveForYou()), 'DramaWave ForYou'),
+        safeExecute(withCache('fr_home', () => FlickReels.getFlickReelsForYou()), 'FlickReels ForYou'),
+        safeExecute(withCache('dd_home', () => DramaDash.getDramaDashForYou()), 'DramaDash ForYou'),
+        safeExecute(withCache('sm_home', () => ShortMax.getShortMaxForYou()), 'ShortMax ForYou'),
+        safeExecute(withCache('ss_home', () => StarShort.getStarShortForYou()), 'StarShort ForYou'),
+        safeExecute(withCache('fs_home', () => FreeShort.getFreeShortForYou()), 'FreeShort ForYou'),
+        safeExecute(withCache('hs_home', () => HiShort.getHiShortHome()), 'HiShort ForYou'),
+        safeExecute(withCache('gs_home', () => GoodShort.getGoodShortHome()), 'GoodShort ForYou'),
     ]);
 
     // Cache items for Detail fallback
@@ -75,18 +85,18 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
     if (!query) return [];
 
     const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList] = await Promise.all([
-        Dramabox.searchDramabox(query),
-        Netshort.searchNetshort(query),
-        Melolo.searchMelolo(query),
-        RadReel.searchRadReel(query),
-        DramaWave.searchDramaWave(query), // Fetch search results
-        FlickReels.searchFlickReels(query),
-        DramaDash.searchDramaDash(query),
-        ShortMax.searchShortMax(query),
-        StarShort.searchStarShort(query),
-        FreeShort.searchFreeShort(query),
-        HiShort.searchHiShort(query),
-        GoodShort.searchGoodShort(query)
+        safeExecute(Dramabox.searchDramabox(query), 'Dramabox Search'),
+        safeExecute(Netshort.searchNetshort(query), 'Netshort Search'),
+        safeExecute(Melolo.searchMelolo(query), 'Melolo Search'),
+        safeExecute(RadReel.searchRadReel(query), 'RadReel Search'),
+        safeExecute(DramaWave.searchDramaWave(query), 'DramaWave Search'),
+        safeExecute(FlickReels.searchFlickReels(query), 'FlickReels Search'),
+        safeExecute(DramaDash.searchDramaDash(query), 'DramaDash Search'),
+        safeExecute(ShortMax.searchShortMax(query), 'ShortMax Search'),
+        safeExecute(StarShort.searchStarShort(query), 'StarShort Search'),
+        safeExecute(FreeShort.searchFreeShort(query), 'FreeShort Search'),
+        safeExecute(HiShort.searchHiShort(query), 'HiShort Search'),
+        safeExecute(GoodShort.searchGoodShort(query), 'GoodShort Search')
     ]);
 
     // Cache items

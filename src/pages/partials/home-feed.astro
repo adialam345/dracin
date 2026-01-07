@@ -1,0 +1,34 @@
+---
+import { fetchAggregatedHome } from '../../services/aggregator';
+import MovieCard from '../../components/MovieCard.astro';
+
+export const partial = true;
+
+const { forYou, trending, latest } = await fetchAggregatedHome();
+---
+
+<div id="deferred-results">
+    {forYou.length > 0 && (
+      <div id="section-foryou-content" hx-swap-oob="beforeend">
+          {forYou.map((drama: any) => (
+             <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+          ))}
+      </div>
+    )}
+
+    {trending.length > 0 && (
+      <div id="section-trending-content" hx-swap-oob="beforeend">
+          {trending.map((drama: any) => (
+             <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+          ))}
+      </div>
+    )}
+
+    {latest.length > 0 && (
+      <div id="section-latest-content" hx-swap-oob="beforeend">
+          {latest.map((drama: any) => (
+             <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+          ))}
+      </div>
+    )}
+</div>

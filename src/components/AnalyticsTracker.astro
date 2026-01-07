@@ -134,10 +134,10 @@
   // For Astro View Transitions
   document.addEventListener('astro:page-load', () => trackWithDelay(0));
 
-  // Send heartbeat every 15 seconds to keep session alive and update drama info
+  // Send heartbeat every 60 seconds to keep session alive and update drama info
   setInterval(() => {
     sendAnalytics('heartbeat');
-  }, 15000);
+  }, 60000);
 
   // Track when user leaves
   window.addEventListener('beforeunload', () => {

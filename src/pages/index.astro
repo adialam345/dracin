@@ -50,7 +50,7 @@ const latestDramas = latest;
             <div class="h-1 w-20 bg-gradient-to-r from-red-600 to-transparent rounded-full mb-1.5"></div>
           </div>
           
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+          <div id="section-foryou-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
             {forYouDramas.map((drama: any) => (
               <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
             ))}
@@ -67,7 +67,7 @@ const latestDramas = latest;
             <div class="h-1 w-20 bg-gradient-to-r from-orange-500 to-transparent rounded-full mb-1.5"></div>
           </div>
           
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+          <div id="section-trending-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
             {trendingDramas.map((drama: any) => (
               <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
             ))}
@@ -84,7 +84,7 @@ const latestDramas = latest;
             <div class="h-1 w-20 bg-gradient-to-r from-blue-500 to-transparent rounded-full mb-1.5"></div>
           </div>
           
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+          <div id="section-latest-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
             {latestDramas.map((drama: any) => (
               <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
             ))}
@@ -94,12 +94,68 @@ const latestDramas = latest;
 
       {forYouDramas.length === 0 && trendingDramas.length === 0 && latestDramas.length === 0 && (
         <div class="text-center py-20 bg-zinc-900/40 rounded-3xl border border-white/5 backdrop-blur-sm">
-          <p class="text-zinc-400 mb-6">Gagal memuat data drama. Silakan coba segarkan halaman.</p>
-          <button onclick="window.location.reload()" class="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-colors">
-            Segarkan
-          </button>
+           <div id="initial-loader" class="mb-4">
+               <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto"></div>
+               <p class="text-zinc-500 mt-2 text-sm">Sedang mencoba memuat konten lainnya...</p>
+           </div>
+           <p class="text-zinc-400 mb-6 hidden" id="error-msg">Gagal memuat data drama. Silakan coba segarkan halaman.</p>
+           <button onclick="window.location.reload()" class="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-colors hidden" id="refresh-btn">
+             Segarkan
+           </button>
         </div>
       )}
     </div>
   </div>
+
+<script>
+  // Deferred Loading Logic
+  window.addEventListener('load', async () => {
+    // Only fetch if we suspect missing data (or always? "Keep trying until show")
+    // Always specific fetch for full resilience
+    console.log('[Home] Starting background content refresh...');
+    
+    try {
+       const res = await fetch('/partials/home-feed');
+       if (!res.ok) throw new Error('Fetch failed');
+       
+       const html = await res.text();
+       const parser = new DOMParser();
+       const doc = parser.parseFromString(html, 'text/html');
+       
+       // Helper to update section
+       const updateSection = (id) => {
+          const newContent = doc.getElementById(id);
+          const currentContent = document.getElementById(id);
+          
+          if (newContent && currentContent) {
+              // Simple heuristic: If new content has MORE children, replace.
+              // Or just replace always to ensure we have the "complete" set including slow providers
+              if (newContent.children.length >= currentContent.children.length) {
+                 console.log(`[Home] Updating ${id} with ${newContent.children.length} items (was ${currentContent.children.length})`);
+                 currentContent.innerHTML = newContent.innerHTML;
+              }
+          } else if (newContent && !currentContent) {
+             // Section didn't exist? (Should not happen with current layout structure unless empty hidden)
+          }
+       };
+
+       updateSection('section-foryou-content');
+       updateSection('section-trending-content');
+       updateSection('section-latest-content');
+       
+       // Hide loader if present
+       const loader = document.getElementById('initial-loader');
+       if (loader) loader.style.display = 'none';
+       
+    } catch (e) {
+       console.error('[Home] Background refresh failed:', e);
+       const loader = document.getElementById('initial-loader');
+       if (loader) {
+           loader.style.display = 'none';
+           document.getElementById('error-msg').classList.remove('hidden');
+           document.getElementById('refresh-btn').classList.remove('hidden');
+       }
+    }
+  });
+</script>
 </Layout>

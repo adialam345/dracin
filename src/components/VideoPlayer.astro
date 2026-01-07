@@ -105,11 +105,15 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 </style>
 
 <script>
-  import Hls from 'hls.js';
   import { encrypt } from '../utils/security';
 
   async function initPlayer() {
-    const videoElement = document.getElementById('video-player') as HTMLVideoElement;
+    // Check if we are already initializing (prevent race conditions)
+    if (window.isInitializingPlayer) return;
+    window.isInitializingPlayer = true;
+
+    try {
+      const videoElement = document.getElementById('video-player') as HTMLVideoElement;
     const loader = document.getElementById('player-loader');
     const errorState = document.getElementById('player-error');
     const episodeDataScript = document.getElementById('episode-data');
@@ -197,7 +201,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
       isAndroid: /Android/.test(navigator.userAgent),
       isChrome: /Chrome/.test(navigator.userAgent),
       canPlayHLS: videoElement.canPlayType('application/vnd.apple.mpegurl'),
-      hlsJsSupported: Hls.isSupported(),
+      hlsJsSupported: typeof window.MediaSource !== 'undefined',
       source: source
     });
 
@@ -288,6 +292,13 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
        
        let url = data.videoUrl;
        
+       if (!url) {
+            console.error('[VideoPlayer] Empty video URL from payload');
+            if (loader) loader.style.display = 'none';
+            if (errorState) errorState.classList.remove('hidden');
+            return; 
+       }
+       
        // Handle errors in payload
        if (data.error === 'webplayer') {
            // ... (existing error handling logic)
@@ -339,6 +350,13 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
        // --- PROXY LOGIC FOR ALL PROVIDERS ---
        
        // NetShort: Use VPS proxy for awscdn.netshort.com (SSL issues with Worker)
+       if (!url) {
+           console.error('[VideoPlayer] Empty video URL');
+           if (loader) loader.style.display = 'none';
+           if (errorState) errorState.classList.remove('hidden');
+           return;
+       }
+
        if (source === 'netshort' && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
            url = VPS_PROXY + '?url=' + encodeURIComponent(url);
            console.log('[VideoPlayer] Using VPS Proxy for NetShort (SSL fallback)');
@@ -354,6 +372,13 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
        ) {
            // Use Worker Proxy with raw URL (worker handles headers)
            url = PROXY_BASE + '?url=' + encodeURIComponent(url);
+           
+           if (url.endsWith('?url=')) {
+               console.error('[VideoPlayer] Constructed invalid proxy URL');
+               if (loader) loader.style.display = 'none';
+               if (errorState) errorState.classList.remove('hidden');
+               return;
+           }
            // console.log('[VideoPlayer] Using Proxy: ...');
        }
        // ---------------------------------
@@ -440,7 +465,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
              
              videoElement.onloadedmetadata = onReady;
              
-          } else if (Hls.isSupported()) {
+          } else if (typeof window.MediaSource !== 'undefined') {
             // HLS.js for browsers without native HLS support (mostly Android Chrome)
             console.log('[VideoPlayer] Using HLS.js Player');
             
@@ -448,37 +473,41 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
             if (window.hlsInstance) {
                window.hlsInstance.destroy();
             }
+
+            // Dynamically import Hls.js FIRST
+            const Hls = (await import('hls.js')).default;
+
+            if (!Hls.isSupported()) {
+                 console.error('[VideoPlayer] Hls.js reported not supported despite MediaSource presence');
+                 return;
+            }
             
             // --- Video Decryption Logic for ShortMax ---
             async function decryptTs(arrayBuffer) {
                 try {
                     const buf = new Uint8Array(arrayBuffer);
-                    // Check Header 'shortmax'
-                    const header = new TextDecoder().decode(buf.slice(0, 8)); // Just check start
+                    // Header check (first 24 bytes)
+                    const header = new TextDecoder().decode(buf.slice(0, 24));
                     if (!header.startsWith('shortmax')) return arrayBuffer;
 
-                    const fullHeader = new TextDecoder().decode(buf.slice(0, 24));
-                    const keyOffset = parseInt(fullHeader.slice(16, 20));
-                    const dataOffset = parseInt(fullHeader.slice(20, 24));
+                    const keyOffset = parseInt(header.slice(16, 20));
+                    const dataOffset = parseInt(header.slice(20, 24));
                     
                     if (isNaN(keyOffset) || isNaN(dataOffset)) return arrayBuffer;
 
                     const key = buf.slice(keyOffset, keyOffset + 16);
                     const iv = new TextEncoder().encode('shortmax00000000');
-                    // Data to decrypt usually starts at 1024 offset from start? 
-                    // User snippet: encData = buf.slice(1024, dataOffset + 1024);
+                    
+                    // Encrypted data starts at 1024
                     const encData = buf.slice(1024, dataOffset + 1024);
 
                     const cryptoKey = await window.crypto.subtle.importKey('raw', key, 'AES-CBC', false, ['decrypt']);
                     const dec = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv }, cryptoKey, encData);
 
-                    // Reconstruct: Decrypted Data + Remainder of file (unencrypted parts)
-                    // User logic: result = decrypted + buf.slice(dataOffset + 1024)
-                    // Note: original 'encData' length determined by dataOffset
-                    const remainder = buf.slice(dataOffset + 1024);
-                    const result = new Uint8Array(dec.byteLength + remainder.length);
+                    // Reconstruct: Decrypted Data + Remainder
+                    const result = new Uint8Array(dec.byteLength + (buf.length - dataOffset - 1024));
                     result.set(new Uint8Array(dec), 0);
-                    result.set(remainder, dec.byteLength);
+                    result.set(buf.slice(dataOffset + 1024), dec.byteLength);
 
                     return result.buffer;
                 } catch (e) {
@@ -489,19 +518,16 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
 
             // Custom Loader extending default to intercept Success callback
             class DecryptLoader extends Hls.DefaultConfig.loader {
-                constructor(config) {
-                    super(config);
-                    const originalLoad = this.load.bind(this);
-                    this.load = (context, config, callbacks) => {
-                        const originalOnSuccess = callbacks.onSuccess;
-                        callbacks.onSuccess = async (response, stats, context) => {
-                            if (response.data instanceof ArrayBuffer) {
-                                response.data = await decryptTs(response.data);
-                            }
-                            originalOnSuccess(response, stats, context);
-                        };
-                        originalLoad(context, config, callbacks);
+                load(context, config, callbacks) {
+                    const onSuccess = callbacks.onSuccess;
+                    callbacks.onSuccess = async (response, stats, ctx) => {
+                        // Only decrypt fragments (media segments), not playlists/manifests
+                        if (ctx.frag) {
+                             response.data = await decryptTs(response.data);
+                        }
+                        onSuccess(response, stats, ctx);
                     };
+                    super.load(context, config, callbacks);
                 }
             }
 
@@ -631,6 +657,12 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
                 switch(data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
                     console.log('[VideoPlayer] Network error, attempting recovery...');
+                    if (!url || url.includes('?url=')) {
+                         console.error('[VideoPlayer] Aborting recovery for invalid URL');
+                         hls.destroy();
+                         if (errorState) errorState.classList.remove('hidden');
+                         return;
+                    }
                     setTimeout(() => hls.startLoad(), 1000);
                     break;
                   case Hls.ErrorTypes.MEDIA_ERROR:
@@ -773,19 +805,46 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
       } catch (e) {
         console.error('[VideoPlayer] Client-side fetch failed:', e);
       }
-    }
-
-    if (videoUrl) {
-      // videoUrl from DOM is now encrypted string (from props)
-      loadAndPlay(videoUrl);
-      return;
-    } else {
       if (loader) loader.style.display = 'none';
       if (errorState) errorState.classList.remove('hidden');
     }
+
+    } catch (e) {
+      console.error('[VideoPlayer] Initialization error:', e);
+      if (typeof loader !== 'undefined' && loader) loader.style.display = 'none';
+    } finally {
+       // Optional: We keep the lock true until navigation? No, we should probably release it if it failed.
+       // But dracinInitPlayer releases it before calling.
+       // Here we might not want to release it immediately if we want to prevent double-init on same page.
+       // Actually let's assume if it finished, it is initialized.
+    }
   }
 
-  // Initialize on load and on Astro view transitions
-  initPlayer();
-  document.addEventListener('astro:page-load', initPlayer);
+  // --- View Transitions Fix ---
+  // Store function on window to allow removing previous listeners
+  if (window.dracinInitPlayer) {
+      document.removeEventListener('astro:page-load', window.dracinInitPlayer);
+  }
+  
+  window.dracinInitPlayer = () => {
+     // Reset lock
+     window.isInitializingPlayer = false;
+     initPlayer();
+  };
+
+  document.addEventListener('astro:page-load', window.dracinInitPlayer);
+  
+  // Cleanup on navigation to stop audio immediately
+  document.addEventListener('astro:before-swap', () => {
+      if (window.hlsInstance) {
+          window.hlsInstance.destroy();
+          window.hlsInstance = null;
+      }
+      const video = document.getElementById('video-player') as HTMLVideoElement;
+      if (video) {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+      }
+  });
 </script>

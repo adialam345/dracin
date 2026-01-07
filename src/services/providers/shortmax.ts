@@ -142,42 +142,55 @@ function getRandomToken() {
 }
 
 export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: number): Promise<string> {
-    try {
-        // Use external API to get signed video URL
-        const url = `${SHORTMAX_PLAY_API}/${shortPlayId}?lang=id&ep=${episodeNum}`;
+    // Shuffle tokens to avoid hot-spotting the first one, but try ALL of them if needed
+    const tokens = [...API_TOKENS].sort(() => Math.random() - 0.5);
 
-        console.log(`[ShortMax] Fetching video URL from external API: ep=${episodeNum}`);
+    // Try tokens sequentially
+    for (const token of tokens) {
+        try {
+            const url = `${SHORTMAX_PLAY_API}/${shortPlayId}?lang=id&ep=${episodeNum}`;
+            // console.log(`[ShortMax] Fetching video URL with token ending in ...${token.slice(-6)}`);
 
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
 
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${getRandomToken()}`,
-                'Accept': 'application/json'
+            if (!response.ok) {
+                console.warn(`[ShortMax] Token failed (${response.status}). Retrying...`);
+                continue;
             }
-        });
 
-        if (!response.ok) {
-            console.error(`[ShortMax] External API error: ${response.status}`);
-            return '';
+            const data = await response.json();
+
+            if (data && data.data && data.data.video) {
+                const video = data.data.video;
+                // Check if video object itself is the URL (sometimes API changes)
+                if (typeof video === 'string' && video.startsWith('http')) {
+                    return video;
+                }
+
+                const videoUrl = video.video_720 || video.video_1080 || video.video_480 || '';
+
+                if (videoUrl) {
+                    // console.log(`[ShortMax] Got signed video URL for episode ${episodeNum}`);
+                    return videoUrl;
+                }
+            } else if (data && data.code !== 0) {
+                console.warn(`[ShortMax] API error code: ${data.code} (${data.msg}). Retrying with next token...`);
+                continue;
+            }
+
+        } catch (e) {
+            console.error('[ShortMax] Token exception:', e);
+            // Continue to next token
         }
-
-        const data = await response.json();
-
-        if (data && data.data && data.data.video) {
-            const video = data.data.video;
-            // Prioritize 720p -> 1080p -> 480p
-            const videoUrl = video.video_720 || video.video_1080 || video.video_480 || '';
-
-            console.log(`[ShortMax] Got signed video URL for episode ${episodeNum}`);
-            return videoUrl;
-        }
-
-        console.error('[ShortMax] Failed to get signed video URL from external API');
-        return '';
-    } catch (e) {
-        console.error('[ShortMax] Error getting video URL:', e);
-        return '';
     }
+
+    console.error('[ShortMax] All tokens failed or no video URL found inside response.');
+    return '';
 }
 
 

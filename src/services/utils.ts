@@ -82,7 +82,7 @@ function httpsRequest(url: string): Promise<string> {
                     'Origin': 'https://sansekai.my.id'
                 } : {})
             },
-            timeout: 15000
+            timeout: 8000
         };
 
         const req = https.request(options, (res) => {
@@ -180,16 +180,19 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
             const isEmpty = (Array.isArray(items) && items.length === 0) && !isDetailOrStream;
 
             if (isSearch || !isEmpty) return data;
-            console.warn('[fetchFromEndpoint] Items empty for: ' + url + '. Retrying...');
+            // console.warn('[fetchFromEndpoint] Items empty for: ' + url + '. Retrying...');
 
         } catch (error: any) {
             if (error.message === 'RATE_LIMITED') {
-                console.warn('[fetchFromEndpoint] rate limited(429) for: ' + url + '. Backing off...');
+                // console.warn('[fetchFromEndpoint] rate limited(429) for: ' + url + '. Backing off...');
                 globalBackoffuntil = Date.now() + 1000 + Math.random() * 1000;
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 continue;
             }
-            console.error('[fetchFromEndpoint] Error on attempt ' + (i + 1) + ': ', error.message || error);
+            // Only log actual errors, not just retries
+            if (i === retries - 1) {
+                console.error(`[Fetch Error] ${url} : ${error.message || error}`);
+            }
         }
 
         if (i < retries - 1) {
