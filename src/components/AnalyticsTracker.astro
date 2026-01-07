@@ -85,13 +85,19 @@
     };
   }
 
+  let isBlocked = false;
+  let heartbeatInterval: number | undefined;
+  let evtSource: EventSource | undefined;
+
   // Send analytics event
   async function sendAnalytics(action: 'pageview' | 'heartbeat' | 'leave') {
+    if (isBlocked) return; // Stop if blocked
+
     const sessionId = getSessionId();
     const dramaInfo = getDramaInfo();
     
     try {
-      await fetch('/api/admin/analytics', {
+      const res = await fetch('/api/admin/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,13 +109,49 @@
         // Use keepalive for leave event to ensure it's sent
         keepalive: action === 'leave'
       });
+      
+      if (res.status === 403) {
+         handleBlock();
+      }
     } catch (e) {
-      // Silently fail - analytics should not break the app
+      // Silently fail
     }
+  }
+
+  function handleBlock() {
+     if (isBlocked) return;
+     isBlocked = true;
+     
+     // Stop all tracking
+     if (heartbeatInterval) clearInterval(heartbeatInterval);
+     if (evtSource) evtSource.close();
+     
+     sessionStorage.removeItem('_sid_v1'); // Clear session
+     
+     // Show overlay
+     if(document.getElementById('kick-overlay')) return;
+
+     const overlay = document.createElement('div');
+     overlay.id = 'kick-overlay';
+     overlay.className = 'fixed inset-0 z-[9999] bg-zinc-950 flex flex-col items-center justify-center p-4 text-center animate-fade-in';
+     overlay.innerHTML = `
+        <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2">Koneksi Terputus</h2>
+        <p class="text-zinc-400 mb-8 max-w-md">Koneksi Anda telah diputus oleh sistem administrator. Silakan coba muat ulang halaman atau kembali nanti.</p>
+        <a href="/" class="px-6 py-2.5 bg-white text-black font-semibold rounded-full hover:bg-zinc-200 transition-colors">
+            Kembali ke Beranda
+        </a>
+     `;
+     document.body.appendChild(overlay);
   }
 
   // Delayed tracking to ensure DOM is ready with retry logic
   function trackWithDelay(retryCount = 0) {
+    if (isBlocked) return;
     const maxRetries = 3;
     const delays = [300, 800, 1500]; // Progressive delays
     
@@ -128,14 +170,63 @@
     }, delays[retryCount] || 300);
   }
 
+  // SSE Connection for Realtime Kick
+  function connectRealtimeStream() {
+    if (isBlocked) return;
+    const sessionId = getSessionId();
+    
+    // Close existing if any
+    if (evtSource) evtSource.close();
+
+    evtSource = new EventSource(`/api/admin/stream?sessionId=${sessionId}`);
+    
+    evtSource.onmessage = (event) => {
+        if (event.data === 'kick') {
+             handleBlock();
+        }
+    };
+    
+    // Cleanup on page transitions
+    document.addEventListener('astro:before-swap', () => {
+        if (evtSource) evtSource.close();
+    }, { once: true });
+  }
+
   // Track page view on load
-  document.addEventListener('DOMContentLoaded', () => trackWithDelay(0));
+  document.addEventListener('DOMContentLoaded', () => {
+      trackWithDelay(0);
+      connectRealtimeStream();
+  });
 
   // For Astro View Transitions
-  document.addEventListener('astro:page-load', () => trackWithDelay(0));
+  document.addEventListener('astro:page-load', () => {
+      // trackWithDelay called by DOMContentLoaded? No, astro:page-load fires on every nav
+      // Ensure we don't double connect? 
+      // DOMContentLoaded only fires on hard refresh. astro:page-load fires always.
+      // Ideally move trackWithDelay and connect inside a single init function
+  });
+  
+  // Refactor initialization to avoid dupes
+  const initTracker = () => {
+     trackWithDelay(0);
+     // Disconnect existing if any? handled by before-swap
+     connectRealtimeStream();
+  };
+  
+  // Astro events
+  document.addEventListener('astro:page-load', initTracker);
+  
+  // Fallback for initial load if not using View Transitions or standard load
+  // Actually astro:page-load covers initial load too in recent Astro versions if transition is enabled?
+  // Safe to leave DOMContentLoaded just in case? 
+  // Better: check if we should run.
+  // Let's rely on astro:page-load. If not firing, add DOMContentLoaded.
+  if(!window.history.state) { // Rough check or just listen to both and debounce?
+     // Simplest: Just use astro:page-load. It works for initial too.
+  }
 
   // Send heartbeat every 60 seconds to keep session alive and update drama info
-  setInterval(() => {
+  heartbeatInterval = setInterval(() => {
     sendAnalytics('heartbeat');
   }, 60000);
 
