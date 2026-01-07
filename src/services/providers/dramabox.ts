@@ -30,22 +30,45 @@ export async function getDramaboxDetail(id: string): Promise<{ drama: any, episo
         fetchCached(episodesUrl)
     ]);
 
-    const book = detailData?.data?.book;
+    // Handle varying API structures
+    let book = detailData?.data?.book;
+    if (!book && detailData?.bookId) {
+        book = detailData;
+    } else if (!book && detailData?.data?.bookId) {
+        book = detailData.data;
+    }
+
     if (!book) return { drama: null, episodes: [] };
 
     const dramaInfo = {
         title: book.bookName,
-        cover: book.cover,
+        cover: (book.cover || book.coverWap) ? `https://images.weserv.nl/?url=${encodeURIComponent(book.cover || book.coverWap)}&output=webp&q=85` : '',
         description: book.introduction,
         chapterCount: book.chapterCount,
-        labels: book.labels || [],
+        labels: book.labels || book.tags || [],
         viewCount: book.viewCount,
         performerList: book.performerList,
         source: 'dramabox'
     };
 
-    const episodes = detailData.data?.chapterList || [];
-    return { drama: dramaInfo, episodes };
+    let episodes: any[] = [];
+    if (Array.isArray(episodesData)) {
+        episodes = episodesData;
+    } else if (book.chapterList) {
+        episodes = book.chapterList;
+    } else if (detailData?.data?.chapterList) {
+        episodes = detailData.data.chapterList;
+    }
+
+    return {
+        drama: dramaInfo,
+        episodes: episodes.map(e => ({
+            id: String(e.chapterId),
+            name: e.chapterName,
+            index: e.chapterIndex,
+            ...e
+        }))
+    };
 }
 
 function extractList(data: any): UnifiedDrama[] {

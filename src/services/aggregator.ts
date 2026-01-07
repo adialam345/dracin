@@ -23,10 +23,19 @@ const episodeDetailsCache = new Map<string, any[]>();
 
 // Helper to safely execute a promise and return empty array on failure
 async function safeExecute<T>(promise: Promise<T[]>, name: string): Promise<T[]> {
+    const timeoutMsg = 'AGGREGATOR_TIMEOUT';
+    const timeout = new Promise<T[]>((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutMsg)), 6000)
+    );
+
     try {
-        return await promise;
-    } catch (e) {
-        console.error(`[Aggregator] Error fetching ${name}:`, e);
+        return await Promise.race([promise, timeout]);
+    } catch (e: any) {
+        if (e.message === timeoutMsg) {
+            console.warn(`[Aggregator] Timeout fetching ${name} (skipping)`);
+        } else {
+            console.error(`[Aggregator] Error fetching ${name}:`, e.message || e);
+        }
         return [];
     }
 }
@@ -141,6 +150,24 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
     });
 
     return [...exactMatches, ...looseMatches];
+}
+
+// Map for streaming search
+export function getSearchTasks(query: string) {
+    return [
+        { name: 'Dramabox', task: () => safeExecute(Dramabox.searchDramabox(query), 'Dramabox') },
+        { name: 'Netshort', task: () => safeExecute(Netshort.searchNetshort(query), 'Netshort') },
+        { name: 'Melolo', task: () => safeExecute(Melolo.searchMelolo(query), 'Melolo') },
+        { name: 'RadReel', task: () => safeExecute(RadReel.searchRadReel(query), 'RadReel') },
+        { name: 'DramaWave', task: () => safeExecute(DramaWave.searchDramaWave(query), 'DramaWave') },
+        { name: 'FlickReels', task: () => safeExecute(FlickReels.searchFlickReels(query), 'FlickReels') },
+        { name: 'DramaDash', task: () => safeExecute(DramaDash.searchDramaDash(query), 'DramaDash') },
+        { name: 'ShortMax', task: () => safeExecute(ShortMax.searchShortMax(query), 'ShortMax') },
+        { name: 'StarShort', task: () => safeExecute(StarShort.searchStarShort(query), 'StarShort') },
+        { name: 'FreeShort', task: () => safeExecute(FreeShort.searchFreeShort(query), 'FreeShort') },
+        { name: 'HiShort', task: () => safeExecute(HiShort.searchHiShort(query), 'HiShort') },
+        { name: 'GoodShort', task: () => safeExecute(GoodShort.searchGoodShort(query), 'GoodShort') }
+    ];
 }
 
 export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDrama[]> {
@@ -321,17 +348,41 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
         let videoUrl = '';
 
         if (source === 'dramabox') {
+            console.log(`[Aggregator] Fetching Dramabox video for Book: ${bookId}, Episode: ${episodeId}`);
             const allEpisodeLinks = await fetchCached(API_BASE + '/dramabox/allepisode?bookId=' + bookId);
-            if (!allEpisodeLinks) return '';
-            const linkData = allEpisodeLinks.find((ep: any) => ep.chapterId === episodeId);
+            if (!allEpisodeLinks) {
+                console.log('[Aggregator] Dramabox episode list is empty/null');
+                return '';
+            }
+
+            // Handle both array/list response formats
+            let items: any[] = [];
+            if (Array.isArray(allEpisodeLinks)) items = allEpisodeLinks;
+            else if (allEpisodeLinks.data && Array.isArray(allEpisodeLinks.data)) items = allEpisodeLinks.data;
+            else if (allEpisodeLinks.data && allEpisodeLinks.data.chapterList) items = allEpisodeLinks.data.chapterList;
+
+            console.log(`[Aggregator] Found ${items.length} items for Dramabox.`);
+            const linkData = items.find((ep: any) => String(ep.chapterId) === String(episodeId));
+
+            if (!linkData) {
+                console.log(`[Aggregator] Episode ${episodeId} not found in list (First ID: ${items[0]?.chapterId})`);
+            }
+
 
             if (linkData && linkData.cdnList && linkData.cdnList.length > 0) {
                 const defaultCdn = linkData.cdnList.find((cdn: any) => cdn.isDefault === 1) || linkData.cdnList[0];
-                if (defaultCdn && defaultCdn.videoPathList) {
-                    const video720 = defaultCdn.videoPathList.find((v: any) => v.quality === 720);
-                    const video1080 = defaultCdn.videoPathList.find((v: any) => v.quality === 1080);
-                    const anyVideo = defaultCdn.videoPathList[0];
-                    videoUrl = (video720 || video1080 || anyVideo)?.videoPath || '';
+                if (defaultCdn) {
+                    // Check videoPathList
+                    if (defaultCdn.videoPathList && Array.isArray(defaultCdn.videoPathList) && defaultCdn.videoPathList.length > 0) {
+                        const video720 = defaultCdn.videoPathList.find((v: any) => v.quality === 720);
+                        const video1080 = defaultCdn.videoPathList.find((v: any) => v.quality === 1080);
+                        const anyVideo = defaultCdn.videoPathList[0];
+                        videoUrl = (video720 || video1080 || anyVideo)?.videoPath || '';
+                    }
+                    // Check direct videoPath if list is empty or missing (fallback)
+                    else if (defaultCdn.videoPath) {
+                        videoUrl = defaultCdn.videoPath;
+                    }
                 }
             }
         } else if (source === 'melolo') {
