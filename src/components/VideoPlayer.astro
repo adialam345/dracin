@@ -462,9 +462,9 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
           const isAndroid = /Android/.test(navigator.userAgent);
           
-          // --- SHORTMAX IOS FIX: Use Server Proxy to Decrypt ---
-          if (source === 'shortmax' && (isIOS || isSafari)) {
-               console.log('[VideoPlayer] iOS/Safari detected for ShortMax. Using Server-Side Proxy.');
+          // --- SHORTMAX FIX: Use Server Proxy to Decrypt for ALL devices for consistency ---
+          if (source === 'shortmax') {
+               console.log('[VideoPlayer] ShortMax detected. Using Server-Side Proxy for decryption.');
                const proxyUrl = new URL('/api/shortmax-proxy', window.location.origin);
                proxyUrl.searchParams.set('url', url);
                proxyUrl.searchParams.set('type', 'm3u8');
@@ -474,7 +474,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           // STRICTLY use native HLS only on iOS/Safari where it's robust/required
           // On Desktop Chrome/Edge/Firefox, we prefer HLS.js specifically for encryption support
           // UPDATE: Allow Android to use Native HLS if supported, as it's often more stable for standard streams than hls.js
-          const requiresCustomHLS = (source === 'shortmax') && !(isIOS || isSafari); // ShortMax needs hls.js for AES decryption (unless proxied)
+          const requiresCustomHLS = false; // Now handled by proxy, so no custom HLS needed anywhere for ShortMax
           
           const useNativeHLS = (isIOS || isSafari || (isAndroid && videoElement.canPlayType('application/vnd.apple.mpegurl'))) && !requiresCustomHLS;
 

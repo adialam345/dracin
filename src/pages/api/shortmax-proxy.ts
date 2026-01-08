@@ -22,8 +22,11 @@ export const GET: APIRoute = async ({ request, url }) => {
 
             // Rewrite TS lines
             const lines = originalM3u8.split('\n');
-            const newLines = lines.map(line => {
+            const newLines = lines
+                .filter(line => !line.startsWith('#EXT-X-KEY')) // Remove encryption key definition (since we decrypt at proxy)
+                .map(line => {
                 const l = line.trim();
+                // Check if it is a segment line (not starting with #)
                 if (l && !l.startsWith('#')) {
                     // It's a segment URL
                     // Resolve absolute URL
