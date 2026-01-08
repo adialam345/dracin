@@ -87,7 +87,7 @@ export async function getShortMaxForYou(): Promise<UnifiedDrama[]> {
  * Search Drama
  */
 // External APIs
-const SHORTMAX_SEARCH_API = 'https://sapimu.au/shortmax/api/v1/search';
+const SHORTMAX_SEARCH_API = 'https://dramabos.asia/api/shortmax/api/v1/search';
 
 export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
     try {
@@ -127,7 +127,7 @@ export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
  * Get signed video URL with auth_key for playback
  * Uses external API that provides authenticated streaming URLs
  */
-const SHORTMAX_PLAY_API = 'https://sapimu.au/shortmax/api/v1/play';
+const SHORTMAX_PLAY_API = 'https://dramabos.asia/api/shortmax/api/v1/play';
 
 // Pool of tokens to rotate to avoid rate limits (100 req/min, 2000/day per token)
 const API_TOKENS = [
