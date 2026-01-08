@@ -180,8 +180,52 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     videoElement.addEventListener('play', saveWatchHistory);
     videoElement.addEventListener('timeupdate', () => {
        // Optional: Save every 30s so we don't lose progress if they don't pause?
-       // For now 'play' and 'pause' might be enough, or just 'play' is fine to capture that they are here.
-       // Actually 'play' on each new video load (seamless) is handled because loadAndPlay calls .play()
+    });
+
+    // --- Intelligent Quality Management (Auto-Downgrade) ---
+    let stallCount = 0;
+    let lastStallTime = 0;
+
+    videoElement.addEventListener('waiting', () => {
+        // Only active if HLS.js is running (Native HLS handles this internally usually)
+        if (!window.hlsInstance) return;
+
+        const now = Date.now();
+        // Reset counter if it's been a while (e.g. 60s) since last stall
+        if (now - lastStallTime > 60000) {
+            stallCount = 0;
+        }
+        lastStallTime = now;
+        stallCount++;
+
+        console.log(`[VideoPlayer] Buffering detected (Count: ${stallCount})`);
+
+        // If we stall 2 times within a minute, downgrade quality
+        if (stallCount >= 2) {
+             const hls = window.hlsInstance;
+             if (hls.levels && hls.levels.length > 1) {
+                 // Determine current effective level or cap
+                 let currentCap = hls.autoLevelCapping;
+                 
+                 // If auto (-1), start from current loadLevel
+                 if (currentCap === -1) {
+                     currentCap = hls.loadLevel;
+                     if (currentCap === -1) currentCap = hls.currentLevel;
+                 }
+                 
+                 // Identify new cap (one level lower)
+                 // Ensure we don't go below 0
+                 const newCap = Math.max(0, currentCap - 1);
+                 
+                 if (newCap < currentCap || (hls.autoLevelCapping === -1 && newCap < hls.levels.length - 1)) {
+                     console.log(`[VideoPlayer] Unstable connection. Downgrading max quality to Level ${newCap}/${hls.levels.length - 1}`);
+                     hls.autoLevelCapping = newCap; // Enforce new max quality
+                     
+                     // Reset stall count to give the new level a chance to stabilize
+                     stallCount = 0;
+                 }
+             }
+        }
     });
     
     // Helper to find next episode ID
@@ -357,7 +401,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            return;
        }
 
-       if (((source === 'netshort' && shouldUseFallback(url, source)) || source === 'dotdrama') && !url.includes(VPS_PROXY)) {
+       if ((source === 'netshort' && shouldUseFallback(url, source)) && !url.includes(VPS_PROXY)) {
            url = VPS_PROXY + '?url=' + encodeURIComponent(url);
            console.log('[VideoPlayer] Using VPS Proxy for', source);
        } else if (
@@ -368,7 +412,9 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            (source === 'dramadash' && !url.includes(PROXY_BASE)) ||
            (source === 'dramabox' && !url.includes(PROXY_BASE)) ||
            (source === 'shortmax' && !url.includes(PROXY_BASE)) ||
-           (source === 'freeshort' && !url.includes(PROXY_BASE))
+           (source === 'freeshort' && !url.includes(PROXY_BASE)) ||
+           (source === 'stardusttv' && !url.includes(PROXY_BASE)) ||
+           (source === 'dotdrama' && !url.includes(PROXY_BASE))
        ) {
            // Use Worker Proxy with raw URL (worker handles headers)
            url = PROXY_BASE + '?url=' + encodeURIComponent(url);
@@ -540,36 +586,40 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
               enableWorker: true,
               lowLatencyMode: false,
               
-              // Buffer settings - more conservative for mobile
-              maxBufferLength: 15,        // Reduced from 20
-              maxMaxBufferLength: 30,     // Reduced from 40
-              maxBufferSize: 20 * 1000 * 1000, // 20 MB (reduced from 30)
-              maxBufferHole: 0.5,
+              // Buffer settings - Aggressive buffering to prevent "stuck" playback
+              maxBufferLength: 60,        // Start buffering 60s ahead (was 30)
+              maxMaxBufferLength: 600,    // Allow up to 10 mins buffered ahead if network permits (was 60)
+              maxBufferSize: 0,           // 0 = Auto/Unlimited (Browser manages memory). Prevents "stop buffering" when limit is hit.
               
-              // Loading timeouts - more lenient for slower connections
-              manifestLoadingTimeOut: 15000,  // Increased from 10s
-              manifestLoadingMaxRetry: 4,     // Increased retries
-              manifestLoadingRetryDelay: 1000, // Increased delay
-              levelLoadingTimeOut: 15000,
-              levelLoadingMaxRetry: 4,
-              fragLoadingTimeOut: 30000,      // Increased from 20s
-              fragLoadingMaxRetry: 6,         // More retries for mobile
+              // Buffer "Hole" tolerance - skip small gaps
+              maxBufferHole: 2.0,         // Increase to 2s to skip small data gaps without stalling
               
-              // Adaptive Bitrate - start with lower quality on mobile
-              startLevel: -1,
-              capLevelToPlayerSize: true,
+              // Loading timeouts - Very lenient for bad networks
+              manifestLoadingTimeOut: 30000,
+              manifestLoadingMaxRetry: 10,    // Retry many times
+              manifestLoadingRetryDelay: 1000,
               
-              // Network - more conservative for mobile
-              abrEwmaDefaultEstimate: 500000,
-              abrBandWidthFactor: 0.95,      // Increased from 0.8
-              abrBandWidthUpFactor: 0.7,
+              levelLoadingTimeOut: 30000,
+              levelLoadingMaxRetry: 10,
               
-              // Fragment Loading
-              backBufferLength: 10,
+              fragLoadingTimeOut: 40000,      // 40s timeout for fragments
+              fragLoadingMaxRetry: 20,        // Retry 20 times before giving up!
+              fragLoadingRetryDelay: 1000,    // 1s delay (hls.js adds backoff automatically)
+              
+              // Start level
+              startLevel: -1, 
+              
+              // Network Config
+              abrEwmaDefaultEstimate: 400000, 
+              abrBandWidthFactor: 0.8,       
+              abrBandWidthUpFactor: 0.7,     
+              abrMaxWithRealBitrate: false,
+              
+              // Cleanup old segments to save memory
+              backBufferLength: 90, // Keep 90s behind current time
               
               // XHR setup for better mobile compatibility
               xhrSetup: function(xhr, url) {
-                // Ensure proper headers for mobile
                 xhr.withCredentials = false;
               },
               

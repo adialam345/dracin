@@ -1,10 +1,12 @@
+import { encrypt } from '../utils/security.server';
+
 export interface UnifiedDrama {
     id: string;
     title: string;
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv';
     raw?: any;
 }
 
@@ -196,10 +198,13 @@ export function normalizeGoodShort(data: any): UnifiedDrama {
 }
 
 export function normalizeDotDrama(data: any): UnifiedDrama {
+    const rawCover = data.pday || data.cover || '';
+    const cover = rawCover ? `/api/proxy?q=${encodeURIComponent(encrypt(rawCover))}` : '';
+
     return {
         id: String(data.dcup || data.id || ''),
         title: data.nseri || data.title || '',
-        cover: data.pday || data.cover || '',
+        cover: cover,
         description: data.dwill || data.description || '',
         source: 'dotdrama',
         chapterCount: data.ewood || 0,
@@ -207,7 +212,22 @@ export function normalizeDotDrama(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' = 'dramabox'): UnifiedDrama {
+export function normalizeStarDustTV(data: any): UnifiedDrama {
+    const rawCover = data.image || data.cover || '';
+    const cover = rawCover ? `/api/proxy?q=${encodeURIComponent(encrypt(rawCover))}` : '';
+
+    return {
+        id: String(data.vid || data.id || ''),
+        title: data.title || '',
+        cover: cover,
+        description: data.description || '',
+        source: 'stardusttv',
+        chapterCount: 0, // Not provided in list
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -222,6 +242,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'hishort') return normalizeHiShort(data);
     if (defaultSource === 'goodshort') return normalizeGoodShort(data);
     if (defaultSource === 'dotdrama') return normalizeDotDrama(data);
+    if (defaultSource === 'stardusttv') return normalizeStarDustTV(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
@@ -232,6 +253,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.playlet_id && data.title) return normalizeFlickReels(data);
     if (data.poster && data.videoUrl) return normalizeDramaDash(data); // Crude heuristic
     if (data.bookId && (data.alias1 || data.columnId)) return normalizeGoodShort(data); // GoodShort heuristic
+    if (data.vid && (data.title || data.image)) return normalizeStarDustTV(data); // StarDust heuristic
 
     return normalizeDramabox(data);
 }

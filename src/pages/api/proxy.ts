@@ -150,6 +150,11 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers['Origin'] = 'https://www.shorttv.live';
                 headers['Referer'] = 'https://www.shorttv.live/';
             }
+            // StardustTV
+            else if (targetUrl.includes('stardusttv.cc') || targetUrl.includes('stardust-tv.com')) {
+                headers['Origin'] = 'https://www.stardusttv.net';
+                headers['Referer'] = 'https://www.stardusttv.net/';
+            }
             // FreeShort / DramaWave Video Domain
             else if (targetUrl.includes('mydramawave.com')) {
                 // IMPORTANT: DramaWave/FreeShort videos require specific Referer/Origin to avoid 403/CORS
