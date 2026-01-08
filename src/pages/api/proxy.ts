@@ -62,6 +62,13 @@ export const GET: APIRoute = async ({ url, request }) => {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
                 });
             }
+            // DotDrama (VividShort)
+            else if (targetUrl.includes('vividshort.com')) {
+                // vividshort seems to require no special headers or just standard ones, but lacks CORS on server.
+                // We forward the request as is (with standard UA) and let proxy add CORS headers on response.
+                headers['Origin'] = 'https://www.vividshort.com';
+                headers['Referer'] = 'https://www.vividshort.com/';
+            }
             // NetShort CDN - use node:https instead of fetch
             else if (targetUrl.includes('netshort.com')) {
                 headers['Referer'] = 'https://www.netshort.com/';

@@ -357,9 +357,9 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            return;
        }
 
-       if (source === 'netshort' && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
+       if (((source === 'netshort' && shouldUseFallback(url, source)) || source === 'dotdrama') && !url.includes(VPS_PROXY)) {
            url = VPS_PROXY + '?url=' + encodeURIComponent(url);
-           console.log('[VideoPlayer] Using VPS Proxy for NetShort (SSL fallback)');
+           console.log('[VideoPlayer] Using VPS Proxy for', source);
        } else if (
            (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes(PROXY_BASE)) ||
            (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
