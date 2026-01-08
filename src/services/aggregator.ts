@@ -14,6 +14,7 @@ import * as StarShort from './providers/starshort';
 import * as FreeShort from './providers/freeshort';
 import * as HiShort from './providers/hishort';
 import * as GoodShort from './providers/goodshort';
+import * as DotDrama from './providers/dotdrama';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -56,7 +57,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         ssForYou,
         fsForYou,
         hsForYou,
-        gsForYou
+        gsForYou,
+        dotdForYou
     ] = await Promise.all([
         safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
         safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
@@ -73,17 +75,18 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         safeExecute(withCache('fs_home', () => FreeShort.getFreeShortForYou()), 'FreeShort ForYou'),
         safeExecute(withCache('hs_home', () => HiShort.getHiShortHome()), 'HiShort ForYou'),
         safeExecute(withCache('gs_home', () => GoodShort.getGoodShortHome()), 'GoodShort ForYou'),
+        safeExecute(withCache('dotd_home', () => DotDrama.getDotDramaForYou()), 'DotDrama ForYou'),
     ]);
 
     // Cache items for Detail fallback
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou].forEach(list => cacheItems(list || []));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou].forEach(list => cacheItems(list || []));
 
     // const ssForYou = (await Promise.resolve(StarShort.getStarShortForYou())) || []; // Removed redundant call
     // cacheItems(ssForYou);
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -93,7 +96,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList] = await Promise.all([
         safeExecute(Dramabox.searchDramabox(query), 'Dramabox Search'),
         safeExecute(Netshort.searchNetshort(query), 'Netshort Search'),
         safeExecute(Melolo.searchMelolo(query), 'Melolo Search'),
@@ -105,16 +108,17 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         safeExecute(StarShort.searchStarShort(query), 'StarShort Search'),
         safeExecute(FreeShort.searchFreeShort(query), 'FreeShort Search'),
         safeExecute(HiShort.searchHiShort(query), 'HiShort Search'),
-        safeExecute(GoodShort.searchGoodShort(query), 'GoodShort Search')
+        safeExecute(GoodShort.searchGoodShort(query), 'GoodShort Search'),
+        safeExecute(DotDrama.searchDotDrama(query), 'DotDrama Search')
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length, gsList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length, gsList.length, dotdList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -128,6 +132,7 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (fsList[i]) candidates.push(fsList[i]);
         if (hsList[i]) candidates.push(hsList[i]);
         if (gsList[i]) candidates.push(gsList[i]);
+        if (dotdList[i]) candidates.push(dotdList[i]);
     }
 
     // Deduplicate
@@ -166,7 +171,8 @@ export function getSearchTasks(query: string) {
         { name: 'StarShort', task: () => safeExecute(StarShort.searchStarShort(query), 'StarShort') },
         { name: 'FreeShort', task: () => safeExecute(FreeShort.searchFreeShort(query), 'FreeShort') },
         { name: 'HiShort', task: () => safeExecute(HiShort.searchHiShort(query), 'HiShort') },
-        { name: 'GoodShort', task: () => safeExecute(GoodShort.searchGoodShort(query), 'GoodShort') }
+        { name: 'GoodShort', task: () => safeExecute(GoodShort.searchGoodShort(query), 'GoodShort') },
+        { name: 'DotDrama', task: () => safeExecute(DotDrama.searchDotDrama(query), 'DotDrama') }
     ];
 }
 
@@ -328,6 +334,29 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             }
 
             return { drama: finalDrama, episodes: finalEpisodes };
+        case 'dotdrama':
+            // Try to look in cache for basic info
+            const ddData = cached ? {
+                title: cached.title,
+                cover: cached.cover,
+                description: cached.description || '',
+                chapterCount: cached.chapterCount || 0,
+                labels: [],
+                source: 'dotdrama'
+            } : null;
+
+            // Generate synthetic episodes if we have chapter count
+            let ddEpisodes: any[] = [];
+            if (ddData && ddData.chapterCount > 0) {
+                ddEpisodes = Array.from({ length: ddData.chapterCount }, (_, i) => ({
+                    id: String(i + 1),
+                    name: 'Episode ' + (i + 1),
+                    index: i,
+                    unlock: true
+                }));
+            }
+
+            return { drama: ddData, episodes: ddEpisodes };
         default:
             return { drama: null, episodes: [] };
     }
@@ -553,6 +582,8 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             videoUrl = await HiShort.getHiShortVideoUrl(episodeId);
         } else if (source === 'goodshort') {
             videoUrl = await GoodShort.getGoodShortVideoUrl(bookId, episodeId);
+        } else if (source === 'dotdrama') {
+            videoUrl = await DotDrama.getDotDramaVideoUrl(bookId, episodeId);
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));
