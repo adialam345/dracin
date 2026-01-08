@@ -414,7 +414,9 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
            (source === 'shortmax' && !url.includes(PROXY_BASE)) ||
            (source === 'freeshort' && !url.includes(PROXY_BASE)) ||
            (source === 'stardusttv' && !url.includes(PROXY_BASE)) ||
-           (source === 'dotdrama' && !url.includes(PROXY_BASE))
+           (source === 'dotdrama' && !url.includes(PROXY_BASE)) ||
+           (source === 'reelife' && !url.includes(PROXY_BASE)) ||
+           (source === 'meloshort' && !url.includes(PROXY_BASE))
        ) {
            // Use Worker Proxy with raw URL (worker handles headers)
            url = PROXY_BASE + '?url=' + encodeURIComponent(url);
@@ -460,10 +462,19 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
           const isAndroid = /Android/.test(navigator.userAgent);
           
+          // --- SHORTMAX IOS FIX: Use Server Proxy to Decrypt ---
+          if (source === 'shortmax' && (isIOS || isSafari)) {
+               console.log('[VideoPlayer] iOS/Safari detected for ShortMax. Using Server-Side Proxy.');
+               const proxyUrl = new URL('/api/shortmax-proxy', window.location.origin);
+               proxyUrl.searchParams.set('url', url);
+               proxyUrl.searchParams.set('type', 'm3u8');
+               url = proxyUrl.toString();
+          }
+
           // STRICTLY use native HLS only on iOS/Safari where it's robust/required
           // On Desktop Chrome/Edge/Firefox, we prefer HLS.js specifically for encryption support
           // UPDATE: Allow Android to use Native HLS if supported, as it's often more stable for standard streams than hls.js
-          const requiresCustomHLS = (source === 'shortmax'); // ShortMax needs hls.js for AES decryption
+          const requiresCustomHLS = (source === 'shortmax') && !(isIOS || isSafari); // ShortMax needs hls.js for AES decryption (unless proxied)
           
           const useNativeHLS = (isIOS || isSafari || (isAndroid && videoElement.canPlayType('application/vnd.apple.mpegurl'))) && !requiresCustomHLS;
 

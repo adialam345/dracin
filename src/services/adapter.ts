@@ -6,8 +6,29 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort';
     raw?: any;
+}
+
+export function normalizeMeloshort(data: any): UnifiedDrama {
+    // Poster URL comes as "/img?url=https%3A%2F%2F..." or raw https
+    let cover = data.poster || data.cover || '';
+    if (cover.startsWith('/img?url=')) {
+        // Option A: Use the API's proxy
+        cover = 'https://apikupas.my.id' + cover;
+        // Option B: Extract the real URL if prefer direct (but maybe 403?)
+        // Let's stick to the proxy format or construct full URL if relative
+    }
+
+    return {
+        id: data.slug || data.id,
+        title: data.title || 'Unknown Title',
+        cover: cover,
+        description: data.description || '', // Not in Home feed
+        chapterCount: 0, // Not in Home feed
+        source: 'meloshort',
+        raw: data
+    };
 }
 
 // Helper function to strip HTML tags from text
@@ -227,7 +248,19 @@ export function normalizeStarDustTV(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' = 'dramabox'): UnifiedDrama {
+export function normalizeReelLife(data: any): UnifiedDrama {
+    return {
+        id: String(data.id || ''),
+        title: data.title || '',
+        cover: data.poster || data.cover || '',
+        description: '', // Description not available in home feed
+        source: 'reelife',
+        chapterCount: 0,
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -243,6 +276,8 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'goodshort') return normalizeGoodShort(data);
     if (defaultSource === 'dotdrama') return normalizeDotDrama(data);
     if (defaultSource === 'stardusttv') return normalizeStarDustTV(data);
+    if (defaultSource === 'reelife') return normalizeReelLife(data);
+    if (defaultSource === 'meloshort') return normalizeMeloshort(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
@@ -254,6 +289,8 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.poster && data.videoUrl) return normalizeDramaDash(data); // Crude heuristic
     if (data.bookId && (data.alias1 || data.columnId)) return normalizeGoodShort(data); // GoodShort heuristic
     if (data.vid && (data.title || data.image)) return normalizeStarDustTV(data); // StarDust heuristic
+    // Heuristic for ReelLife/Meloshort if needed (both have slug)
+    // if (data.slug && data.poster) return normalizeReelLife(data);
 
     return normalizeDramabox(data);
 }

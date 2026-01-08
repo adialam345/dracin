@@ -277,7 +277,10 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
             <!-- Form Section -->
             <div class="lg:col-span-1 space-y-4">
-              <h3 class="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-2">Tambah Info Baru</h3>
+              <div class="flex justify-between items-center mb-2">
+                 <h3 class="text-sm font-medium text-zinc-400 uppercase tracking-wider" id="formTitle">Tambah Info Baru</h3>
+                 <button id="cancelEditBtn" class="hidden text-xs text-red-400 hover:text-red-300 transition-colors">Batal Edit</button>
+              </div>
               
               <div>
                 <label class="block text-xs font-medium text-zinc-500 mb-1">Judul</label>
@@ -744,6 +747,9 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
       setInterval(fetchErrorReports, 10000);
       // --- Updates Management Logic ---
       
+      let currentUpdates = [];
+      let editingId = null;
+
       async function fetchUpdates() {
          const list = document.getElementById('updatesList');
          try {
@@ -751,6 +757,7 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
             if(res.status === 401) return;
             
             const updates = await res.json();
+            currentUpdates = updates; // Store for valid editing
             
             if(updates.length === 0) {
                 list.innerHTML = `<div class="text-center py-8 text-zinc-500 text-sm border border-dashed border-zinc-800 rounded-lg">Belum ada update info.</div>`;
@@ -769,13 +776,22 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
                         <h4 class="font-medium text-zinc-200 text-sm mb-1">${item.title}</h4>
                         <p class="text-xs text-zinc-400 line-clamp-2">${item.content}</p>
                     </div>
-                    <button 
-                        onclick="deleteUpdate(${item.id})"
-                        class="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                        title="Hapus Info"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                    </button>
+                    <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                            onclick="editUpdate(${item.id})"
+                            class="p-2 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                            title="Edit Info"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button 
+                            onclick="deleteUpdate(${item.id})"
+                            class="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Hapus Info"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        </button>
+                    </div>
                 </div>
             `).join('');
             
@@ -785,10 +801,47 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
          }
       }
 
+      // Reset Form State
+      function resetForm() {
+          editingId = null;
+          document.getElementById('updateTitle').value = '';
+          document.getElementById('updateContent').value = '';
+          document.getElementById('formTitle').textContent = 'Tambah Info Baru';
+          document.getElementById('addUpdateBtn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Posting Update`;
+          document.getElementById('cancelEditBtn').classList.add('hidden');
+      }
+
+      // Handle Cancel
+      document.getElementById('cancelEditBtn')?.addEventListener('click', resetForm);
+
+      // Handle Edit Click
+      (window as any).editUpdate = (id: number) => {
+          const item = currentUpdates.find(u => u.id === id);
+          if(!item) return;
+
+          editingId = id;
+          document.getElementById('updateTitle').value = item.title;
+          document.getElementById('updateContent').value = item.content;
+          
+          // Try to match tag in select
+          const tagSelect = document.getElementById('updateTag') as HTMLSelectElement;
+          // Simple logic: check options for tag string
+          for(let i=0; i<tagSelect.options.length; i++) {
+              if(tagSelect.options[i].value.includes(item.tag)) {
+                  tagSelect.selectedIndex = i;
+                  break;
+              }
+          }
+
+          document.getElementById('formTitle').textContent = 'Edit Info';
+          document.getElementById('addUpdateBtn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Perubahan`;
+          document.getElementById('cancelEditBtn').classList.remove('hidden');
+      };
+
       document.getElementById('addUpdateBtn')?.addEventListener('click', async () => {
-         const titleEl = document.getElementById('updateTitle');
-         const contentEl = document.getElementById('updateContent');
-         const tagEl = document.getElementById('updateTag');
+         const titleEl = document.getElementById('updateTitle') as HTMLInputElement;
+         const contentEl = document.getElementById('updateContent') as HTMLTextAreaElement;
+         const tagEl = document.getElementById('updateTag') as HTMLSelectElement;
          const btn = document.getElementById('addUpdateBtn');
          
          const title = titleEl.value.trim();
@@ -804,27 +857,37 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
          
          try {
              btn.disabled = true;
-             btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Posting...`;
+             const originalBtnText = btn.innerHTML;
+             btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Memproses...`;
              
-             const res = await fetch('/api/admin/updates', {
-                 method: 'POST',
+             const url = '/api/admin/updates';
+             const method = editingId ? 'PUT' : 'POST';
+             const body: any = { title, content, tag, color };
+             if(editingId) body.id = editingId;
+
+             const res = await fetch(url, {
+                 method: method,
                  headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ title, content, tag, color })
+                 body: JSON.stringify(body)
              });
              
              if(res.ok) {
-                 showToast('Info berhasil diposting!');
-                 titleEl.value = '';
-                 contentEl.value = '';
+                 showToast(editingId ? 'Info berhasil diperbarui!' : 'Info berhasil diposting!');
+                 resetForm(); // Resets and clears inputs
                  fetchUpdates();
              } else {
                  throw new Error('Failed');
              }
          } catch(e) {
-             showToast('Gagal memposting info', 'error');
+             console.error(e);
+             showToast('Gagal menyimpan info', 'error');
          } finally {
              btn.disabled = false;
-             btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Posting Update`;
+             if(!editingId) {
+                 btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Posting Update`;
+             } else {
+                 btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Perubahan`;
+             }
          }
       });
       

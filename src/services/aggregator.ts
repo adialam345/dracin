@@ -16,6 +16,8 @@ import * as HiShort from './providers/hishort';
 import * as GoodShort from './providers/goodshort';
 import * as DotDrama from './providers/dotdrama';
 import * as StardustTV from './providers/stardusttv';
+import * as ReelLife from './providers/reelife';
+import * as Meloshort from './providers/meloshort';
 
 // Helper for shuffling
 const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
@@ -60,7 +62,9 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         hsForYou,
         gsForYou,
         dotdForYou,
-        sdtvForYou
+        sdtvForYou,
+        rlForYou,
+        msForYou
     ] = await Promise.all([
         safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
         safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
@@ -79,17 +83,19 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         safeExecute(withCache('gs_home', () => GoodShort.getGoodShortHome()), 'GoodShort ForYou'),
         safeExecute(withCache('dotd_home', () => DotDrama.getDotDramaForYou()), 'DotDrama ForYou'),
         safeExecute(withCache('sdtv_home', () => StardustTV.getStardustTVForYou()), 'StardustTV ForYou'),
+        safeExecute(withCache('rl_home', () => ReelLife.getReelLifeForYou()), 'ReelLife ForYou'),
+        safeExecute(withCache('ms_home', () => Meloshort.getMeloshortForYou()), 'Meloshort ForYou'),
     ]);
 
     // Cache items for Detail fallback
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou].forEach(list => cacheItems(list || []));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou].forEach(list => cacheItems(list || []));
 
     // const ssForYou = (await Promise.resolve(StarShort.getStarShortForYou())) || []; // Removed redundant call
     // cacheItems(ssForYou);
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
@@ -99,7 +105,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
 export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama[]> {
     if (!query) return [];
 
-    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList, sdtvList] = await Promise.all([
+    const [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList, sdtvList, rlList, msList] = await Promise.all([
         safeExecute(Dramabox.searchDramabox(query), 'Dramabox Search'),
         safeExecute(Netshort.searchNetshort(query), 'Netshort Search'),
         safeExecute(Melolo.searchMelolo(query), 'Melolo Search'),
@@ -113,16 +119,18 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         safeExecute(HiShort.searchHiShort(query), 'HiShort Search'),
         safeExecute(GoodShort.searchGoodShort(query), 'GoodShort Search'),
         safeExecute(DotDrama.searchDotDrama(query), 'DotDrama Search'),
-        safeExecute(StardustTV.searchStardustTV(query), 'StardustTV Search')
+        safeExecute(StardustTV.searchStardustTV(query), 'StardustTV Search'),
+        safeExecute(ReelLife.searchReelLife(query), 'ReelLife Search'),
+        safeExecute(Meloshort.searchMeloshort(query), 'Meloshort Search')
     ]);
 
     // Cache items
-    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList, sdtvList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
+    [dbList, nsList, mlList, rrList, dwList, frList, ddList, smList, ssList, fsList, hsList, gsList, dotdList, sdtvList, rlList, msList].forEach(list => list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i)));
 
     let candidates: UnifiedDrama[] = [];
 
     // Interleave Logic
-    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length, gsList.length, dotdList.length, sdtvList.length);
+    const maxLen = Math.max(dbList.length, nsList.length, mlList.length, rrList.length, dwList.length, frList.length, ddList.length, smList.length, ssList.length, fsList.length, hsList.length, gsList.length, dotdList.length, sdtvList.length, rlList.length, msList.length);
     for (let i = 0; i < maxLen; i++) {
         if (dbList[i]) candidates.push(dbList[i]);
         if (nsList[i]) candidates.push(nsList[i]);
@@ -138,6 +146,8 @@ export async function fetchAggregatedSearch(query: string): Promise<UnifiedDrama
         if (gsList[i]) candidates.push(gsList[i]);
         if (dotdList[i]) candidates.push(dotdList[i]);
         if (sdtvList[i]) candidates.push(sdtvList[i]);
+        if (rlList[i]) candidates.push(rlList[i]);
+        if (msList[i]) candidates.push(msList[i]);
     }
 
     // Deduplicate
@@ -178,7 +188,9 @@ export function getSearchTasks(query: string) {
         { name: 'HiShort', task: () => safeExecute(HiShort.searchHiShort(query), 'HiShort') },
         { name: 'GoodShort', task: () => safeExecute(GoodShort.searchGoodShort(query), 'GoodShort') },
         { name: 'DotDrama', task: () => safeExecute(DotDrama.searchDotDrama(query), 'DotDrama') },
-        { name: 'StardustTV', task: () => safeExecute(StardustTV.searchStardustTV(query), 'StardustTV') }
+        { name: 'StardustTV', task: () => safeExecute(StardustTV.searchStardustTV(query), 'StardustTV') },
+        { name: 'ReelLife', task: () => safeExecute(ReelLife.searchReelLife(query), 'ReelLife') },
+        { name: 'Meloshort', task: () => safeExecute(Meloshort.searchMeloshort(query), 'Meloshort') }
     ];
 }
 
@@ -365,6 +377,12 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             return { drama: ddData, episodes: ddEpisodes };
         case 'stardusttv':
             return StardustTV.getStardustTVDetail(id);
+        case 'reelife':
+            const rlRes = await ReelLife.getReelLifeDetail(id);
+            return rlRes || { drama: null, episodes: [] };
+        case 'meloshort':
+            const msRes = await Meloshort.getMeloshortDetail(id);
+            return msRes || { drama: null, episodes: [] };
         default:
             return { drama: null, episodes: [] };
     }
@@ -594,6 +612,12 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             videoUrl = await DotDrama.getDotDramaVideoUrl(bookId, episodeId);
         } else if (source === 'stardusttv') {
             videoUrl = await StardustTV.getStardustTVVideoUrl(bookId, episodeId);
+        } else if (source === 'reelife') {
+            videoUrl = await ReelLife.getReelLifeVideoUrl(bookId, parseInt(episodeId) || 1);
+        } else if (source === 'meloshort') {
+            // Meloshort uses the unique episode slug as the ID, so we pass episodeId (which contains the slug)
+            // The signature is (id, episodeNum), but we only need the id (slug) now.
+            videoUrl = await Meloshort.getMeloshortVideoUrl(episodeId, 1);
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));
