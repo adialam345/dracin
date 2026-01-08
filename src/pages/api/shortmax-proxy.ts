@@ -25,20 +25,22 @@ export const GET: APIRoute = async ({ request, url }) => {
             const newLines = lines
                 .filter(line => !line.startsWith('#EXT-X-KEY')) // Remove encryption key definition (since we decrypt at proxy)
                 .map(line => {
-                const l = line.trim();
-                // Check if it is a segment line (not starting with #)
-                if (l && !l.startsWith('#')) {
-                    // It's a segment URL
-                    // Resolve absolute URL
-                    const segUrl = l.startsWith('http') ? l : m3u8Base + l;
-                    // Point to our proxy
-                    const proxyUrl = new URL(request.url); // Current proxy URL
-                    proxyUrl.searchParams.set('url', segUrl);
-                    proxyUrl.searchParams.set('type', 'ts');
-                    return proxyUrl.toString();
-                }
-                return line;
-            });
+                    const l = line.trim();
+                    // Check if it is a segment line (not starting with #)
+                    if (l && !l.startsWith('#')) {
+                        // It's a segment URL
+                        // Resolve absolute URL
+                        const segUrl = l.startsWith('http') ? l : m3u8Base + l;
+
+                        // Use relative URL for the segment line to inherit the Protocol/Host from the manifest request
+                        // This prevents Mixed Content issues if the server thinks it's HTTP but client is HTTPS
+                        const params = new URLSearchParams();
+                        params.set('url', segUrl);
+                        params.set('type', 'ts');
+                        return `?${params.toString()}`;
+                    }
+                    return line;
+                });
 
             return new Response(newLines.join('\n'), {
                 headers: {
