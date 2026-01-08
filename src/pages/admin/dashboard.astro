@@ -628,6 +628,7 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-zinc-200 break-all mb-1">${report.url}</p>
+                  ${report.description ? `<p class="text-xs text-red-300 bg-red-500/10 px-2 py-1 rounded inline-block mb-1 border border-red-500/20">${report.description}</p>` : ''}
                   <div class="flex items-center gap-3 text-xs text-zinc-500">
                     <span>IP: ${report.ip}</span>
                     <span>•</span>

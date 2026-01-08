@@ -2,6 +2,7 @@
 import { fetchAggregatedHome } from '../services/aggregator';
 import Layout from '../layouts/Layout.astro';
 import MovieCard from '../components/MovieCard.astro';
+import ProviderMarquee from '../components/ProviderMarquee.astro';
 import InfoPopup from '../components/InfoPopup.astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -34,14 +35,18 @@ try {
   <div class="container mx-auto px-4 py-12 md:py-20">
     
     {/* Clean Hero Section */}
-    <section class="mb-24 text-center max-w-4xl mx-auto">
+    <section class="mb-12 text-center max-w-5xl mx-auto">
       <h1 class="text-5xl md:text-7xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500 tracking-tight animate-fade-in-up">
         DramaIn
       </h1>
-      <p class="text-xl md:text-2xl text-zinc-400 mb-10 font-light leading-relaxed animate-fade-in-up delay-100">
-        Akses semua drama dari <span class="text-white font-medium">DramaBox</span>, <span class="text-white font-medium">NetShort</span>, <span class="text-white font-medium">RadReel</span>, <span class="text-white font-medium">ShortMax</span>, <span class="text-white font-medium">StarShort</span>, <span class="text-white font-medium">DramaWave</span>, <span class="text-white font-medium">Melolo</span>, <span class="text-white font-medium">FlickReels</span>, <span class="text-white font-medium">GoodShort</span>, <span class="text-white font-medium">HiShort</span>, <span class="text-white font-medium">FreeShort</span>, <span class="text-white font-medium">StardustTV</span>, <span class="text-white font-medium">DotDrama</span>, dan <span class="text-white font-medium">DramaDash</span> dalam satu platform. <br />
-        secara GRATIS.
+      <p class="text-xl md:text-2xl text-zinc-400 mb-5 font-light leading-relaxed animate-fade-in-up delay-100">
+        Akses semua drama dari berbagai platform dalam satu website.<br />
+        Unlock semua episode <span class="text-white font-semibold">GRATIS</span>.
       </p>
+
+      <div class="mb-6 animate-fade-in-up delay-150 relative">
+        <ProviderMarquee />
+      </div>
 
       {/* Search Bar & Tags */}
       <div class="flex flex-col items-center gap-8 animate-fade-in-up delay-200">
@@ -56,7 +61,7 @@ try {
     </section>
 
     {/* Sections */}
-    <div class="space-y-24">
+    <div class="space-y-16">
       {forYouDramas.length > 0 && (
         <section class="opacity-0 animate-fade-in-up delay-300 fill-mode-forwards">
           <div class="flex items-end justify-between mb-8 px-2">
