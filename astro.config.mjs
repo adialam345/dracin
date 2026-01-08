@@ -13,5 +13,10 @@ export default defineConfig({
   integrations: [tailwind()],
   devToolbar: {
     enabled: false
+  },
+  vite: {
+    server: {
+      allowedHosts: ['nontonin.site']
+    }
   }
 });
