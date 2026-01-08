@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1767857547514,
+    "date": "8 Jan 2026",
+    "timestamp": 1767857547514,
+    "title": "Menambah Layanan Stream Drama (DOT) dan (SD)",
+    "content": "Menambah Layanan Drama dari DotDrama (DOT) dan StarDustTV (SD)",
+    "tag": "Fitur",
+    "color": "bg-purple-500/20 text-purple-400 border-purple-500/30"
+  },
+  {
+    "id": 1767857510207,
+    "date": "8 Jan 2026",
+    "timestamp": 1767857510207,
+    "title": "Info Dramawave (DW)",
+    "content": "Untuk Dramawave (DW) terdapat drama yang belum unlock all episode",
+    "tag": "Info",
+    "color": "bg-blue-500/20 text-blue-400 border-blue-500/30"
+  },
+  {
+    "id": 1767857457481,
+    "date": "8 Jan 2026",
+    "timestamp": 1767857457481,
+    "title": "Info Goodshort (GS)",
+    "content": "Untuk Goodshort (GS) terdapat drama yang belum unlock all episode",
+    "tag": "Info",
+    "color": "bg-blue-500/20 text-blue-400 border-blue-500/30"
+  },
+  {
+    "id": 1641513600000,
+    "date": "7 Jan 2026",
+    "title": "Perbaikan Playback Video",
+    "content": "Telah dilakukan perbaikan pada pemutar video untuk mengatasi masalah buffering di beberapa provider.",
+    "tag": "Fix",
+    "color": "bg-green-500/20 text-green-400 border-green-500/30",
+    "timestamp": 1767770400000
+  }
+]

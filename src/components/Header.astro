@@ -25,6 +25,9 @@ const currentPath = Astro.url.pathname;
         <a href="/category/terbaru" class={`text-sm font-medium transition-colors duration-300 ${currentPath.includes('/category/terbaru') ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
           Terbaru
         </a>
+        <a href="/info" class={`text-sm font-medium transition-colors duration-300 ${currentPath === '/info' ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+          Info
+        </a>
         <a href="/donasi" class={`text-sm font-bold transition-all duration-300 relative ${currentPath === '/donasi' ? 'text-yellow-400' : 'text-yellow-500/80 hover:text-yellow-400'} animate-pulse`}>
           DONASI
           <span class="absolute -top-1 -right-1 flex h-2 w-2">

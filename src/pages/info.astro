@@ -1,0 +1,171 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+let updates = [];
+try {
+  const data = await fs.readFile(path.join(process.cwd(), 'public/data/updates.json'), 'utf-8');
+  updates = JSON.parse(data);
+} catch (e) {
+  // Fallback if file doesn't exist yet
+  updates = [];
+}
+---
+
+<Layout title="Info & Update - DramaIn">
+  <div class="max-w-xl mx-auto px-4">
+    <!-- Header -->
+    <div class="mb-8 pt-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+          Info & Update
+        </h1>
+        <p class="text-zinc-400 text-sm">Informasi terbaru dari Admin</p>
+      </div>
+
+      <button id="openReportBtn" class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl font-medium text-xs transition-all border border-zinc-700 hover:border-zinc-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Lapor Error
+      </button>
+    </div>
+
+    <!-- Timeline -->
+    <div class="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-px before:bg-gradient-to-b before:from-transparent before:via-zinc-800 before:to-transparent">
+      
+      {updates.map((item) => (
+        <div class="relative flex items-start group">
+            <!-- Dot -->
+            <div class="absolute left-0 top-1 mt-1.5 ml-3.5 h-3 w-3 rounded-full border border-zinc-950 bg-zinc-700 shadow-sm group-hover:bg-indigo-500 transition-colors duration-300"></div>
+
+            <!-- Content Card -->
+            <div class="ml-10 w-full bg-zinc-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-5 hover:bg-zinc-900/80 hover:border-white/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${item.color}`}>
+                        {item.tag}
+                    </span>
+                    <span class="text-xs text-zinc-500 font-mono">
+                        {item.date}
+                    </span>
+                </div>
+                <h3 class="text-base font-semibold text-zinc-100 mb-2">
+                    {item.title}
+                </h3>
+                <p class="text-sm text-zinc-400 leading-relaxed">
+                    {item.content}
+                </p>
+            </div>
+        </div>
+      ))}
+
+      {updates.length === 0 && (
+        <div class="text-center py-12">
+            <div class="bg-zinc-900/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <p class="text-zinc-500 text-sm">Belum ada update terbaru.</p>
+        </div>
+      )}
+
+    </div>
+
+
+  </div>
+
+  <!-- Report Modal -->
+  <div id="reportModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md p-6 transform scale-95 transition-all duration-300" id="reportContent">
+      <div class="flex items-center justify-between mb-4">
+         <h3 class="text-lg font-bold text-white">Lapor Error</h3>
+         <button id="closeReportBtn" class="text-zinc-500 hover:text-zinc-300">
+           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+         </button>
+      </div>
+
+      <div class="space-y-4">
+         <div>
+            <label class="block text-xs font-medium text-zinc-500 mb-1">URL Error (Opsional)</label>
+            <input type="text" id="reportUrl" class="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 outline-none transition-colors" placeholder="https://..." />
+         </div>
+         
+         <div>
+            <label class="block text-xs font-medium text-zinc-500 mb-1">Jelaskan Masalahnya</label>
+            <textarea id="reportDesc" rows="4" class="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 outline-none transition-colors resize-none" placeholder="Video tidak bisa diputar, halaman blank, dll..."></textarea>
+         </div>
+
+         <button id="submitReportBtn" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2">
+            Kirim Laporan
+         </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+     const modal = document.getElementById('reportModal');
+     const reportContent = document.getElementById('reportContent');
+     const openBtn = document.getElementById('openReportBtn');
+     const closeBtn = document.getElementById('closeReportBtn');
+     const submitBtn = document.getElementById('submitReportBtn');
+     const urlInput = document.getElementById('reportUrl');
+     const descInput = document.getElementById('reportDesc');
+
+     function openModal() {
+        modal.classList.remove('hidden');
+        // Trigger reflow
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0');
+        reportContent.classList.remove('scale-95');
+     }
+
+     function closeModal() {
+        modal.classList.add('opacity-0');
+        reportContent.classList.add('scale-95');
+        setTimeout(() => {
+           modal.classList.add('hidden');
+           // Reset form
+           urlInput.value = '';
+           descInput.value = '';
+        }, 300);
+     }
+
+     openBtn?.addEventListener('click', openModal);
+     closeBtn?.addEventListener('click', closeModal);
+     modal.addEventListener('click', (e) => {
+        if(e.target === modal) closeModal();
+     });
+
+     submitBtn?.addEventListener('click', async () => {
+         const url = urlInput.value.trim();
+         const description = descInput.value.trim();
+         
+         if(!description) {
+             alert('Mohon jelaskan masalahnya');
+             return;
+         }
+
+         submitBtn.disabled = true;
+         submitBtn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full mr-2"></span> Mengirim...';
+
+         try {
+             const res = await fetch('/api/admin/error-reports', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ url, description })
+             });
+
+             if(res.ok) {
+                 alert('Laporan berhasil dikirim! Terima kasih atas masukan kamu.');
+                 closeModal();
+             } else {
+                 throw new Error('Failed');
+             }
+         } catch(e) {
+             alert('Gagal mengirim laporan. Silakan coba lagi.');
+         } finally {
+             submitBtn.disabled = false;
+             submitBtn.innerHTML = 'Kirim Laporan';
+         }
+     });
+  </script>
+</Layout>

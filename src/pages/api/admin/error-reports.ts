@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 interface ErrorReport {
     id: string;
     url: string;
+    description?: string;
     userAgent: string;
     ip: string;
     timestamp: number;
@@ -31,10 +32,10 @@ function getErrorReportsStore(): ErrorReportsStore {
 export const POST: APIRoute = async ({ request }) => {
     try {
         const body = await request.json();
-        const { url } = body;
+        const { url, description } = body;
 
-        if (!url) {
-            return new Response(JSON.stringify({ error: 'URL is required' }), {
+        if (!url && !description) {
+            return new Response(JSON.stringify({ error: 'URL or description is required' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -48,7 +49,8 @@ export const POST: APIRoute = async ({ request }) => {
 
         const report: ErrorReport = {
             id: `err_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            url,
+            url: url || 'General Report',
+            description: description || '',
             userAgent,
             ip: ip.split(',')[0].trim(),
             timestamp: Date.now(),
