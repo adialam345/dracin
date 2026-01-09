@@ -1,48 +1,61 @@
 import type { APIRoute } from 'astro';
 import { encrypt, decrypt } from '../../utils/security.server';
+import { PROXY_LIST } from '../../services/utils';
 import https from 'node:https';
 import sharp from 'sharp';
 
 export const GET: APIRoute = async ({ url, request }) => {
-    let targetUrl = url.searchParams.get('url');
     const q = url.searchParams.get('q');
+    const initialurlStr = url.searchParams.get('url'); // Keep this for fallback
+
+    // Ensure we have a target URL string
+    let urlStr = '';
 
     if (q) {
-        // Try decrypting
         const decrypted = decrypt(q);
-        // Decrypt might return object or string depending on how it was encrypted.
-        // If we strictly encrypt string -> string, then 'decrypted' is the url.
-        // If we encrypt object {url: ...}, we need to parse.
-        // Our 'encrypt' utility handles JSON.stringify.
-        // So checking if it is a JSON string or raw URL.
         if (decrypted) {
-            if (decrypted.startsWith('http')) {
-                targetUrl = decrypted;
-            } else {
-                try {
-                    const parsed = JSON.parse(decrypted);
-                    if (parsed.url) targetUrl = parsed.url;
-                    else targetUrl = decrypted; // fallback
-                } catch (e) {
-                    targetUrl = decrypted;
-                }
+            if (typeof decrypted === 'string') {
+                urlStr = decrypted;
+            } else if (typeof decrypted === 'object') {
+                urlStr = decrypted.url || decrypted.videoUrl || decrypted.posterUrl || decrypted.cover || '';
             }
         }
     }
 
-    if (!targetUrl) return new Response('Missing url', { status: 400 });
+    if (!urlStr && initialurlStr) {
+        urlStr = String(initialurlStr);
+    }
+
+    // EMERGENCY FALLBACK: If q is passed but decryption failed, maybe q IS the url?
+    // This happens if client sent raw URL but put it in 'q' param by mistake, 
+    // or if encryption key mismatch.
+    if (!urlStr && q && q.startsWith('http')) {
+        urlStr = q;
+    }
+
+    urlStr = urlStr.trim();
+
+    // Check for common URL issues
+    if (urlStr.startsWith('//')) {
+        urlStr = 'https:' + urlStr;
+    }
+
+    if (!urlStr || urlStr === 'null' || urlStr === 'undefined' || !urlStr.startsWith('http')) {
+        console.error(`[Proxy] 400 Invalid URL. Q: ${q?.substring(0, 10)}... | Decrypted type: ${typeof decrypt(q || '')} | Str: ${urlStr}`);
+        return new Response('Missing or invalid url', { status: 400 });
+    }
 
     // console.log(`[Proxy] Request received`); 
 
     // DEBUG: Log decrypted URL to verify it's correct
-    // console.log(`[Proxy] Target URL:`, targetUrl?.substring(0, 150));
+    // console.log(`[Proxy] Target URL:`, urlStr?.substring(0, 150));
 
     try {
         let response;
         try {
             const headers: Record<string, string> = {
                 'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                ...((request.headers.get('Range') && !targetUrl.includes('.m3u8')) ? { 'Range': request.headers.get('Range')! } : {})
+                ...((request.headers.get('Range') && !urlStr.includes('.m3u8')) ? { 'Range': request.headers.get('Range')! } : {})
             };
 
             // Forward Conditional Request Headers (Saves Bandwidth)
@@ -50,11 +63,11 @@ export const GET: APIRoute = async ({ url, request }) => {
             if (request.headers.get('if-modified-since')) headers['If-Modified-Since'] = request.headers.get('if-modified-since')!;
 
             // DramaWave Referer
-            if (targetUrl.includes('mydramawave.com')) {
+            if (urlStr.includes('mydramawave.com')) {
                 headers['Referer'] = 'https://www.mydramawave.com';
             }
             // FlickReels Token (Farsun)
-            else if (targetUrl.includes('farsunpteltd.com')) {
+            else if (urlStr.includes('farsunpteltd.com')) {
                 Object.assign(headers, {
                     'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
                     'bundleIdentifier': 'com.farsun.shortplay',
@@ -63,21 +76,21 @@ export const GET: APIRoute = async ({ url, request }) => {
                 });
             }
             // DotDrama (VividShort)
-            else if (targetUrl.includes('vividshort.com')) {
+            else if (urlStr.includes('vividshort.com')) {
                 // vividshort seems to require no special headers or just standard ones, but lacks CORS on server.
                 // We forward the request as is (with standard UA) and let proxy add CORS headers on response.
                 headers['Origin'] = 'https://www.vividshort.com';
                 headers['Referer'] = 'https://www.vividshort.com/';
             }
             // NetShort CDN - use node:https instead of fetch
-            else if (targetUrl.includes('netshort.com')) {
+            else if (urlStr.includes('netshort.com')) {
                 headers['Referer'] = 'https://www.netshort.com/';
                 headers['Accept'] = '*/*';
                 headers['Accept-Encoding'] = 'identity'; // Don't use compression for video
 
                 // Use node:https for NetShort (fetch doesn't work with their CDN)
                 return new Promise<Response>((resolve) => {
-                    const urlObj = new URL(targetUrl);
+                    const urlObj = new URL(urlStr);
                     const options: https.RequestOptions = {
                         method: 'GET',
                         headers: headers,
@@ -130,49 +143,108 @@ export const GET: APIRoute = async ({ url, request }) => {
                 });
             }
             // RadReel CDN
-            else if (targetUrl.includes('wolftv.online')) {
+            else if (urlStr.includes('wolftv.online')) {
                 headers['Referer'] = 'https://www.wolftv.online/';
                 headers['Origin'] = 'https://www.wolftv.online';
             }
             // Melolo CDN (TikTok)
-            else if (targetUrl.includes('tiktokcdn.com')) {
+            else if (urlStr.includes('tiktokcdn.com')) {
                 headers['Referer'] = 'https://www.tiktok.com/';
                 headers['Origin'] = 'https://www.tiktok.com';
             }
             // DramaDash (Cloudflare Stream)
-            else if (targetUrl.includes('cloudflarestream.com')) {
+            else if (urlStr.includes('cloudflarestream.com')) {
                 headers['User-Agent'] = 'DramaDash/50 CFNetwork/1474 Darwin/23.0.0';
                 headers['Origin'] = 'https://dramadash.app';
                 headers['Referer'] = 'https://dramadash.app/';
             }
             // ShortMax
-            else if (targetUrl.includes('shorttv.live')) {
+            else if (urlStr.includes('shorttv.live')) {
                 headers['Origin'] = 'https://www.shorttv.live';
                 headers['Referer'] = 'https://www.shorttv.live/';
             }
             // StardustTV
-            else if (targetUrl.includes('stardusttv.cc') || targetUrl.includes('stardust-tv.com')) {
+            else if (urlStr.includes('stardusttv.cc') || urlStr.includes('stardust-tv.com')) {
                 headers['Origin'] = 'https://www.stardusttv.net';
                 headers['Referer'] = 'https://www.stardusttv.net/';
             }
+            // Dramabox CDN (ksh-img)
+            else if (urlStr.includes('dramabox')) {
+                headers['Referer'] = 'https://www.dramaboxdb.com/';
+                headers['Origin'] = 'https://www.dramaboxdb.com';
+            }
             // FreeShort / DramaWave Video Domain
-            else if (targetUrl.includes('mydramawave.com')) {
+            else if (urlStr.includes('mydramawave.com')) {
                 // IMPORTANT: DramaWave/FreeShort videos require specific Referer/Origin to avoid 403/CORS
                 headers['Origin'] = 'https://www.mydramawave.com';
                 headers['Referer'] = 'https://www.mydramawave.com/';
             }
             // Vigloo
-            else if (targetUrl.includes('vigloo.com')) {
+            else if (urlStr.includes('vigloo.com')) {
                 headers['Origin'] = 'https://www.vigloo.com';
                 headers['Referer'] = 'https://www.vigloo.com/';
                 headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
             }
             else {
                 // Default Referer to origin of target (often helps with generic CDNs)
-                headers['Referer'] = new URL(targetUrl).origin + '/';
+                try {
+                    const u = new URL(urlStr);
+                    headers['Referer'] = u.origin + '/';
+                } catch (e) {
+                    // Fallback for invalid URLs or relative paths
+                    headers['Referer'] = urlStr;
+                }
             }
 
-            response = await fetch(targetUrl, { headers });
+            if (q) console.log(`[Proxy] Processing: ${String(urlStr).substring(0, 60)}...`);
+
+            const isImageRequest = urlStr.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i) || urlStr.includes('ksh-img') || urlStr.includes('img');
+
+            const fetchWithProxy = async (url: string, proxyUrl?: string) => {
+                const finalUrl = proxyUrl ? `${proxyUrl}?url=${encodeURIComponent(url)}` : url;
+                return fetch(finalUrl, {
+                    headers,
+                    // Lower timeout for images to prevent browser queue blocking
+                    signal: AbortSignal.timeout(proxyUrl ? 15000 : (isImageRequest ? 5000 : 15000))
+                });
+            };
+
+            // Comprehensive Provider List for Workers
+            const useWorker = urlStr.includes('dramabox') ||
+                urlStr.includes('shortmax') ||
+                urlStr.includes('wolftv.online') ||
+                urlStr.includes('mydramawave.com') ||
+                urlStr.includes('farsunpteltd.com');
+
+            try {
+                if (useWorker) {
+                    // Try Worker 1, then Worker 2
+                    response = await fetchWithProxy(urlStr, PROXY_LIST[0]).catch(() => fetchWithProxy(urlStr, PROXY_LIST[1]).catch(() => undefined));
+                } else {
+                    // Try Direct, then Worker 1
+                    response = await fetchWithProxy(urlStr).catch(async () => {
+                        return fetchWithProxy(urlStr, PROXY_LIST[0]).catch(() => undefined);
+                    });
+                }
+
+                // Final fallback if status specifically not OK
+                if (response && !response.ok && response.status !== 304) {
+                    const fallbackResponse = await fetchWithProxy(urlStr, PROXY_LIST[1]).catch(() => undefined);
+                    if (fallbackResponse) response = fallbackResponse;
+                }
+            } catch (e: any) {
+                console.error(`[Proxy] Critical fetch error for ${urlStr.substring(0, 50)}: ${e.message}`);
+                // Last ditch effort
+                try {
+                    response = await fetchWithProxy(urlStr, PROXY_LIST[0]).catch(() => undefined);
+                } catch (e2) { }
+            }
+
+            if (q) console.log(`[Proxy] Result: ${response?.status || 'FAIL'} for ${urlStr.substring(0, 40)}`);
+
+            if (!response) {
+                return new Response('Proxy failed to get response', { status: 504 });
+            }
 
             // Handle 304 Not Modified from Upstream
             if (response.status === 304) {
@@ -188,35 +260,43 @@ export const GET: APIRoute = async ({ url, request }) => {
             }
 
         } catch (fetchError: any) {
-            console.error(`[Proxy] Fetch failed for:`, targetUrl?.substring(0, 100), fetchError.message);
+            console.error(`[Proxy] Fetch failed for:`, urlStr?.substring(0, 100), fetchError.message);
             // Return actual error message for debugging
             return new Response(`Proxy fetch error: ${fetchError.message}`, { status: 500 });
         }
 
         // console.log(`[Proxy] Response status: ${response.status}`);
 
+        if (!response) {
+            return new Response('Proxy failed to get response', { status: 504 });
+        }
+
         const contentType = response.headers.get('content-type') || '';
 
         // For subtitle files, be more lenient with status codes
-        const isSubtitle = targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') ||
-            targetUrl.endsWith('.srt') || contentType.includes('vtt') ||
+        const isSubtitle = urlStr.endsWith('.vtt') || urlStr.endsWith('.webvtt') ||
+            urlStr.endsWith('.srt') || contentType.includes('vtt') ||
             contentType.includes('text/plain');
 
         if (!response.ok && !isSubtitle) {
-            return new Response(`Proxy error status:${response.status}`, { status: 500 });
+            // Log the failure but don't strictly 500 images, let them pass if possible
+            const isImage = contentType.startsWith('image/') || urlStr.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+            if (!isImage) {
+                return new Response(`Proxy error status:${response.status}`, { status: 500 });
+            }
         }
 
 
         // Handle M3U8 rewriting
         const isM3U8 = contentType.toLowerCase().includes('mpegurl') ||
             contentType.toLowerCase().includes('hls') ||
-            targetUrl.includes('.m3u8');
+            urlStr.includes('.m3u8');
 
         if (isM3U8) {
             const text = await response.text();
 
-            const baseUrl = new URL('.', targetUrl).href;
-            const urlObj = new URL(targetUrl);
+            const baseUrl = new URL('.', urlStr).href;
+            const urlObj = new URL(urlStr);
             const searchParams = urlObj.search;
 
             // Determine correct origin
@@ -284,7 +364,7 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
 
         // Handle SRT subtitle conversion to VTT
-        if (targetUrl.endsWith('.srt') || contentType.includes('srt')) {
+        if (urlStr.endsWith('.srt') || contentType.includes('srt')) {
             const srtText = await response.text();
             const vttText = convertSrtToVtt(srtText);
 
@@ -299,7 +379,7 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
 
         // Handle WebVTT subtitles (pass through with CORS headers)
-        if (targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') || contentType.includes('vtt') || contentType.includes('text/plain')) {
+        if (urlStr.endsWith('.vtt') || urlStr.endsWith('.webvtt') || contentType.includes('vtt') || contentType.includes('text/plain')) {
             const vttText = await response.text();
 
             return new Response(vttText, {
@@ -313,53 +393,25 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
 
 
-        // Handle Image Optimization
-        const isImage = contentType.startsWith('image/') && !targetUrl.endsWith('.ico');
+        // Handle Image Optimization (Currently disabled to prioritize TTFB and server stability)
+        const isImage = contentType.startsWith('image/') && !urlStr.endsWith('.ico');
         if (isImage) {
-            let buffer: Buffer | null = null;
-            try {
-                const arrayBuffer = await response.arrayBuffer();
-                buffer = Buffer.from(arrayBuffer);
-
-                // Force resize to a mobile-friendly width
-                const optimizedBuffer = await sharp(buffer)
-                    .rotate() // Auto-orient based on EXIF
-                    .resize({ width: 400, withoutEnlargement: true })
-                    .webp({ quality: 50, effort: 4 })
-                    .toBuffer();
-
-                return new Response(new Uint8Array(optimizedBuffer), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'image/webp',
-                        'Access-Control-Allow-Origin': '*',
-                        'Cache-Control': 'public, max-age=31536000, immutable',
-                        'X-Proxy-Cache': 'Optimized'
-                    }
-                });
-            } catch (imageError) {
-                console.error('[Proxy] Image optimization failed:', imageError);
-                // Fallback to the original buffer if optimization fails
-                if (!buffer) {
-                    return new Response('Image Fetch Failed', { status: 502 });
+            return new Response(response.body, {
+                status: response.status,
+                headers: {
+                    'Content-Type': contentType,
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=31536000, immutable',
+                    'X-Proxy-Cache': 'Direct-Pass'
                 }
-
-                return new Response(new Uint8Array(buffer), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': contentType,
-                        'Access-Control-Allow-Origin': '*',
-                        'Cache-Control': 'public, max-age=31536000'
-                    }
-                });
-            }
+            });
         }
 
         // Handle TS segments or other binary data
 
         // Fix for iOS Safari: Ensure TS segments have correct Content-Type
         let finalContentType = contentType || 'application/octet-stream';
-        if (targetUrl.endsWith('.ts')) {
+        if (urlStr.endsWith('.ts')) {
             finalContentType = 'video/mp2t';
         }
 
