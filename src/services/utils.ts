@@ -20,7 +20,7 @@ const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.le
 
 // Simple in-memory cache for server-side requests
 const serverCache = new Map<string, { data: any, expiry: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache for better TTFB
 
 export async function withCache<T>(key: string, fetcher: () => Promise<T>, ttl: number = CACHE_TTL): Promise<T> {
     const cached = serverCache.get(key);

@@ -324,12 +324,12 @@ export const GET: APIRoute = async ({ url, request }) => {
                 const metadata = await pipeline.metadata();
 
                 // Only optimize if image is large
-                if (metadata.width && metadata.width > 500) {
-                    pipeline = pipeline.resize({ width: 500, withoutEnlargement: true });
+                if (metadata.width && metadata.width > 400) {
+                    pipeline = pipeline.resize({ width: 400, withoutEnlargement: true });
                 }
 
                 const optimizedBuffer = await pipeline
-                    .webp({ quality: 75 })
+                    .webp({ quality: 60 })
                     .toBuffer();
 
                 return new Response(new Uint8Array(optimizedBuffer), {

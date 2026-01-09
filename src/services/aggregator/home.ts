@@ -28,12 +28,12 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         msForYou,
         vForYou
     ] = await Promise.all([
-        safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
-        safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
-        safeExecute(Dramabox.getDramaboxLatest(), 'Dramabox Latest'),
-        safeExecute(Netshort.getNetshortForYou(), 'Netshort ForYou'),
-        safeExecute(Melolo.getMeloloTrending(), 'Melolo Trending'),
-        safeExecute(Melolo.getMeloloLatest(), 'Melolo Latest'),
+        safeExecute(withCache('db_foryou', () => Dramabox.getDramaboxForYou()), 'Dramabox ForYou'),
+        safeExecute(withCache('db_trending', () => Dramabox.getDramaboxTrending()), 'Dramabox Trending'),
+        safeExecute(withCache('db_latest', () => Dramabox.getDramaboxLatest()), 'Dramabox Latest'),
+        safeExecute(withCache('ns_foryou', () => Netshort.getNetshortForYou()), 'Netshort ForYou'),
+        safeExecute(withCache('ml_trending', () => Melolo.getMeloloTrending()), 'Melolo Trending'),
+        safeExecute(withCache('ml_latest', () => Melolo.getMeloloLatest()), 'Melolo Latest'),
         safeExecute(withCache('rr_home', () => RadReel.getRadReelForYou()), 'RadReel ForYou'),
         safeExecute(withCache('dw_home', () => DramaWave.getDramaWaveForYou()), 'DramaWave ForYou'),
         safeExecute(withCache('fr_home', () => FlickReels.getFlickReelsForYou()), 'FlickReels ForYou'),
