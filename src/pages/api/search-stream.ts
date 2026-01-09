@@ -4,12 +4,13 @@ import { getSearchTasks } from '../../services/aggregator';
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
     const query = url.searchParams.get('q');
+    const provider = url.searchParams.get('p') || 'all';
 
     if (!query) {
         return new Response('Missing query', { status: 400 });
     }
 
-    const tasks = getSearchTasks(query);
+    const tasks = getSearchTasks(query, provider);
 
     // Prepare text stream
     const headers = {
