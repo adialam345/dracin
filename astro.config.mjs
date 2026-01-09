@@ -25,7 +25,6 @@ export default defineConfig({
     build: {
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
-      cssMinify: 'lightningcss',
       rollupOptions: {
         output: {
           manualChunks: undefined,
