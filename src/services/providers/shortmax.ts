@@ -23,7 +23,7 @@ async function callShortMaxApi(endpoint: string, params: any = {}) {
         // 1. Encrypt Body
         const encryptedBody = encryptRequestParams(params);
 
-        console.log(`[ShortMax] Requesting ${endpoint}...`);
+        // console.log(`[ShortMax] Requesting ${endpoint}...`);
 
         // 2. Fetch ke API Web
         const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -91,7 +91,7 @@ const SHORTMAX_SEARCH_API = 'https://dramabos.asia/api/shortmax/api/v1/search';
 
 export async function searchShortMax(query: string): Promise<UnifiedDrama[]> {
     try {
-        console.log(`[ShortMax] Searching via external API: ${query}`);
+        // console.log(`[ShortMax] Searching via external API: ${query}`);
         const response = await fetch(`${SHORTMAX_SEARCH_API}?q=${encodeURIComponent(query)}&lang=id`, {
             headers: {
                 'Authorization': `Bearer ${getRandomToken()}`,
@@ -196,7 +196,7 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 
 export async function getShortMaxDetail(id: string, knownCover?: string): Promise<{ drama: any, episodes: any[] } | null> {
     try {
-        console.log(`[ShortMax] Fetching detail via Play API for: ${id} (Cover known: ${!!knownCover})`);
+        // console.log(`[ShortMax] Fetching detail via Play API for: ${id} (Cover known: ${!!knownCover})`);
         // Fetch valid info by trying to play Episode 1
         // This gives us the 'total' episode count and basic info
         const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;

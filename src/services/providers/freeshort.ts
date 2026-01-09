@@ -30,7 +30,7 @@ async function fetchWithAuth(url: string) {
 
 export async function getFreeShortForYou(): Promise<UnifiedDrama[]> {
     try {
-        console.log('[FreeShort] Fetching For You...');
+        // console.log('[FreeShort] Fetching For You...');
         const response = await fetchWithAuth(`${API_BASE}/foryou?lang=id-ID`);
         if (!response.ok) {
             console.error(`[FreeShort] Error fetching For You: ${response.status}`);
@@ -55,7 +55,7 @@ export async function getFreeShortForYou(): Promise<UnifiedDrama[]> {
 
 export async function searchFreeShort(query: string): Promise<UnifiedDrama[]> {
     try {
-        console.log(`[FreeShort] Searching: ${query}`);
+        // console.log(`[FreeShort] Searching: ${query}`);
         const response = await fetchWithAuth(`${API_BASE}/search?q=${encodeURIComponent(query)}&lang=id-ID`);
         if (!response.ok) {
             console.error(`[FreeShort] Error searching: ${response.status}`);
@@ -80,7 +80,7 @@ export async function searchFreeShort(query: string): Promise<UnifiedDrama[]> {
 
 export async function getFreeShortVideoUrl(dramaId: string, episodeNum: number): Promise<string> {
     try {
-        console.log(`[FreeShort] Fetching video URL for ${dramaId} ep ${episodeNum}`);
+        // console.log(`[FreeShort] Fetching video URL for ${dramaId} ep ${episodeNum}`);
         const url = `${API_BASE}/dramas/${dramaId}/play/${episodeNum}?lang=id-ID`;
         const response = await fetchWithAuth(url);
 
@@ -125,7 +125,7 @@ export async function getFreeShortVideoUrl(dramaId: string, episodeNum: number):
 
 export async function getFreeShortDetail(id: string): Promise<{ drama: UnifiedDrama, episodes: any[] } | null> {
     try {
-        console.log(`[FreeShort] Fetching detail for ${id}`);
+        // console.log(`[FreeShort] Fetching detail for ${id}`);
         // Use dramas/ID endpoint to get full details including episode count/list
         const url = `${API_BASE}/dramas/${id}?lang=id-ID`;
         const response = await fetchWithAuth(url);

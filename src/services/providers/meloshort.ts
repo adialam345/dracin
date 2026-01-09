@@ -11,7 +11,7 @@ const MELOSHORT_EPISODE_API = 'https://apikupas.my.id/meloshort/episode'; // Gue
  */
 export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
     try {
-        console.log('[Meloshort] Fetching home...');
+        // console.log('[Meloshort] Fetching home...');
         const response = await fetch(MELOSHORT_HOME_API);
 
         if (!response.ok) {
@@ -52,7 +52,7 @@ export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
  */
 export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
     try {
-        console.log(`[Meloshort] Searching: ${query}`);
+        // console.log(`[Meloshort] Searching: ${query}`);
         // Endpoint: https://apikupas.my.id/meloshort/search/{query}
         const url = `${MELOSHORT_SEARCH_API}/${encodeURIComponent(query)}?_t=${Date.now()}`;
         const response = await fetch(url);
@@ -87,7 +87,7 @@ export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
  */
 export async function getMeloshortDetail(id: string): Promise<{ drama: any, episodes: any[] } | null> {
     try {
-        console.log(`[Meloshort] Fetching detail: ${id}`);
+        // console.log(`[Meloshort] Fetching detail: ${id}`);
         // Endpoint: https://apikupas.my.id/meloshort/anime/{id}
         const url = `${MELOSHORT_DETAIL_API}/${id}?_t=${Date.now()}`;
         const response = await fetch(url);
@@ -138,7 +138,7 @@ export async function getMeloshortDetail(id: string): Promise<{ drama: any, epis
  */
 export async function getMeloshortVideoUrl(id: string, episodeNum: number): Promise<string> {
     try {
-        console.log(`[Meloshort] Fetching video for Slug: ${id}`);
+        // console.log(`[Meloshort] Fetching video for Slug: ${id}`);
         // Endpoint: https://apikupas.my.id/meloshort/episode/{slug}
         // Note: The 'id' passed here is the episode slug we mapped in Detail
         const url = `${MELOSHORT_EPISODE_API}/${encodeURIComponent(id)}?_t=${Date.now()}`;

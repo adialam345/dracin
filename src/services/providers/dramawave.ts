@@ -19,7 +19,7 @@ async function fetchInternal(endpoint: string): Promise<any> {
     const url = `${API_BASE}${endpoint}`;
     const token = getRandomToken();
 
-    console.log(`[DramaWave] Fetching: ${url}`);
+    // console.log(`[DramaWave] Fetching: ${url}`);
 
     try {
         const response = await fetch(url, {
@@ -94,13 +94,16 @@ export async function searchDramaWave(query: string): Promise<UnifiedDrama[]> {
 export async function getDramaWaveDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
     // URL: https://sapimu.au/dramawave/api/v1/dramas/xuyr3DtXPt?lang=in&lang=id-ID
     const data = await fetchInternal(`/dramas/${id}?lang=in&lang=id-ID`);
+    console.log(`[DramaWave] Detail for ${id}:`, data ? (data.data?.id ? 'HAS_DATA' : 'EMPTY_DATA') : 'NULL');
 
     if (!data || !data.data) {
         return { drama: null, episodes: [] };
     }
+    const info = data.data.info || (data.data.id || data.data.name ? data.data : null);
 
-    // The API returns { data: { info: { ... } } }
-    const info = data.data.info || data.data;
+    if (!info || (!info.id && !info.name && !info.title)) {
+        return { drama: null, episodes: [] };
+    }
 
     const dramaInfo = {
         title: info.name || info.title,

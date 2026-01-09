@@ -37,7 +37,7 @@ export async function getStardustTVForYou(): Promise<UnifiedDrama[]> {
         return true;
     });
 
-    console.log(`[StardustTV] Found ${items.length} raw, ${uniqueItems.length} unique items.`);
+    // console.log(`[StardustTV] Found ${items.length} raw, ${uniqueItems.length} unique items.`);
     return uniqueItems.map(normalizeStarDustTV);
 }
 

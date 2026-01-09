@@ -50,8 +50,7 @@ export const GET: APIRoute = async ({ url, request }) => {
 
             // DramaWave Referer
             if (targetUrl.includes('mydramawave.com')) {
-                headers['Referer'] = 'https://www.mydramawave.com/';
-                headers['Origin'] = 'https://www.mydramawave.com';
+                headers['Referer'] = 'https://www.mydramawave.com';
             }
             // FlickReels Token (Farsun)
             else if (targetUrl.includes('farsunpteltd.com')) {

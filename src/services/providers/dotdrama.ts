@@ -28,12 +28,12 @@ export async function searchDotDrama(query: string): Promise<UnifiedDrama[]> {
     const data = await fetchDotDrama(`/search?q=${encodeURIComponent(query)}&lang=id`);
 
     if (!data || !Array.isArray(data.results)) {
-        console.log(`[DotDrama] Search returned no results structure.`);
+        // console.log(`[DotDrama] Search returned no results structure.`);
         return [];
     }
 
     const items = data.results;
-    console.log(`[DotDrama] Search found ${items.length} items.`);
+    // console.log(`[DotDrama] Search found ${items.length} items.`);
 
     return items.map((item: any) => normalizeDotDrama(item)).filter((i: any) => i.id);
 }
@@ -83,7 +83,7 @@ export async function getDotDramaVideoUrl(bookId: string, episodeId: string): Pr
 
     // If cache miss, re-fetch detail
     if (!episodes) {
-        console.log(`[DotDrama] Cache miss for ${bookId}, fetching detail...`);
+        // console.log(`[DotDrama] Cache miss for ${bookId}, fetching detail...`);
         const data = await fetchDotDrama(`/drama/${bookId}`);
         if (data && data.dgiv && Array.isArray(data.dgiv.ebeer)) {
             episodes = data.dgiv.ebeer;
@@ -114,7 +114,7 @@ function extractList(data: any): UnifiedDrama[] {
     if (!data || !data.dgiv || !Array.isArray(data.dgiv.lint)) return [];
 
     const items = data.dgiv.lint;
-    console.log(`[DotDrama] Extracting list, found ${items.length} items.`);
+    // console.log(`[DotDrama] Extracting list, found ${items.length} items.`);
 
     return items.map((item: any) => normalizeDotDrama(item)).filter((i: any) => i.id);
 }

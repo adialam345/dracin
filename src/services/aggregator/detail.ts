@@ -1,0 +1,431 @@
+import { Providers, dramaDetailsCache, episodeDetailsCache, safeExecute } from './common';
+import { withCache, fetchCached, API_BASE } from '../utils';
+
+export async function fetchUnifiedDramaData(source: string, id: string): Promise<{ drama: any, episodes: any[] }> {
+    const {
+        Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
+        DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
+        DotDrama, StardustTV, ReelLife, Meloshort
+    } = Providers;
+
+    // Try to get cached metadata for fallback
+    const cached = dramaDetailsCache.get(source + '_' + id);
+
+    switch (source) {
+        case 'dramabox':
+            return Dramabox.getDramaboxDetail(id);
+        case 'netshort':
+            return Netshort.getNetshortDetail(id);
+        case 'melolo':
+            return Melolo.getMeloloDetail(id);
+        case 'radreel':
+            return RadReel.getRadReelDetail(id);
+        case 'dramaflickreels':
+            const frResult = await FlickReels.getFlickReelsDetail(id);
+            if (!frResult.drama && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: cached.chapterCount || 0,
+                        labels: [],
+                        source: 'dramaflickreels'
+                    },
+                    episodes: []
+                };
+            }
+            if (frResult.episodes) {
+                episodeDetailsCache.set(source + '_' + id, frResult.episodes);
+            }
+            return frResult;
+        case 'dramawave':
+            // Inject cache into provider logic if possible, or just rely on API
+            // For now, we replicate the specific logic or move it to provider
+            // The provider implementation handles API fetch. We can wire cache injection if we modify provider signature,
+            // but for simplicity, let's trust the provider's fresh fetch.
+            // If provider returns null, we can fallback to 'cached' here if we want.
+            const result = await DramaWave.getDramaWaveDetail(id);
+            if (!result.drama && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: 1,
+                        labels: [],
+                        source: 'dramawave'
+                    },
+                    episodes: [{
+                        id: id,
+                        name: 'Putar Video',
+                        index: 0,
+                        unlock: true,
+                        raw: cached.raw
+                    }]
+                };
+            }
+            return result;
+        case 'dramadash':
+            return DramaDash.getDramaDashDetail(id);
+        case 'shortmax':
+            const smCover = cached ? cached.cover : undefined;
+            // Use withCache for the detail call too? Maybe just for the fetch.
+            // But getShortMaxDetail is complex. Let's just pass the cover.
+            // If we cache the whole result, we save even more.
+            const smResult = await withCache(`sm_detail_v2_${id}`, () => ShortMax.getShortMaxDetail(id, smCover), 10 * 60 * 1000);
+
+            // Check if result is valid
+            if ((!smResult || !smResult.drama) && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: 0,
+                        labels: [],
+                        source: 'shortmax'
+                    },
+                    episodes: []
+                };
+            }
+            return smResult || { drama: null, episodes: [] };
+        case 'starshort':
+            return StarShort.getStarShortDetail(id);
+        case 'freeshort':
+            return (await FreeShort.getFreeShortDetail(id)) || { drama: null, episodes: [] };
+        case 'hishort':
+            return (await HiShort.getHiShortDetail(id)) || { drama: null, episodes: [] };
+        case 'goodshort':
+            const gsResult = await GoodShort.getGoodShortDetail(id);
+            if ((!gsResult || !gsResult.drama) && cached) {
+                return {
+                    drama: {
+                        title: cached.title,
+                        cover: cached.cover,
+                        description: cached.description || '',
+                        chapterCount: cached.chapterCount || 0,
+                        labels: [],
+                        source: 'goodshort'
+                    },
+                    episodes: []
+                };
+            }
+
+            // If we got result but episodes are empty, or if we are falling back completely
+            const finalDrama = (gsResult && gsResult.drama) ? gsResult.drama : (cached ? {
+                title: cached.title,
+                cover: cached.cover,
+                description: cached.description || '',
+                chapterCount: cached.chapterCount || 0,
+                labels: [],
+                source: 'goodshort'
+            } : null);
+
+            let finalEpisodes = (gsResult && gsResult.episodes && gsResult.episodes.length > 0) ? gsResult.episodes : [];
+
+            // Synthetic generation
+            if (finalEpisodes.length === 0 && finalDrama && finalDrama.chapterCount && finalDrama.chapterCount > 0) {
+                finalEpisodes = Array.from({ length: finalDrama.chapterCount }, (_, i) => ({
+                    id: String(i + 1),
+                    name: 'Episode ' + (i + 1),
+                    index: i,
+                    unlock: true
+                }));
+            }
+
+            return { drama: finalDrama, episodes: finalEpisodes };
+        case 'dotdrama':
+            // Try to look in cache for basic info
+            const ddData = cached ? {
+                title: cached.title,
+                cover: cached.cover,
+                description: cached.description || '',
+                chapterCount: cached.chapterCount || 0,
+                labels: [],
+                source: 'dotdrama'
+            } : null;
+
+            // Generate synthetic episodes if we have chapter count
+            let ddEpisodes: any[] = [];
+            if (ddData && ddData.chapterCount > 0) {
+                ddEpisodes = Array.from({ length: ddData.chapterCount }, (_, i) => ({
+                    id: String(i + 1),
+                    name: 'Episode ' + (i + 1),
+                    index: i,
+                    unlock: true
+                }));
+            }
+
+            return { drama: ddData, episodes: ddEpisodes };
+        case 'stardusttv':
+            return StardustTV.getStardustTVDetail(id);
+        case 'reelife':
+            const rlRes = await ReelLife.getReelLifeDetail(id);
+            return rlRes || { drama: null, episodes: [] };
+        case 'meloshort':
+            const msRes = await Meloshort.getMeloshortDetail(id);
+            return msRes || { drama: null, episodes: [] };
+        default:
+            return { drama: null, episodes: [] };
+    }
+}
+
+export async function fetchUnifiedDetail(source: string, id: string): Promise<any> {
+    const { drama } = await fetchUnifiedDramaData(source, id);
+    return drama;
+}
+
+export async function fetchUnifiedEpisodes(source: string, id: string): Promise<any[]> {
+    const { episodes } = await fetchUnifiedDramaData(source, id);
+    return episodes;
+}
+
+export async function fetchVideoUrl(source: string, bookId: string, episodeId: string): Promise<string> {
+    const {
+        Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
+        DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
+        DotDrama, StardustTV, ReelLife, Meloshort
+    } = Providers;
+
+    try {
+        let videoUrl = '';
+
+        if (source === 'dramabox') {
+            console.log(`[Aggregator] Fetching Dramabox video for Book: ${bookId}, Episode: ${episodeId}`);
+            const allEpisodeLinks = await fetchCached(API_BASE + '/dramabox/allepisode?bookId=' + bookId);
+            if (!allEpisodeLinks) {
+                console.log('[Aggregator] Dramabox episode list is empty/null');
+                return '';
+            }
+
+            // Handle both array/list response formats
+            let items: any[] = [];
+            if (Array.isArray(allEpisodeLinks)) items = allEpisodeLinks;
+            else if (allEpisodeLinks.data && Array.isArray(allEpisodeLinks.data)) items = allEpisodeLinks.data;
+            else if (allEpisodeLinks.data && allEpisodeLinks.data.chapterList) items = allEpisodeLinks.data.chapterList;
+
+            console.log(`[Aggregator] Found ${items.length} items for Dramabox.`);
+            const linkData = items.find((ep: any) => String(ep.chapterId) === String(episodeId));
+
+            if (!linkData) {
+                console.log(`[Aggregator] Episode ${episodeId} not found in list (First ID: ${items[0]?.chapterId})`);
+            }
+
+
+            if (linkData && linkData.cdnList && linkData.cdnList.length > 0) {
+                const defaultCdn = linkData.cdnList.find((cdn: any) => cdn.isDefault === 1) || linkData.cdnList[0];
+                if (defaultCdn) {
+                    // Check videoPathList
+                    if (defaultCdn.videoPathList && Array.isArray(defaultCdn.videoPathList) && defaultCdn.videoPathList.length > 0) {
+                        const video720 = defaultCdn.videoPathList.find((v: any) => v.quality === 720);
+                        const video1080 = defaultCdn.videoPathList.find((v: any) => v.quality === 1080);
+                        const anyVideo = defaultCdn.videoPathList[0];
+                        videoUrl = (video720 || video1080 || anyVideo)?.videoPath || '';
+                    }
+                    // Check direct videoPath if list is empty or missing (fallback)
+                    else if (defaultCdn.videoPath) {
+                        videoUrl = defaultCdn.videoPath;
+                    }
+                }
+            }
+        } else if (source === 'melolo') {
+            const data = await fetchCached(API_BASE + '/melolo/stream?bookId=' + bookId + '&videoId=' + episodeId);
+            if (!data) return '';
+            videoUrl = data.data?.main_url || '';
+            if (videoUrl && videoUrl.startsWith('http://')) {
+                videoUrl = videoUrl.replace('http://', 'https://');
+            }
+        } else if (source === 'netshort') {
+            const data = await fetchCached(API_BASE + '/netshort/allepisode?shortPlayId=' + bookId);
+            if (!data) return '';
+            const ep = (data.shortPlayEpisodeInfos || []).find((e: any) => e.episodeId === episodeId);
+            videoUrl = ep?.playVoucher || '';
+
+            // Handle subtitles if available
+            if (ep && ep.subtitleList && Array.isArray(ep.subtitleList) && ep.subtitleList.length > 0) {
+                return JSON.stringify({
+                    videoUrl: videoUrl,
+                    subtitles: ep.subtitleList.map((sub: any) => ({
+                        label: sub.subtitleLanguage === 'id_ID' ? 'Indonesia' : sub.subtitleLanguage,
+                        lang: sub.subtitleLanguage || 'id-ID',
+                        url: sub.url
+                    }))
+                });
+            }
+        } else if (source === 'radreel') {
+            // Priority 1: Check cache/direct
+            if (episodeId === '0') {
+                const cached = dramaDetailsCache.get('radreel_' + bookId);
+                if (cached && cached.raw?.videoUrl) return cached.raw.videoUrl;
+            }
+
+            // Priority 2: Use list endpoint to find match
+            // Endpoint: https://cdp.wolftv.online/content/state_res/episodic_movie/movies/{fakeId}
+            const parts = bookId.split('_');
+            const fakeId = parts[0];
+            const url = 'https://cdp.wolftv.online/content/state_res/episodic_movie/movies/' + fakeId;
+            const data = await RadReel.fetchRadReel(url);
+
+            if (data && Array.isArray(data)) {
+                const ep = data.find((e: any) => e.videoFakeId === episodeId);
+                if (ep) {
+                    if (ep.videoUrl) videoUrl = ep.videoUrl;
+                    else {
+                        // Attempt to fetch detail
+                        const videoDetailUrl = 'https://cdp.wolftv.online/content/movie/v5/' + ep.videoFakeId + '?compilationsId=' + ep.compilationsId + '&episodicDramaId=' + (ep.id) + '&videoFakeId=' + ep.videoFakeId;
+                        const detailData = await RadReel.fetchRadReel(videoDetailUrl);
+
+                        if (detailData) {
+                            let list = [];
+                            if (Array.isArray(detailData.videoFiles)) list = detailData.videoFiles;
+                            else if (detailData.definitionList) list = detailData.definitionList;
+                            else if (detailData.videoFiles?.definitionList) list = detailData.videoFiles.definitionList;
+
+                            if (list.length > 0) {
+                                const target = list.find((d: any) => d.definition === 'SD') || list[0];
+                                videoUrl = target.videoUrl || target.url || target.videoUri || '';
+                                if (videoUrl.includes('wsvideo.wolftv.online')) {
+                                    videoUrl = videoUrl.replace('wsvideo.wolftv.online', 'cfvideo.wolftv.online');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (source === 'dramawave') {
+            // Try to get fresh detail first
+            let dwDetail = await DramaWave.getDramaWaveDetail(bookId);
+            let episodes = dwDetail.episodes;
+
+            // Fallback to cache if detail failed (common for items using 'key' instead of 'id')
+            if (episodes.length === 0) {
+                const cached = dramaDetailsCache.get('dramawave_' + bookId);
+                if (cached && cached.raw) {
+                    episodes = [{
+                        id: bookId,
+                        raw: cached.raw
+                    }];
+                }
+            }
+
+            const episode = episodes.find(e => String(e.id) === String(episodeId));
+
+            if (episode && episode.raw) {
+                console.log('[Aggregator] DramaWave episode raw data:', JSON.stringify(episode.raw, null, 2));
+
+                videoUrl = episode.raw.h264_m3u8 ||
+                    episode.raw.h265_m3u8 ||
+                    episode.raw.external_audio_h264_m3u8 ||
+                    episode.raw.external_audio_h265_m3u8 ||
+                    episode.raw.video_url ||
+                    episode.raw.videoUrl ||
+                    '';
+
+                console.log('[Aggregator] DramaWave video URL found:', videoUrl ? 'YES' : 'NO', videoUrl.substring(0, 100));
+
+                if (episode.raw.vtt_list && Array.isArray(episode.raw.vtt_list)) {
+                    return JSON.stringify({
+                        videoUrl: videoUrl,
+                        subtitles: episode.raw.vtt_list.map((sub: any) => ({
+                            label: sub.display_name,
+                            lang: sub.language,
+                            url: sub.vtt
+                        }))
+                    });
+                } else if (episode.raw.subtitle_list && Array.isArray(episode.raw.subtitle_list)) {
+                    return JSON.stringify({
+                        videoUrl: videoUrl,
+                        subtitles: episode.raw.subtitle_list.map((sub: any) => ({
+                            label: sub.display_name,
+                            lang: sub.language,
+                            url: sub.subtitle
+                        }))
+                    });
+                }
+            } else {
+                console.error('[Aggregator] DramaWave episode not found or has no raw data. Episode ID:', episodeId, 'Available episodes:', episodes.map(e => e.id));
+            }
+        } else if (source === 'dramaflickreels') {
+            // Priority: Check cache for batched unlock URL
+            const cachedEps = episodeDetailsCache.get('dramaflickreels_' + bookId);
+            let foundInCache = false;
+
+            if (cachedEps) {
+                const ep = cachedEps.find(e => String(e.id) === String(episodeId));
+                if (ep && ep.raw && ep.raw.hls_url) {
+                    videoUrl = ep.raw.hls_url;
+                    foundInCache = true;
+                }
+            }
+
+            // Fallback: Web API Play (if cache miss or batch unlock failed)
+            if (!foundInCache) {
+                videoUrl = await FlickReels.getFlickReelsVideoUrl(bookId, episodeId);
+            }
+        } else if (source === 'dramadash') {
+            const { episodes } = await DramaDash.getDramaDashDetail(bookId);
+            const ep = episodes.find(e => String(e.id) === String(episodeId));
+            if (ep && ep.raw && ep.raw.videoUrl) {
+                videoUrl = ep.raw.videoUrl;
+                // Add subtitles if present
+                if (ep.raw.subtitles && Array.isArray(ep.raw.subtitles)) {
+                    return JSON.stringify({
+                        videoUrl: videoUrl,
+                        subtitles: ep.raw.subtitles.map((sub: any) => ({
+                            label: sub.languageDisplayName || sub.language,
+                            lang: sub.language,
+                            url: sub.url
+                        }))
+                    });
+                }
+            }
+        } else if (source === 'shortmax') {
+            // episodeId format: "{dramaId}_{episodeNum}" e.g., "14643_1"
+            const parts = episodeId.split('_');
+            const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
+
+            // Use dedicated function to get signed video URL with auth_key
+            // Cache video URL for 45 minutes (token usually valid for ~60m)
+            videoUrl = await withCache(`sm_video_${bookId}_${episodeNum}`, () => ShortMax.getShortMaxVideoUrl(bookId, episodeNum), 45 * 60 * 1000);
+
+            // Fallback to episode list if direct call failed
+            if (!videoUrl) {
+                const result = await ShortMax.getShortMaxDetail(bookId);
+                if (result && result.episodes) {
+                    const ep = result.episodes.find(e => String(e.id) === String(episodeId));
+                    if (ep && ep.raw && ep.raw.videoUrl) {
+                        videoUrl = ep.raw.videoUrl;
+                    }
+                }
+            }
+        } else if (source === 'starshort') {
+            videoUrl = await StarShort.getStarShortVideoUrl(bookId, episodeId);
+        } else if (source === 'freeshort') {
+            const parts = episodeId.split('_');
+            const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
+            videoUrl = await FreeShort.getFreeShortVideoUrl(bookId, episodeNum);
+        } else if (source === 'hishort') {
+            videoUrl = await HiShort.getHiShortVideoUrl(episodeId);
+        } else if (source === 'goodshort') {
+            videoUrl = await GoodShort.getGoodShortVideoUrl(bookId, episodeId);
+        } else if (source === 'dotdrama') {
+            videoUrl = await DotDrama.getDotDramaVideoUrl(bookId, episodeId);
+        } else if (source === 'stardusttv') {
+            videoUrl = await StardustTV.getStardustTVVideoUrl(bookId, episodeId);
+        } else if (source === 'reelife') {
+            videoUrl = await ReelLife.getReelLifeVideoUrl(bookId, parseInt(episodeId) || 1);
+        } else if (source === 'meloshort') {
+            // Meloshort uses the unique episode slug as the ID, so we pass episodeId (which contains the slug)
+            // The signature is (id, episodeNum), but we only need the id (slug) now.
+            videoUrl = await Meloshort.getMeloshortVideoUrl(episodeId, 1);
+        }
+
+        console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));
+        return videoUrl;
+
+    } catch (e) {
+        console.error('Error fetching video URL:', e);
+    }
+    return '';
+}

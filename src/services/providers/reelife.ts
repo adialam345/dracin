@@ -8,7 +8,7 @@ const REELLIFE_HOME_API = 'https://apikupas.my.id/reelife/home?_t=1767904804553'
  */
 export async function getReelLifeForYou(): Promise<UnifiedDrama[]> {
     try {
-        console.log('[ReelLife] Fetching home...');
+        // console.log('[ReelLife] Fetching home...');
         const response = await fetch(REELLIFE_HOME_API);
 
         if (!response.ok) {
@@ -50,7 +50,7 @@ const REELLIFE_SEARCH_API = 'https://apikupas.my.id/reelife/search';
  */
 export async function searchReelLife(query: string): Promise<UnifiedDrama[]> {
     try {
-        console.log(`[ReelLife] Searching: ${query}`);
+        // console.log(`[ReelLife] Searching: ${query}`);
         const url = `${REELLIFE_SEARCH_API}/${encodeURIComponent(query)}?_t=${Date.now()}`;
         const response = await fetch(url);
 
@@ -85,7 +85,7 @@ const REELLIFE_DETAIL_API = 'https://apikupas.my.id/reelife/anime';
  */
 export async function getReelLifeDetail(id: string): Promise<{ drama: any, episodes: any[] } | null> {
     try {
-        console.log(`[ReelLife] Fetching detail: ${id}`);
+        // console.log(`[ReelLife] Fetching detail: ${id}`);
         // Endpoint: https://apikupas.my.id/reelife/anime/{id}
         const url = `${REELLIFE_DETAIL_API}/${id}?_t=${Date.now()}`;
         const response = await fetch(url);
@@ -131,7 +131,7 @@ const REELLIFE_EPISODE_API = 'https://apikupas.my.id/reelife/episode';
  */
 export async function getReelLifeVideoUrl(id: string, episodeNum: number): Promise<string> {
     try {
-        console.log(`[ReelLife] Fetching video for ID: ${id}, Ep: ${episodeNum}`);
+        // console.log(`[ReelLife] Fetching video for ID: ${id}, Ep: ${episodeNum}`);
         // Endpoint: https://apikupas.my.id/reelife/episode/{id}-{episodeNum}
         // Note: The ID passed here is usually the BookID. The API expects bookId-episodeNum
         const url = `${REELLIFE_EPISODE_API}/${id}-${episodeNum}?_t=${Date.now()}`;

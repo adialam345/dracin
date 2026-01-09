@@ -118,8 +118,9 @@ export function normalizeDramaWave(data: any): UnifiedDrama {
     return {
         id: id,
         title: stripHtml(title),
-        cover: data.cover || '',
+        cover: data.cover ? `/api/proxy?q=${encodeURIComponent(encrypt(data.cover))}` : '',
         description: stripHtml(description),
+        chapterCount: data.episode_count || (data.episode_list && data.episode_list.length) || 0,
         source: 'dramawave',
         raw: {
             ...data,

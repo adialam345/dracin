@@ -25,3 +25,20 @@ export function encrypt(data: any): string {
     }
 }
 
+export function decrypt(encryptedData: string): any {
+    try {
+        const key = _getKey();
+        const text = typeof atob !== 'undefined'
+            ? atob(encryptedData)
+            : Buffer.from(encryptedData, 'base64').toString('binary');
+        let output = "";
+        for (let i = 0; i < text.length; i++) {
+            const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            output += String.fromCharCode(charCode);
+        }
+        return JSON.parse(decodeURIComponent(output));
+    } catch (e) {
+        console.error("Decryption error:", e);
+        return null;
+    }
+}

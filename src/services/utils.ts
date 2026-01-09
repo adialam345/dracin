@@ -9,9 +9,13 @@ if (dns.setDefaultResultOrder) {
 
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
-const WORKER_URL = process.env.PROXY_URL || 'https://vercel-proxy-adialam345s-projects.vercel.app/api';
-// Example proxies:
-// const WORKER_URL = 'https://your-vercel-proxy.vercel.app/api?url=';
+export const PROXY_LIST = [
+    'https://sansekai-proxy-v2-3tjzgrf9l-adialam345s-projects.vercel.app/api',
+    'https://sansekai-proxy-v2.vercel.app/api' // Keeping alias as backup
+];
+
+const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.length)];
+
 
 
 // Simple in-memory cache for server-side requests
@@ -155,9 +159,10 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
         }
 
         try {
-            // Route through Cloudflare Worker if configured, otherwise use direct connection
-            const targetUrl = WORKER_URL
-                ? `${WORKER_URL}?url=${encodeURIComponent(url)}`
+            const currentProxy = getRandomProxy();
+            // Route through Cloudflare/Vercel Worker if configured
+            const targetUrl = currentProxy
+                ? `${currentProxy}?url=${encodeURIComponent(url)}`
                 : url;
 
             const text = await httpsRequest(targetUrl);

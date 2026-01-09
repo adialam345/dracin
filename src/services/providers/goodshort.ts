@@ -75,7 +75,7 @@ function generateSignature(path: string, bodyObj: any, timestamp: string, token:
     sb += APP_SIGNATURE_MD5.toUpperCase();
     sb += PACKAGE_NAME;
 
-    console.log(`[GoodShort] Signing Path: ${path}, String: ${sb.substring(0, 50)}...`);
+    // console.log(`[GoodShort] Signing Path: ${path}, String: ${sb.substring(0, 50)}...`);
 
     // 2. Sign with RSA-SHA256
     const sign = crypto.createSign('SHA256');
