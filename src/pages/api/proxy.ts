@@ -160,6 +160,12 @@ export const GET: APIRoute = async ({ url, request }) => {
                 headers['Origin'] = 'https://www.mydramawave.com';
                 headers['Referer'] = 'https://www.mydramawave.com/';
             }
+            // Vigloo
+            else if (targetUrl.includes('vigloo.com')) {
+                headers['Origin'] = 'https://www.vigloo.com';
+                headers['Referer'] = 'https://www.vigloo.com/';
+                headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+            }
             else {
                 // Default Referer to origin of target (often helps with generic CDNs)
                 headers['Referer'] = new URL(targetUrl).origin + '/';
@@ -207,14 +213,15 @@ export const GET: APIRoute = async ({ url, request }) => {
 
         if (isM3U8) {
             const text = await response.text();
-            const baseUrl = new URL('.', targetUrl).href;
 
-            // Determine correct origin (handling reverse proxies)
+            const baseUrl = new URL('.', targetUrl).href;
+            const urlObj = new URL(targetUrl);
+            const searchParams = urlObj.search;
+
+            // Determine correct origin
             let origin = new URL(request.url).origin;
-            // Only trust forwarded headers if they exist, otherwise rely on request url
             const forwardedProto = request.headers.get('x-forwarded-proto');
             const forwardedHost = request.headers.get('x-forwarded-host');
-
             if (forwardedProto && forwardedHost) {
                 origin = `${forwardedProto}://${forwardedHost}`;
             }
@@ -225,24 +232,36 @@ export const GET: APIRoute = async ({ url, request }) => {
                 ? 'public, max-age=3600' // VOD: Cache for 1 hour
                 : 'public, max-age=15';  // Live: Cache for 15 seconds
 
-            const newText = text.split('\n').map(line => {
+            const newText = text.split('\n').map((line: string) => {
                 const trimmed = line.trim();
-                // If line is a URL (not starting with # and not empty)
                 if (trimmed && !trimmed.startsWith('#')) {
-                    // Resolve absolute URL
                     try {
-                        const absoluteUrl = new URL(trimmed, baseUrl).href;
-                        const encryptedUrl = encrypt(absoluteUrl); // Encrypt the URL for the next segment
+                        let absoluteUrl = new URL(trimmed, baseUrl).href;
+                        // Append original query params if not already present
+                        if (searchParams && !absoluteUrl.includes('?')) {
+                            absoluteUrl += searchParams;
+                        } else if (searchParams && absoluteUrl.includes('?')) {
+                            // Merge params carefully
+                            const existingParams = new URL(absoluteUrl).search;
+                            if (existingParams.length <= 1) { // just '?'
+                                absoluteUrl += searchParams.replace('?', '');
+                            } else {
+                                absoluteUrl += '&' + searchParams.replace('?', '');
+                            }
+                        }
+                        const encryptedUrl = encrypt(absoluteUrl);
                         return `${origin}/api/proxy?q=${encodeURIComponent(encryptedUrl)}`;
                     } catch (e) {
-                        return line; // Fallback
+                        return line;
                     }
                 }
-                // Handle URI in tags (EXT-X-KEY, EXT-X-MEDIA, etc.)
                 if (trimmed.startsWith('#') && trimmed.includes('URI="')) {
                     return trimmed.replace(/URI="([^"]+)"/, (match, uri) => {
                         try {
-                            const absoluteUrl = new URL(uri, baseUrl).href;
+                            let absoluteUrl = new URL(uri, baseUrl).href;
+                            if (searchParams && !absoluteUrl.includes('?')) {
+                                absoluteUrl += searchParams;
+                            }
                             const encryptedUrl = encrypt(absoluteUrl);
                             return `URI="${origin}/api/proxy?q=${encodeURIComponent(encryptedUrl)}"`;
                         } catch (e) {

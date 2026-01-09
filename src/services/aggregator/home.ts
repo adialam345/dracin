@@ -6,7 +6,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
     const {
         Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
         ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
-        StardustTV, ReelLife, Meloshort
+        StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
 
     const [
@@ -25,7 +25,8 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         dotdForYou,
         sdtvForYou,
         rlForYou,
-        msForYou
+        msForYou,
+        vForYou
     ] = await Promise.all([
         safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
         safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
@@ -46,13 +47,14 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         safeExecute(withCache('sdtv_home', () => StardustTV.getStardustTVForYou()), 'StardustTV ForYou'),
         safeExecute(withCache('rl_home', () => ReelLife.getReelLifeForYou()), 'ReelLife ForYou'),
         safeExecute(withCache('ms_home', () => Meloshort.getMeloshortForYou()), 'Meloshort ForYou'),
+        safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'Vigloo ForYou'),
     ]);
 
     // Cache items for Detail fallback
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou].forEach(list => cacheItems(list || []));
+    [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou].forEach(list => cacheItems(list || []));
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]);
     const allTrending = shuffle([...dbTrending, ...mlTrending]);
     const allLatest = shuffle([...dbLatest, ...mlLatest]);
 

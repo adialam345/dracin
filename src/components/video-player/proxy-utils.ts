@@ -3,13 +3,14 @@ export const VPS_PROXY = '/api/proxy';
 
 export const shouldUseFallback = (url: string, source: string) => {
     // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
-    return source === 'netshort' && url.includes('awscdn.netshort.com');
+    // Vigloo needs custom headers from our local VPS proxy
+    return (source === 'netshort' && url.includes('awscdn.netshort.com')) || source === 'vigloo';
 };
 
 export const getProxyUrl = (url: string, source: string) => {
     if (!url) return '';
 
-    if ((source === 'netshort' && shouldUseFallback(url, source)) && !url.includes(VPS_PROXY)) {
+    if ((source === 'netshort' || source === 'vigloo') && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
         console.log('[VideoPlayer] Using VPS Proxy for', source);
         return VPS_PROXY + '?url=' + encodeURIComponent(url);
     } else if (

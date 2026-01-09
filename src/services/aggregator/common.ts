@@ -17,6 +17,7 @@ import * as DotDrama from '../providers/dotdrama';
 import * as StardustTV from '../providers/stardusttv';
 import * as ReelLife from '../providers/reelife';
 import * as Meloshort from '../providers/meloshort';
+import * as Vigloo from '../providers/vigloo';
 
 export const Providers = {
     Dramabox,
@@ -34,7 +35,8 @@ export const Providers = {
     DotDrama,
     StardustTV,
     ReelLife,
-    Meloshort
+    Meloshort,
+    Vigloo
 };
 
 // Caches

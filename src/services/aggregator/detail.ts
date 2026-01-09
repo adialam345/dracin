@@ -5,7 +5,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
     const {
         Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
-        DotDrama, StardustTV, ReelLife, Meloshort
+        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
 
     // Try to get cached metadata for fallback
@@ -166,6 +166,9 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
         case 'meloshort':
             const msRes = await Meloshort.getMeloshortDetail(id);
             return msRes || { drama: null, episodes: [] };
+        case 'vigloo':
+            const vRes = await Vigloo.getViglooDetail(id);
+            return vRes || { drama: null, episodes: [] };
         default:
             return { drama: null, episodes: [] };
     }
@@ -185,7 +188,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
     const {
         Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
-        DotDrama, StardustTV, ReelLife, Meloshort
+        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
 
     try {
@@ -419,6 +422,9 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             // Meloshort uses the unique episode slug as the ID, so we pass episodeId (which contains the slug)
             // The signature is (id, episodeNum), but we only need the id (slug) now.
             videoUrl = await Meloshort.getMeloshortVideoUrl(episodeId, 1);
+        } else if (source === 'vigloo') {
+            // episodeId in our mapping is the episode number
+            videoUrl = await Vigloo.getViglooVideoUrl(bookId, parseInt(episodeId) || 1);
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));

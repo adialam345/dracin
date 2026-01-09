@@ -6,7 +6,7 @@ export interface UnifiedDrama {
     cover: string;
     description?: string;
     chapterCount?: number;
-    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort';
+    source: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' | 'vigloo';
     raw?: any;
 }
 
@@ -261,7 +261,22 @@ export function normalizeReelLife(data: any): UnifiedDrama {
     };
 }
 
-export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' = 'dramabox'): UnifiedDrama {
+export function normalizeVigloo(data: any): UnifiedDrama {
+    const rawCover = data.thumbnailExpanded || data.thumbnail || data.titleImage || '';
+    const cover = rawCover ? `/api/proxy?q=${encodeURIComponent(encrypt(rawCover))}` : '';
+
+    return {
+        id: String(data.id || ''),
+        title: data.title || '',
+        cover: cover,
+        description: data.description || data.logLine || '',
+        source: 'vigloo',
+        chapterCount: data.episodeCount || 0,
+        raw: data
+    };
+}
+
+export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' | 'vigloo' = 'dramabox'): UnifiedDrama {
     // If source is explicitly known, try that normalizer first
     if (defaultSource === 'melolo') return normalizeMelolo(data);
     if (defaultSource === 'netshort') return normalizeNetshort(data);
@@ -279,6 +294,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (defaultSource === 'stardusttv') return normalizeStarDustTV(data);
     if (defaultSource === 'reelife') return normalizeReelLife(data);
     if (defaultSource === 'meloshort') return normalizeMeloshort(data);
+    if (defaultSource === 'vigloo') return normalizeVigloo(data);
 
     // Fallback detection (legacy)
     if (data.fakeId && data.compilationsId) return normalizeRadReel(data);
