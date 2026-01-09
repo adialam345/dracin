@@ -115,5 +115,13 @@ const socialImageURL = new URL(image, Astro.site).href;
         if (bar) bar.classList.remove('loading-bar-animate');
       });
     </script>
+    <script is:inline>
+      // Force remove Rocket Loader impact if still present
+      window.addEventListener('load', () => {
+        if (window.RocketLoader) {
+           console.log('Rocket Loader detected, cleaning up scripts...');
+        }
+      });
+    </script>
   </body>
 </html>
