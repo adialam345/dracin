@@ -13,13 +13,15 @@ interface Props {
   description?: string;
   image?: string;
   hideFooter?: boolean;
+  extraSchema?: object;
 }
 
 const {
   title = 'DramaIn - Platform Streaming Drama Terbaik',
   description = 'Nonton drama gratis dari DramaBox, NetShort, RadReel, ShortMax, StarShort, DramaWave, Melolo, FlickReels, GoodShort, HiShort, FreeShort, dan DramaDash. Platform streaming modern, cepat, dan ringan.',
   image = '/og-image.png',
-  hideFooter = false
+  hideFooter = false,
+  extraSchema
 } = Astro.props;
 
 const socialImageURL = new URL(image, Astro.site).href;
@@ -31,6 +33,7 @@ const socialImageURL = new URL(image, Astro.site).href;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="generator" content={Astro.generator} />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,12 +42,14 @@ const socialImageURL = new URL(image, Astro.site).href;
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="keywords" content="dracin, nonton dracin, nonton drama, streaming drama, drama sub indo, dracin sub indo, drama gratis, dramabox, shortmax, netshort, drama china, drama korea, drakor sub indo, film pendek" />
+    <link rel="canonical" href={Astro.url.href} />
 
     <meta property="og:locale" content="id_ID" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={Astro.url} />
+    <meta property="og:url" content={Astro.url.href} />
     <meta property="og:image" content={socialImageURL} />
     <meta property="og:site_name" content="DramaIn" />
 
@@ -52,6 +57,27 @@ const socialImageURL = new URL(image, Astro.site).href;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageURL} />
+
+    {/* JSON-LD Structured Data */}
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DramaIn",
+      "alternateName": "DramaIn Indonesia",
+      "url": Astro.site,
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": `${Astro.site}/search?q={search_term_string}`
+        },
+        "query-input": "required name=search_term_string"
+      }
+    })} />
+
+    {extraSchema && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify(extraSchema)} />
+    )}
 
     {/* Mobile Web App Meta Tags */}
     <meta name="theme-color" content="#09090b" />
