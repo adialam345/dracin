@@ -26,9 +26,10 @@ const dramaSchema = {
 ---
 
 <Layout 
-  title={`Nonton ${drama.title} Sub Indo Gratis - DramaIn`} 
-  description={`Streaming ${drama.title} subtitle Indonesia gratis. ${drama.description?.slice(0, 150)}...`} 
+  title={`Nonton ${drama.title} Sub English / Indo Gratis - DramaIn`} 
+  description={`Streaming Drama ${drama.title} subtitle Indonesia / English full episode gratis. ${drama.description?.slice(0, 150) || 'Nonton drama pendek viral terbaru di DramaIn'}...`} 
   image={drama.cover}
+  lcpImage={drama.cover}
   extraSchema={dramaSchema}
 >
   <div class="container mx-auto px-4 py-6 md:py-8">

@@ -58,14 +58,14 @@ const socialImageURL = new URL(image, Astro.site).href;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={Astro.url.href} />
-    <meta property="og:image" content="/og-image-small.jpg" />
+    <meta property="og:image" content={socialImageURL} />
 
     <meta property="og:site_name" content="DramaIn" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content="/og-image-small.jpg" />
+    <meta name="twitter:image" content={socialImageURL} />
 
     {/* JSON-LD Structured Data */}
     <script type="application/ld+json" is:inline set:html={JSON.stringify({
