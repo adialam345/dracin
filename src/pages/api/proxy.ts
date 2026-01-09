@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { encrypt, decrypt } from '../../utils/security.server';
 import https from 'node:https';
+import sharp from 'sharp';
 
 export const GET: APIRoute = async ({ url, request }) => {
     let targetUrl = url.searchParams.get('url');
@@ -312,8 +313,49 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
 
 
+        // Handle Image Optimization
+        const isImage = contentType.startsWith('image/') && !targetUrl.endsWith('.ico');
+        if (isImage) {
+            try {
+                const arrayBuffer = await response.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                let pipeline = sharp(buffer);
+                const metadata = await pipeline.metadata();
+
+                // Only optimize if image is large
+                if (metadata.width && metadata.width > 500) {
+                    pipeline = pipeline.resize({ width: 500, withoutEnlargement: true });
+                }
+
+                const optimizedBuffer = await pipeline
+                    .webp({ quality: 75 })
+                    .toBuffer();
+
+                return new Response(new Uint8Array(optimizedBuffer), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'image/webp',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'public, max-age=31536000, immutable',
+                        'X-Proxy-Cache': 'Optimized'
+                    }
+                });
+            } catch (imageError) {
+                console.error('[Proxy] Image optimization failed:', imageError);
+                // Fallback to original response body if optimization fails
+                return new Response(response.body, {
+                    status: response.status,
+                    headers: {
+                        'Content-Type': contentType,
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'public, max-age=31536000'
+                    }
+                });
+            }
+        }
+
         // Handle TS segments or other binary data
-        // Stream the response body directly to avoid buffering large files in memory
 
         // Fix for iOS Safari: Ensure TS segments have correct Content-Type
         let finalContentType = contentType || 'application/octet-stream';
