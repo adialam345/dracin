@@ -26,14 +26,34 @@ export const GET: APIRoute = async ({ url, request }) => {
         urlStr = String(initialurlStr);
     }
 
-    // EMERGENCY FALLBACK: If q is passed but decryption failed, maybe q IS the url?
-    // This happens if client sent raw URL but put it in 'q' param by mistake, 
-    // or if encryption key mismatch.
+    // EMERGENCY FALLBACK: If q is raw url
     if (!urlStr && q && q.startsWith('http')) {
         urlStr = q;
     }
 
+    // RECURSION CHECK: If the decrypted URL is ITSELF a proxy URL, unwrap it.
+    if (urlStr && (urlStr.includes('/api/proxy') || urlStr.includes('localhost'))) {
+        try {
+            // Extract the inner 'q' if possible
+            const innerUrl = new URL(urlStr, 'http://dummy.com'); // Base needed for relative paths
+            const innerQ = innerUrl.searchParams.get('q');
+            if (innerQ) {
+                const innerDecrypted = decrypt(innerQ);
+                if (innerDecrypted) {
+                    if (typeof innerDecrypted === 'string') urlStr = innerDecrypted;
+                    else if (typeof innerDecrypted === 'object') urlStr = innerDecrypted.url || innerDecrypted.videoUrl || innerDecrypted.posterUrl || '';
+                }
+            }
+        } catch (e) { }
+    }
+
     urlStr = urlStr.trim();
+
+    // Clean Double Encoding / Quotes anomalies
+    // Example: %22https://... -> "https://... -> https://...
+    if (urlStr.includes('%22') || urlStr.includes('"')) {
+        urlStr = urlStr.replace(/%22/g, '').replace(/"/g, '');
+    }
 
     // Check for common URL issues
     if (urlStr.startsWith('//')) {

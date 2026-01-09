@@ -33,8 +33,16 @@ export function decrypt(cipher: string): any {
     try {
         if (!cipher) return null;
 
-        // Handle URL encoding anomalies
-        let cleaned = cipher.replace(/ /g, '+');
+        // Advanced Base64 Cleanup
+        let cleaned = cipher
+            .replace(/-/g, '+')
+            .replace(/_/g, '/')
+            .replace(/ /g, '+'); // Fix potential spaces from copy-paste or URL decoding
+
+        // Add padding if missing
+        while (cleaned.length % 4) {
+            cleaned += '=';
+        }
 
         const input = Buffer.from(cleaned, 'base64').toString('binary');
 
@@ -48,17 +56,20 @@ export function decrypt(cipher: string): any {
         try {
             return JSON.parse(decodeURIComponent(output));
         } catch (e) {
-            // Try raw decode
             try {
                 return decodeURIComponent(output);
             } catch (e2) {
                 // If output looks like http..., return it
                 if (output.startsWith('http')) return output;
 
-                // Debug: maybe cipher IS the base64 url?
+                // Try reading directly from cleaned base64 just in case it wasn't encrypted but just encoded
                 try {
-                    const directBase64 = Buffer.from(cipher, 'base64').toString('ascii');
-                    if (directBase64.startsWith('http')) return directBase64;
+                    const directInfo = Buffer.from(cleaned, 'base64').toString('utf-8');
+                    if (directInfo.includes('http')) {
+                        // might be JSON
+                        if (directInfo.startsWith('{')) return JSON.parse(directInfo);
+                        if (directInfo.startsWith('http')) return directInfo;
+                    }
                 } catch (e3) { }
 
                 return output;
