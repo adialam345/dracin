@@ -10,8 +10,8 @@ if (dns.setDefaultResultOrder) {
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
 export const PROXY_LIST = [
-    'https://sansekai-proxy-v2-3tjzgrf9l-adialam345s-projects.vercel.app/api',
-    'https://sansekai-proxy-v2.vercel.app/api' // Keeping alias as backup
+    'https://twilight-wildflower-192b.mrxnexsus.workers.dev', // Primary: Confirmed working Cloudflare Worker
+    'https://winter-paper-bc72.mrxnexsus.workers.dev',   // Backup 1
 ];
 
 const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.length)];
@@ -152,15 +152,19 @@ export async function fetchCached(url: string, retries: number = 3): Promise<any
 }
 
 export async function fetchFromEndpoint(url: string, retries: number = 3, delay: number = 300): Promise<any> {
-    for (let i = 0; i < retries; i++) {
+    // Try each proxy in the list at least once if needed
+    const proxiesToTry = [...PROXY_LIST];
+
+    for (let i = 0; i < Math.max(retries, proxiesToTry.length); i++) {
         const now = Date.now();
         if (now < globalBackoffuntil) {
             await new Promise(resolve => setTimeout(resolve, globalBackoffuntil - now));
         }
 
+        // Use sequential proxy selection to avoid hitting the same blocked one repeatedly during retries
+        const currentProxy = proxiesToTry[i % proxiesToTry.length];
+
         try {
-            const currentProxy = getRandomProxy();
-            // Route through Cloudflare/Vercel Worker if configured
             const targetUrl = currentProxy
                 ? `${currentProxy}?url=${encodeURIComponent(url)}`
                 : url;
@@ -185,22 +189,28 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
             const isEmpty = (Array.isArray(items) && items.length === 0) && !isDetailOrStream;
 
             if (isSearch || !isEmpty) return data;
-            // console.warn('[fetchFromEndpoint] Items empty for: ' + url + '. Retrying...');
 
         } catch (error: any) {
+            const isBlocked = error.message.includes('403');
+
             if (error.message === 'RATE_LIMITED') {
-                // console.warn('[fetchFromEndpoint] rate limited(429) for: ' + url + '. Backing off...');
                 globalBackoffuntil = Date.now() + 1000 + Math.random() * 1000;
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 continue;
             }
-            // Only log actual errors, not just retries
-            if (i === retries - 1) {
+
+            // If blocked (403), don't wait too long, just try the next proxy
+            if (isBlocked) {
+                console.warn(`[Proxy Blocked] ${currentProxy} returned 403 for ${url}. Trying next...`);
+                continue;
+            }
+
+            if (i === Math.max(retries, proxiesToTry.length) - 1) {
                 console.error(`[Fetch Error] ${url} : ${error.message || error}`);
             }
         }
 
-        if (i < retries - 1) {
+        if (i < Math.max(retries, proxiesToTry.length) - 1) {
             const waitTime = delay * Math.pow(2, i) + (Math.random() * 200);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }

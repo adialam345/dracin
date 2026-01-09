@@ -1,0 +1,7 @@
+name = "sansekai-api-proxy"
+main = "cloudflare-worker-proxy.js"
+compatibility_date = "2024-01-01"
+
+[builders]
+# This allows using ESM in workers
+command = "node"
