@@ -13,6 +13,8 @@ export function getStaticPaths() {
   ];
 }
 
+import { encrypt } from '../../utils/security.server';
+
 const { slug } = Astro.params;
 
 const CATEGORY_TITLES: Record<string, string> = {
@@ -30,12 +32,19 @@ if (slug) {
     dramas = await fetchAggregatedCategory(slug);
 }
 
+// Identify LCP Image for preloading
+let proxiedLcpImage = '';
+if (dramas.length > 0) {
+    const encrypted = encrypt(dramas[0].cover);
+    proxiedLcpImage = `/api/proxy?q=${encodeURIComponent(encrypted)}`;
+}
+
 // Note: Infinite Scroll is temporarily disabled for aggregated categories 
 // because pagination across multiple merged APIs requires a dedicated backend state.
 // We will display the initial aggregated batch.
 ---
 
-<Layout title={`${title} - DramaIn`}>
+<Layout title={`${title} - DramaIn`} lcpImage={proxiedLcpImage}>
   <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-white mb-2">{title}</h1>
@@ -44,13 +53,14 @@ if (slug) {
 
     {dramas.length > 0 ? (
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-        {dramas.map((drama: any) => (
+        {dramas.map((drama: any, index: number) => (
           <MovieCard
             bookId={drama.id}
             title={drama.title}
             posterUrl={drama.cover}
             description={drama.description}
             source={drama.source}
+            fetchpriority={index === 0 ? 'high' : 'auto'}
           />
         ))}
       </div>

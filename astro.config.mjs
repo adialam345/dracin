@@ -11,6 +11,9 @@ export default defineConfig({
     mode: 'standalone'
   }),
   integrations: [tailwind()],
+  build: {
+    inlineStylesheets: 'always'
+  },
   devToolbar: {
     enabled: false
   },
@@ -27,8 +30,7 @@ export default defineConfig({
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          manualChunks: undefined,
-          assetFileNames: 'assets/[name]-[hash][extname]'
+          manualChunks: undefined
         }
       }
     }

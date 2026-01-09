@@ -14,6 +14,7 @@ interface Props {
   image?: string;
   hideFooter?: boolean;
   extraSchema?: object;
+  lcpImage?: string;
 }
 
 const {
@@ -21,7 +22,8 @@ const {
   description = 'Nonton drama gratis dari DramaBox, NetShort, RadReel, ShortMax, StarShort, DramaWave, Melolo, FlickReels, GoodShort, HiShort, FreeShort, dan DramaDash. Platform streaming modern, cepat, dan ringan.',
   image = '/og-image.png',
   hideFooter = false,
-  extraSchema
+  extraSchema,
+  lcpImage
 } = Astro.props;
 
 const socialImageURL = new URL(image, Astro.site).href;
@@ -40,6 +42,7 @@ const socialImageURL = new URL(image, Astro.site).href;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href={Astro.url.origin} crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    {lcpImage && <link rel="preload" href={lcpImage} as="image" fetchpriority="high" crossorigin="anonymous" />}
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     </noscript>
