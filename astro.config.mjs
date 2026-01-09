@@ -18,6 +18,10 @@ export default defineConfig({
   vite: {
     server: {
       allowedHosts: ['nontonin.site']
+    },
+    build: {
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 1000
     }
   }
 });

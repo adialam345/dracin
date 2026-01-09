@@ -72,8 +72,8 @@ try {
           </div>
           
           <div id="section-foryou-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {forYouDramas.map((drama: any) => (
-              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+            {forYouDramas.map((drama: any, index: number) => (
+              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} fetchpriority={index < 2 ? 'high' : 'auto'} />
             ))}
           </div>
         </section>

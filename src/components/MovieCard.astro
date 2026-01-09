@@ -5,9 +5,10 @@ interface Props {
   posterUrl: string;
   description?: string;
   source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' | 'vigloo';
+  fetchpriority?: 'high' | 'low' | 'auto';
 }
 
-const { bookId, title, posterUrl, description, source } = Astro.props;
+const { bookId, title, posterUrl, description, source, fetchpriority = 'auto' } = Astro.props;
 
 const sourceLabels = {
   dramabox: { label: 'DB', color: 'bg-red-600/90' },
@@ -37,7 +38,9 @@ const badge = source ? sourceLabels[source] : null;
     <img
       src={posterUrl}
       alt={title}
-      loading="lazy"
+      loading={fetchpriority === 'high' ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchpriority={fetchpriority}
       class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 opacity-0"
       onload="this.classList.remove('opacity-0')"
       onerror="handleImageError(this)"
