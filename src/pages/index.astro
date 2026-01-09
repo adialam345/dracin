@@ -158,8 +158,13 @@ try {
 <script>
   // Deferred Loading Logic
   window.addEventListener('load', async () => {
-    // Only fetch if we suspect missing data (or always? "Keep trying until show")
-    // Always specific fetch for full resilience
+    // Only refresh if we have very little content
+    const contentArea = document.getElementById('section-foryou-content');
+    if (contentArea && contentArea.children.length >= 10) {
+       console.log('[Home] Content already loaded, skipping background refresh.');
+       return;
+    }
+    
     console.log('[Home] Starting background content refresh...');
     
     try {

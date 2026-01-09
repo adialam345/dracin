@@ -8,7 +8,13 @@ interface Props {
   fetchpriority?: 'high' | 'low' | 'auto';
 }
 
+import { encrypt } from '../utils/security.server';
+
 const { bookId, title, posterUrl, description, source, fetchpriority = 'auto' } = Astro.props;
+
+// Use Proxy for images to benefit from Cloudflare caching and avoid slow external CDNs
+const encryptedPosterUrl = encrypt(posterUrl);
+const proxiedPosterUrl = `/api/proxy?q=${encodeURIComponent(encryptedPosterUrl)}`;
 
 const sourceLabels = {
   dramabox: { label: 'DB', color: 'bg-red-600/90' },
@@ -36,7 +42,7 @@ const badge = source ? sourceLabels[source] : null;
 <a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative" data-astro-prefetch>
   <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] transition-all duration-500 ease-out group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
     <img
-      src={posterUrl}
+      src={proxiedPosterUrl}
       alt={title}
       loading={fetchpriority === 'high' ? 'eager' : 'lazy'}
       decoding="async"

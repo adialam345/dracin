@@ -54,9 +54,9 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
     const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
     [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou].forEach(list => cacheItems(list || []));
 
-    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]);
-    const allTrending = shuffle([...dbTrending, ...mlTrending]);
-    const allLatest = shuffle([...dbLatest, ...mlLatest]);
+    const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]).slice(0, 18);
+    const allTrending = shuffle([...dbTrending, ...mlTrending]).slice(0, 12);
+    const allLatest = shuffle([...dbLatest, ...mlLatest]).slice(0, 12);
 
     return { forYou: allForYou, trending: allTrending, latest: allLatest };
 }
