@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://nontonin.site/sitemap-index.xml
-Sitemap: https://nontonin.site/sitemap-0.xml
+Sitemap: https://nontonin.site/sitemap.xml
