@@ -26,6 +26,7 @@ export default defineConfig({
       }
     },
     build: {
+      assetsInlineLimit: 102400, // Inline assets under 100kb
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {

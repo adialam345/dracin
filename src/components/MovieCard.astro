@@ -47,6 +47,7 @@ const badge = source ? sourceLabels[source] : null;
       loading={fetchpriority === 'high' ? 'eager' : 'lazy'}
       decoding="async"
       fetchpriority={fetchpriority}
+      crossorigin="anonymous"
       class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110"
       onerror="handleImageError(this)"
     />

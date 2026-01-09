@@ -320,16 +320,11 @@ export const GET: APIRoute = async ({ url, request }) => {
                 const arrayBuffer = await response.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
 
-                let pipeline = sharp(buffer);
-                const metadata = await pipeline.metadata();
-
-                // Only optimize if image is large
-                if (metadata.width && metadata.width > 400) {
-                    pipeline = pipeline.resize({ width: 400, withoutEnlargement: true });
-                }
-
-                const optimizedBuffer = await pipeline
-                    .webp({ quality: 60 })
+                // Force resize to a mobile-friendly width
+                const optimizedBuffer = await sharp(buffer)
+                    .rotate() // Auto-orient based on EXIF
+                    .resize({ width: 400, withoutEnlargement: true })
+                    .webp({ quality: 50, effort: 4 })
                     .toBuffer();
 
                 return new Response(new Uint8Array(optimizedBuffer), {
