@@ -16,11 +16,20 @@ export default defineConfig({
   },
   vite: {
     server: {
-      allowedHosts: ['nontonin.site']
+      allowedHosts: ['nontonin.site'],
+      hmr: {
+        host: 'nontonin.site',
+        protocol: 'wss'
+      }
     },
     build: {
       cssCodeSplit: true,
-      chunkSizeWarningLimit: 1000
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined
+        }
+      }
     }
   }
 });
