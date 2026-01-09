@@ -316,9 +316,10 @@ export const GET: APIRoute = async ({ url, request }) => {
         // Handle Image Optimization
         const isImage = contentType.startsWith('image/') && !targetUrl.endsWith('.ico');
         if (isImage) {
+            let buffer: Buffer | null = null;
             try {
                 const arrayBuffer = await response.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
+                buffer = Buffer.from(arrayBuffer);
 
                 // Force resize to a mobile-friendly width
                 const optimizedBuffer = await sharp(buffer)
@@ -338,9 +339,13 @@ export const GET: APIRoute = async ({ url, request }) => {
                 });
             } catch (imageError) {
                 console.error('[Proxy] Image optimization failed:', imageError);
-                // Fallback to original response body if optimization fails
-                return new Response(response.body, {
-                    status: response.status,
+                // Fallback to the original buffer if optimization fails
+                if (!buffer) {
+                    return new Response('Image Fetch Failed', { status: 502 });
+                }
+
+                return new Response(new Uint8Array(buffer), {
+                    status: 200,
                     headers: {
                         'Content-Type': contentType,
                         'Access-Control-Allow-Origin': '*',
