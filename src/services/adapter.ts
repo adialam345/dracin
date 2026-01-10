@@ -10,6 +10,19 @@ export interface UnifiedDrama {
     raw?: any;
 }
 
+/**
+ * Helper to wrap image URLs in the encrypted proxy
+ */
+function wrapProxyImage(url: string | undefined): string {
+    if (!url) return '';
+    // If it's already a relative path or already proxied, skip
+    if (url.startsWith('/api/proxy')) return url;
+    // Don't proxy if it's a relative path (unlikely from providers)
+    if (!url.startsWith('http')) return url;
+
+    return `/api/proxy?q=${encodeURIComponent(encrypt(url))}`;
+}
+
 export function normalizeMeloshort(data: any): UnifiedDrama {
     // Poster URL comes as "/img?url=https%3A%2F%2F..." or raw https
     let cover = data.poster || data.cover || '';
@@ -23,7 +36,7 @@ export function normalizeMeloshort(data: any): UnifiedDrama {
     return {
         id: data.slug || data.id,
         title: data.title || 'Unknown Title',
-        cover: cover,
+        cover: wrapProxyImage(cover),
         description: data.description || '', // Not in Home feed
         chapterCount: 0, // Not in Home feed
         source: 'meloshort',
@@ -41,7 +54,7 @@ export function normalizeDramabox(data: any): UnifiedDrama {
     return {
         id: data.bookId || data.book_id,
         title: data.bookName || data.book_name,
-        cover: data.coverWap || data.cover || data.bookCover || data.cover_url,
+        cover: wrapProxyImage(data.coverWap || data.cover || data.bookCover || data.cover_url),
         description: data.introduction || data.desc || '',
         source: 'dramabox',
         raw: data,
@@ -53,7 +66,7 @@ export function normalizeNetshort(data: any): UnifiedDrama {
     return {
         id: data.shortPlayId || data.id,
         title: stripHtml(rawTitle), // Remove HTML tags like <em>
-        cover: data.shortPlayCover || data.cover || data.coverUrl,
+        cover: wrapProxyImage(data.shortPlayCover || data.cover || data.coverUrl),
         description: data.introduction || data.desc || '',
         source: 'netshort',
         raw: data,
@@ -71,7 +84,7 @@ export function normalizeMelolo(data: any): UnifiedDrama {
     return {
         id: data.book_id || data.id || data.series_id,
         title: data.book_name || data.name || data.title,
-        cover: cover,
+        cover: wrapProxyImage(cover),
         description: data.abstract || data.summary || data.series_intro || '',
         source: 'melolo',
         raw: data,
@@ -90,7 +103,7 @@ export function normalizeRadReel(data: any): UnifiedDrama {
     return {
         id: id,
         title: stripHtml(data.title || ''),
-        cover: data.coverImgUrl || '',
+        cover: wrapProxyImage(data.coverImgUrl),
         description: stripHtml(data.introduction || data.introduce || ''),
         source: 'radreel',
         raw: {
@@ -118,7 +131,7 @@ export function normalizeDramaWave(data: any): UnifiedDrama {
     return {
         id: id,
         title: stripHtml(title),
-        cover: data.cover ? `/api/proxy?q=${encodeURIComponent(encrypt(data.cover))}` : '',
+        cover: wrapProxyImage(data.cover),
         description: stripHtml(description),
         chapterCount: data.episode_count || (data.episode_list && data.episode_list.length) || 0,
         source: 'dramawave',
@@ -134,7 +147,7 @@ export function normalizeDramaDash(data: any): UnifiedDrama {
     return {
         id: String(data.id || ''),
         title: data.name || data.title || '',
-        cover: data.poster || data.cover || '',
+        cover: wrapProxyImage(data.poster || data.cover),
         description: data.description || '',
         source: 'dramadash',
         raw: data
@@ -145,7 +158,7 @@ export function normalizeFlickReels(data: any): UnifiedDrama {
     return {
         id: String(data.playlet_id || ''),
         title: data.title || '',
-        cover: data.cover || '',
+        cover: wrapProxyImage(data.cover),
         description: data.introduce || '',
         source: 'dramaflickreels',
         chapterCount: data.upload_num ? parseInt(data.upload_num) : 0,
@@ -157,7 +170,7 @@ export function normalizeShortMax(data: any): UnifiedDrama {
     return {
         id: String(data.dramaId || data.id || ''),
         title: data.name || data.title || '',
-        cover: data.cover || data.poster || data.coverUrl || '',
+        cover: wrapProxyImage(data.cover || data.poster || data.coverUrl),
         description: data.summary || data.description || data.intro || data.introduction || '',
         source: 'shortmax',
         chapterCount: data.total || data.episodeCount || data.chapterCount || 0,
@@ -169,7 +182,7 @@ export function normalizeHiShort(data: any): UnifiedDrama {
     return {
         id: String(data.slug || data.drama_id || data.id || ''),
         title: data.title || data.name || '',
-        cover: data.cover || data.poster || '',
+        cover: wrapProxyImage(data.cover || data.poster),
         description: data.description || data.synopsis || '',
         source: 'hishort',
         chapterCount: data.total_episodes || data.episodes_count || 0,
@@ -181,7 +194,7 @@ export function normalizeFreeShort(data: any): UnifiedDrama {
     return {
         id: String(data.id || data.dramaId || ''),
         title: data.title || data.name || '',
-        cover: data.cover || data.poster || '',
+        cover: wrapProxyImage(data.cover || data.poster),
         description: data.description || data.summary || '',
         source: 'freeshort',
         chapterCount: data.total_episodes || data.total || data.episode_count || 0,
@@ -196,7 +209,7 @@ export function normalizeStarShort(data: any): UnifiedDrama {
     return {
         id: id,
         title: stripHtml(data.title || data.name || ''),
-        cover: data.cover || data.coverImgUrl || data.poster || '',
+        cover: wrapProxyImage(data.cover || data.coverImgUrl || data.poster),
         description: stripHtml(data.introduction || data.introduce || data.description || data.desc || ''),
         source: 'starshort',
         chapterCount: data.uploadOfEpisodes || data.episodes_count || data.total_episodes || 0,
@@ -211,7 +224,7 @@ export function normalizeGoodShort(data: any): UnifiedDrama {
     return {
         id: String(data.bookId || data.id || ''),
         title: data.bookName || data.name || data.title || data.alias1 || '',
-        cover: data.cover || data.bookDetailCover || '',
+        cover: wrapProxyImage(data.cover || data.bookDetailCover),
         description: data.introduction || data.desc || '',
         source: 'goodshort',
         chapterCount: data.chapterCount || data.chapterCnt || data.serializationStatus || 0,
@@ -226,7 +239,7 @@ export function normalizeDotDrama(data: any): UnifiedDrama {
     return {
         id: String(data.dcup || data.id || ''),
         title: data.nseri || data.title || '',
-        cover: cover,
+        cover: wrapProxyImage(data.pday || data.cover),
         description: data.dwill || data.description || '',
         source: 'dotdrama',
         chapterCount: data.ewood || 0,
@@ -241,7 +254,7 @@ export function normalizeStarDustTV(data: any): UnifiedDrama {
     return {
         id: String(data.vid || data.id || ''),
         title: data.title || '',
-        cover: cover,
+        cover: wrapProxyImage(data.image || data.cover),
         description: data.description || '',
         source: 'stardusttv',
         chapterCount: 0, // Not provided in list
@@ -253,7 +266,7 @@ export function normalizeReelLife(data: any): UnifiedDrama {
     return {
         id: String(data.id || ''),
         title: data.title || '',
-        cover: data.poster || data.cover || '',
+        cover: wrapProxyImage(data.poster || data.cover),
         description: '', // Description not available in home feed
         source: 'reelife',
         chapterCount: 0,
@@ -268,7 +281,7 @@ export function normalizeVigloo(data: any): UnifiedDrama {
     return {
         id: String(data.id || ''),
         title: data.title || '',
-        cover: cover,
+        cover: wrapProxyImage(data.thumbnailExpanded || data.thumbnail || data.titleImage),
         description: data.description || data.logLine || '',
         source: 'vigloo',
         chapterCount: data.episodeCount || 0,

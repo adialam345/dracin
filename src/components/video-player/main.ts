@@ -299,7 +299,9 @@ export async function initPlayer() {
         } else if (source && bookId && currentEpisodeId) {
             console.log(`[VideoPlayer] No initial URL, fetching for: ${source}/${bookId}/${currentEpisodeId}`);
             try {
-                const fetchUrl = `/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${currentEpisodeId}`;
+                const { encrypt } = await import('../../utils/security');
+                const q = encrypt({ source, bookId, episodeId: currentEpisodeId });
+                const fetchUrl = `/api/video-stream?q=${encodeURIComponent(q)}`;
                 const res = await fetch(fetchUrl);
                 const data = await res.json();
                 loadAndPlay(data);
@@ -331,7 +333,9 @@ export async function initPlayer() {
                             loader.style.opacity = '1';
                         }
 
-                        const nextUrl = `/api/video-stream?source=${source}&bookId=${bookId}&episodeId=${nextId}`;
+                        const { encrypt } = await import('../../utils/security');
+                        const q = encrypt({ source, bookId, episodeId: nextId });
+                        const nextUrl = `/api/video-stream?q=${encodeURIComponent(q)}`;
                         const res = await fetch(nextUrl, { signal: currentFetchController.signal });
                         const data = await res.json();
 
