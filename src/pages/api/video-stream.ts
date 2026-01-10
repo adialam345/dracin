@@ -49,7 +49,8 @@ export const GET: APIRoute = async ({ url, request }) => {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=600'
+                'Cache-Control': 'public, max-age=7200, s-maxage=7200',
+                'Cloudflare-CDN-Cache-Control': 'max-age=7200'
             }
         });
     } catch (error) {

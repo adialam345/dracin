@@ -1,97 +1,106 @@
 import type { APIRoute } from 'astro';
-import { parseTargetUrl } from './proxy/url-parser';
-import { buildHeaders, isNetShortUrl } from './proxy/headers';
-import { fetchWithFallback, isImageRequest } from './proxy/fetcher';
-import {
-    handleNetShort,
-    handleM3U8, isM3U8Response,
-    handleSRT, handleVTT, isSRTSubtitle, isVTTSubtitle, isSubtitle,
-    handleImage, isImageResponse,
-    handleVideo
-} from './proxy/handlers';
+import { decrypt } from '../../utils/security.server';
+import { getProxyHeaders } from './proxy/headers';
+import { handleNetShortProxy } from './proxy/netshort';
+import { handleHlsRewrite } from './proxy/hls';
+import { convertSrtToVtt } from './proxy/subtitles';
+import { assembleProxyResponse, handle304Response } from './proxy/utils';
 
 export const GET: APIRoute = async ({ url, request }) => {
     // Parse and validate target URL
     const { urlStr, error } = parseTargetUrl(url);
     if (error) return error;
 
-    const q = url.searchParams.get('q');
-    if (q) console.log(`[Proxy] Processing: ${urlStr.substring(0, 60)}...`);
+    if (q) {
+        const decrypted = decrypt(q);
+        if (decrypted) {
+            if (decrypted.startsWith('http')) {
+                targetUrl = decrypted;
+            } else {
+                try {
+                    const parsed = JSON.parse(decrypted);
+                    if (parsed.url) targetUrl = parsed.url;
+                    else targetUrl = decrypted;
+                } catch (e) {
+                    targetUrl = decrypted;
+                }
+            }
+        }
+    }
+
+    if (!targetUrl) return new Response('Missing url', { status: 400 });
 
     try {
-        // Build headers based on provider
-        const headers = buildHeaders(urlStr, request);
+        const headers = getProxyHeaders(targetUrl, request.headers);
 
-        // Special handling for NetShort CDN
-        if (isNetShortUrl(urlStr)) {
-            return handleNetShort(urlStr, headers);
+        // Special handling for NetShort (uses node:https for stability)
+        if (targetUrl.includes('netshort.com')) {
+            return handleNetShortProxy(targetUrl, headers);
         }
 
-        // Fetch with proxy fallback strategy
-        const isImage = isImageRequest(urlStr);
-        const { response } = await fetchWithFallback(urlStr, headers, isImage);
-
-        if (q) console.log(`[Proxy] Result: ${response?.status || 'FAIL'} for ${urlStr.substring(0, 40)}`);
-
-        if (!response) {
-            return new Response('Proxy failed to get response', { status: 504 });
-        }
+        const response = await fetch(targetUrl, { headers });
 
         // Handle 304 Not Modified from Upstream
-        if (response.status === 304) {
-            return new Response(null, {
-                status: 304,
+        if (response.status === 304) return handle304Response(response);
+
+        const contentType = response.headers.get('content-type') || '';
+        const isM3U8 = contentType.toLowerCase().includes('mpegurl') ||
+            contentType.toLowerCase().includes('hls') ||
+            targetUrl.includes('.m3u8');
+
+        // Detect Origin (Handle Forwarded Headers)
+        let origin = new URL(request.url).origin;
+        const forwardedProto = request.headers.get('x-forwarded-proto');
+        const forwardedHost = request.headers.get('x-forwarded-host');
+        if (forwardedProto && forwardedHost) {
+            origin = `${forwardedProto}://${forwardedHost}`;
+        }
+
+        // Handle HLS Rewriting
+        if (isM3U8) {
+            return handleHlsRewrite(response, targetUrl, origin);
+        }
+
+        // Handle SRT to VTT Conversion
+        if (targetUrl.endsWith('.srt') || contentType.includes('srt')) {
+            const srtText = await response.text();
+            const vttText = convertSrtToVtt(srtText);
+            return new Response(vttText, {
+                status: 200,
                 headers: {
+                    'Content-Type': 'text/vtt',
                     'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'public, max-age=31536000',
-                    ...(response.headers.get('ETag') ? { 'ETag': response.headers.get('ETag')! } : {}),
-                    ...(response.headers.get('Last-Modified') ? { 'Last-Modified': response.headers.get('Last-Modified')! } : {})
+                    'Cache-Control': 'public, max-age=31536000'
                 }
             });
         }
 
-        const contentType = response.headers.get('content-type') || '';
+        // Handle WebVTT Pass-through
+        const isSubtitle = targetUrl.endsWith('.vtt') || targetUrl.endsWith('.webvtt') ||
+            contentType.includes('vtt') || (contentType.includes('text/plain') && (targetUrl.includes('vtt') || targetUrl.includes('srt')));
 
-        // Check response status
-        const isSubtitleRequest = isSubtitle(urlStr, contentType);
-        if (!response.ok && !isSubtitleRequest) {
-            const isImageResp = contentType.startsWith('image/') || urlStr.match(/\.(jpg|jpeg|png|webp|gif)$/i);
-            if (!isImageResp) {
-                const errText = await response.text().catch(() => '');
-                console.error(`[Proxy] Upstream Error ${response.status} for ${urlStr.substring(0, 50)}: ${errText.substring(0, 200)}`);
-                return new Response(`Proxy upstream error: ${response.status} - ${errText.substring(0, 100)}`, {
-                    status: response.status >= 500 ? 502 : response.status
-                });
-            }
+        if (isSubtitle) {
+            const vttText = await response.text();
+            return new Response(vttText, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'text/vtt',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=31536000'
+                }
+            });
         }
 
-        // Route to appropriate handler based on content type/URL
-
-        // M3U8/HLS handling
-        if (isM3U8Response(contentType, urlStr)) {
-            return handleM3U8(response, urlStr, request);
+        // Default Response Assembly (Binary/Generic data)
+        if (!response.ok) {
+            return new Response(`Proxy error status:${response.status}`, { status: 500 });
         }
 
-        // SRT to VTT conversion
-        if (isSRTSubtitle(urlStr, contentType)) {
-            return handleSRT(response);
-        }
-
-        // VTT passthrough
-        if (isVTTSubtitle(urlStr, contentType)) {
-            return handleVTT(response);
-        }
-
-        // Image handling
-        if (isImageResponse(contentType, urlStr)) {
-            return handleImage(response, contentType);
-        }
-
-        // Default: Video/Binary handling
-        return handleVideo(response, urlStr, contentType);
+        return assembleProxyResponse(response, targetUrl);
 
     } catch (e) {
         console.error('Proxy error:', e);
         return new Response('Proxy error', { status: 500 });
     }
 };
+

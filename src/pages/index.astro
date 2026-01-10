@@ -165,172 +165,102 @@ try {
 
 
 <script>
-  // Home Page State Caching
-  const CACHE_KEY = 'home_content_cache';
-  const CACHE_TIMESTAMP_KEY = 'home_content_timestamp';
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
-
-  // Save current content to cache
-  function saveToCache() {
-    try {
-      const sections = ['section-foryou-content', 'section-trending-content', 'section-latest-content'];
-      const cache = {};
-      let hasContent = false;
-      
-      sections.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.children.length > 0) {
-          cache[id] = el.innerHTML;
-          hasContent = true;
-        }
-      });
-      
-      if (hasContent) {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-        sessionStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
-        console.log('[Home] Content cached to sessionStorage');
-      }
-    } catch (e) {
-      console.warn('[Home] Failed to cache content:', e);
-    }
-  }
-
-  // Restore content from cache
-  function restoreFromCache() {
-    try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      const timestamp = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
-      
-      if (!cached || !timestamp) return false;
-      
-      // Check if cache is still valid
-      const age = Date.now() - parseInt(timestamp);
-      if (age > CACHE_TTL) {
-        console.log('[Home] Cache expired, will refresh');
-        return false;
-      }
-      
-      const cache = JSON.parse(cached);
-      let restored = false;
-      
-      Object.keys(cache).forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.innerHTML = cache[id];
-          restored = true;
-        }
-      });
-      
-      if (restored) {
-        console.log(`[Home] Restored from cache (age: ${Math.round(age/1000)}s)`);
-        // Hide loader
-        const loader = document.getElementById('initial-loader');
-        if (loader) loader.style.display = 'none';
-      }
-      
-      return restored;
-    } catch (e) {
-      console.warn('[Home] Failed to restore from cache:', e);
-      return false;
-    }
-  }
-
-  // Check if this is a "back navigation" via View Transitions
-  let isBackNavigation = false;
-  document.addEventListener('astro:before-swap', (e) => {
-    // Save cache before leaving home page
-    if (window.location.pathname === '/') {
-      saveToCache();
-    }
-  });
-
-  // Detect back navigation
-  window.addEventListener('popstate', () => {
-    isBackNavigation = true;
-  });
-
-  // Main initialization
-  document.addEventListener('astro:page-load', async () => {
-    // Only run on home page
+  // Home Content Persistence Logic
+  const initHome = async () => {
     if (window.location.pathname !== '/') return;
+    
+    const getSections = () => ({
+      'section-foryou-content': document.getElementById('section-foryou-content'),
+      'section-trending-content': document.getElementById('section-trending-content'),
+      'section-latest-content': document.getElementById('section-latest-content')
+    });
+    
+    let sections = getSections();
+    const loader = document.getElementById('initial-loader');
+    
+    // Helper to determine if we ALREADY have enough content in DOM
+    const hasEnoughContent = () => {
+      const counts = Object.values(sections).map(el => el ? el.children.length : 0);
+      return counts.some(c => c >= 5); // Heuristic: if any section has 5+ items, it's "populated"
+    };
 
-    const contentArea = document.getElementById('section-foryou-content');
-    const hasServerContent = contentArea && contentArea.children.length >= 5;
+    // 1. Try to restore from session storage
+    const cachedHTML = sessionStorage.getItem('home_feed_cache');
+    const cacheTime = sessionStorage.getItem('home_feed_time');
+    // Cache is considered fresh for 2 hours
+    const isCacheFresh = cacheTime && (Date.now() - parseInt(cacheTime) < 120 * 60 * 1000); 
     
-    // Try restore from cache first (for back navigation or if server content is minimal)
-    const restoredFromCache = restoreFromCache();
-    
-    // If we have good server content already, just save it to cache
-    if (hasServerContent && !restoredFromCache) {
-      saveToCache();
-      console.log('[Home] Server content good, saved to cache');
-      return;
-    }
-    
-    // If restored from cache, skip background refresh unless cache is getting old
-    if (restoredFromCache) {
-      const timestamp = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
-      const age = Date.now() - parseInt(timestamp || '0');
+    if (cachedHTML) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cachedHTML, 'text/html');
       
-      // Only background refresh if cache is older than 2 minutes
-      if (age < 2 * 60 * 1000) {
-        console.log('[Home] Cache is fresh, skipping background refresh');
+      let restoredCount = 0;
+      Object.keys(sections).forEach(id => {
+        const newContent = doc.getElementById(id);
+        const currentContent = sections[id];
+        
+        // ONLY restore if DOM is empty OR cache has significantly more items (avoid flicker if same)
+        if (newContent && newContent.children.length > 0) {
+           if (!currentContent || currentContent.children.length < newContent.children.length) {
+              // If container is missing (server returned 0), we might need to refresh full page or wait for partial
+              // But if it's there, update it.
+              if (currentContent) {
+                currentContent.innerHTML = newContent.innerHTML;
+                restoredCount++;
+              }
+           }
+        }
+      });
+      
+      if (restoredCount > 0 && loader) {
+        loader.style.display = 'none';
+      }
+
+      // If we already have content (from server or now from cache) and cache is fresh, stop here.
+      if (hasEnoughContent() && isCacheFresh) {
+        if (loader) loader.style.display = 'none';
         return;
       }
     }
-    
-    // Background refresh for stale/missing content
-    console.log('[Home] Starting background content refresh...');
-    
+
+    // 2. Background Refresh (ONLY if absolutely empty)
+    if (hasEnoughContent()) {
+       console.log('[Home] Content already present, skipping background fetch to maintain stability.');
+       if (loader) loader.style.display = 'none';
+       return;
+    }
+
+    console.log('[Home] Sections empty, fetching content...');
     try {
        const res = await fetch('/partials/home-feed');
        if (!res.ok) throw new Error('Fetch failed');
-       
        const html = await res.text();
        const parser = new DOMParser();
        const doc = parser.parseFromString(html, 'text/html');
        
-       // Helper to update section
-       const updateSection = (id) => {
+       sections = getSections();
+       Object.keys(sections).forEach(id => {
           const newContent = doc.getElementById(id);
-          const currentContent = document.getElementById(id);
-          
-          if (newContent && currentContent) {
-              if (newContent.children.length >= currentContent.children.length) {
-                 console.log(`[Home] Updating ${id} with ${newContent.children.length} items (was ${currentContent.children.length})`);
-                 currentContent.innerHTML = newContent.innerHTML;
-              }
+          const currentContent = sections[id];
+          if (newContent && currentContent && newContent.children.length > 0) {
+              currentContent.innerHTML = newContent.innerHTML;
           }
-       };
+       });
 
-       updateSection('section-foryou-content');
-       updateSection('section-trending-content');
-       updateSection('section-latest-content');
-       
-       // Save updated content to cache
-       saveToCache();
-       
-       // Hide loader if present
-       const loader = document.getElementById('initial-loader');
+       sessionStorage.setItem('home_feed_cache', html);
+       sessionStorage.setItem('home_feed_time', Date.now().toString());
        if (loader) loader.style.display = 'none';
-       
     } catch (e) {
-       console.error('[Home] Background refresh failed:', e);
-       const loader = document.getElementById('initial-loader');
-       if (loader && !restoredFromCache) {
+       console.error('[Home] Fetch failed:', e);
+       if (loader) {
            loader.style.display = 'none';
-           const errorMsg = document.getElementById('error-msg');
-           const refreshBtn = document.getElementById('refresh-btn');
-           if (errorMsg) errorMsg.classList.remove('hidden');
-           if (refreshBtn) refreshBtn.classList.remove('hidden');
+           document.getElementById('error-msg')?.classList.remove('hidden');
+           document.getElementById('refresh-btn')?.classList.remove('hidden');
        }
     }
-    
-    // Reset back navigation flag
-    isBackNavigation = false;
-  });
+  };
 
-  // Also save on page unload (for hard refresh scenarios)
-  window.addEventListener('beforeunload', saveToCache);
+  // Run on every View Transition navigation (including initial load)
+  document.addEventListener('astro:page-load', initHome);
 </script>
 </Layout>

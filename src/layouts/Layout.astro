@@ -27,6 +27,15 @@ const {
 } = Astro.props;
 
 const socialImageURL = new URL(image, Astro.site).href;
+
+// --- CLOUDFLARE OPTIMIZATIONS ---
+// 1. Early Hints: Beritahu CF untuk preload aset penting sebelum HTML selesai dirender
+Astro.response.headers.set('Link', '</styles/global.css>; rel=preload; as=style, <https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect');
+
+// 2. Security Headers
+Astro.response.headers.set('X-Content-Type-Options', 'nosniff');
+Astro.response.headers.set('X-Frame-Options', 'DENY');
+Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 ---
 
 <!doctype html>
