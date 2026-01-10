@@ -26,9 +26,9 @@ class LimitedMap<K, V> extends Map<K, V> {
         super();
     }
     set(key: K, value: V): this {
-        if (this.size >= this.maxSize) {
+        if (!this.has(key) && this.size >= this.maxSize) {
             const firstKey = this.keys().next().value;
-            if (firstKey) this.delete(firstKey);
+            if (firstKey !== undefined) this.delete(firstKey);
         }
         return super.set(key, value);
     }
