@@ -1,58 +1,5 @@
 import type { APIRoute } from 'astro';
-
-// Simple in-memory storage for analytics (resets on server restart)
-// For production, use a database like Redis, MongoDB, or PostgreSQL
-
-interface UserActivity {
-    sessionId: string;
-    ip: string;
-    userAgent: string;
-    currentPage: string;
-    dramaTitle?: string;
-    dramaSource?: string;
-    episodeNumber?: number;
-    timestamp: number;
-    lastSeen: number;
-}
-
-import { EventEmitter } from 'node:events';
-
-interface AnalyticsData {
-    activeUsers: Map<string, UserActivity>;
-    totalVisits: number;
-    dramaViews: Map<string, { title: string; source: string; views: number }>;
-    bannedSessions: Set<string>;
-    events: EventEmitter;
-}
-
-// Global analytics store
-declare global {
-    var analyticsData: AnalyticsData | undefined;
-}
-
-function getAnalyticsStore(): AnalyticsData {
-    if (!globalThis.analyticsData) {
-        globalThis.analyticsData = {
-            activeUsers: new Map(),
-            totalVisits: 0,
-            dramaViews: new Map(),
-            bannedSessions: new Set(),
-            events: new EventEmitter()
-        };
-        // Increase limit for many connected users
-        globalThis.analyticsData.events.setMaxListeners(1000);
-    }
-    // Hot-reload support: Ensure bannedSessions exists
-    if (!globalThis.analyticsData.bannedSessions) {
-        globalThis.analyticsData.bannedSessions = new Set();
-    }
-    // Hot-reload support: Ensure events exists
-    if (!globalThis.analyticsData.events) {
-        globalThis.analyticsData.events = new EventEmitter();
-        globalThis.analyticsData.events.setMaxListeners(1000);
-    }
-    return globalThis.analyticsData;
-}
+import { getAnalyticsStore, type UserActivity } from '../../../lib/analytics';
 
 // Clean up inactive users (inactive for more than 5 minutes)
 function cleanupInactiveUsers() {
@@ -65,9 +12,6 @@ function cleanupInactiveUsers() {
             store.activeUsers.delete(sessionId);
         }
     }
-
-    // Cleanup banned sessions older than 24 hours to prevent memory leak
-    // In real app, persist this
 }
 
 export const POST: APIRoute = async ({ request }) => {

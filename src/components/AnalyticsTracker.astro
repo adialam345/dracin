@@ -122,13 +122,29 @@
      if (isBlocked) return;
      isBlocked = true;
      
-     // Stop all tracking
+     // 1. Force Exit Fullscreen (sangat penting jika user sedang menonton)
+     if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+     } else if ((document as any).webkitFullscreenElement) {
+        (document as any).webkitExitFullscreen();
+     }
+
+     // 2. Matikan paksa semua video yang sedang diputar
+     const videos = document.querySelectorAll('video');
+     videos.forEach(v => {
+        v.pause();
+        v.src = "";
+        v.load();
+        v.remove();
+     });
+     
+     // 3. Stop all tracking
      if (heartbeatInterval) clearInterval(heartbeatInterval);
      if (evtSource) evtSource.close();
      
      sessionStorage.removeItem('_sid_v1'); // Clear session
      
-     // Show overlay
+     // 4. Tampilkan Overlay Blokir
      if(document.getElementById('kick-overlay')) return;
 
      const overlay = document.createElement('div');
@@ -141,7 +157,7 @@
             </svg>
         </div>
         <h2 class="text-2xl font-bold text-white mb-2">Koneksi Terputus</h2>
-        <p class="text-zinc-400 mb-8 max-w-md">Koneksi Anda telah diputus oleh sistem administrator. Silakan coba muat ulang halaman atau kembali nanti.</p>
+        <p class="text-zinc-400 mb-8 max-w-md">Koneksi Anda telah diputus oleh sistem administrator. Harap coba lagi.</p>
         <a href="/" class="px-6 py-2.5 bg-white text-black font-semibold rounded-full hover:bg-zinc-200 transition-colors">
             Kembali ke Beranda
         </a>

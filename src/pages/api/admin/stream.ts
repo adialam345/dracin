@@ -1,11 +1,5 @@
 import type { APIRoute } from 'astro';
-
-// Helper to get store (duplicated from analytics.ts but checking global)
-// In a real app we'd export the getter from a shared lib
-function getStore() {
-    if (!globalThis.analyticsData) return null;
-    return globalThis.analyticsData;
-}
+import { getAnalyticsStore } from '../../../lib/analytics';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
@@ -15,7 +9,7 @@ export const GET: APIRoute = async ({ request }) => {
         return new Response('Missing sessionId', { status: 400 });
     }
 
-    const store = getStore();
+    const store = getAnalyticsStore();
     if (!store) {
         return new Response('Analytics not initialized', { status: 500 });
     }
@@ -30,19 +24,39 @@ export const GET: APIRoute = async ({ request }) => {
         'Access-Control-Allow-Origin': '*'
     };
 
+    const encoder = new TextEncoder();
+
     const stream = new ReadableStream({
         start(controller) {
+            console.log(`[SSE] User connected: ${sessionId}`);
+
             // Send initial connection message
-            controller.enqueue('data: connected\n\n');
+            controller.enqueue(encoder.encode('data: connected\n\n'));
+
+            // Keep-alive ping every 15 seconds to prevent timeout
+            const pingInterval = setInterval(() => {
+                try {
+                    controller.enqueue(encoder.encode(': ping\n\n'));
+                } catch (e) {
+                    clearInterval(pingInterval);
+                }
+            }, 15000);
 
             // Listener function
             const onKick = (kickedSessionId: string) => {
                 if (kickedSessionId === sessionId) {
+                    console.log(`[SSE] Kicking user: ${sessionId}`);
                     try {
-                        controller.enqueue(`data: kick\n\n`);
-                        controller.close(); // Close stream after kick
+                        controller.enqueue(encoder.encode(`data: kick\n\n`));
+                        // Give a small delay before closing to ensure message is sent
+                        setTimeout(() => {
+                            try {
+                                controller.close();
+                                clearInterval(pingInterval);
+                            } catch (e) { }
+                        }, 100);
                     } catch (e) {
-                        // Controller might be already closed
+                        clearInterval(pingInterval);
                     }
                 }
             };
@@ -52,7 +66,9 @@ export const GET: APIRoute = async ({ request }) => {
 
             // Cleanup when connection closes (client disconnects)
             request.signal.addEventListener('abort', () => {
+                console.log(`[SSE] User disconnected: ${sessionId}`);
                 store.events.off('kick', onKick);
+                clearInterval(pingInterval);
             });
         }
     });
