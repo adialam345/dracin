@@ -1,8 +1,7 @@
 import { encrypt } from '../../utils/security';
 
 export const VIDEO_PROXIES = [
-    'https://videoproxy.cobaakun116.workers.dev/',
-    'https://video-proxy.mrxnexsus.workers.dev/',
+    'https://videoproxy.cobaakun116.workers.dev/'
 ];
 
 export const PROXY_BASE = VIDEO_PROXIES[0];
