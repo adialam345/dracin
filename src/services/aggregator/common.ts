@@ -39,9 +39,22 @@ export const Providers = {
     Vigloo
 };
 
-// Caches
-export const dramaDetailsCache = new Map<string, UnifiedDrama>();
-export const episodeDetailsCache = new Map<string, any[]>();
+// Caches dengan limit ukuran untuk hemat RAM
+class LimitedMap<K, V> extends Map<K, V> {
+    constructor(private maxSize: number) {
+        super();
+    }
+    set(key: K, value: V): this {
+        if (this.size >= this.maxSize) {
+            const firstKey = this.keys().next().value;
+            if (firstKey) this.delete(firstKey);
+        }
+        return super.set(key, value);
+    }
+}
+
+export const dramaDetailsCache = new LimitedMap<string, UnifiedDrama>(500); // Max 500 drama
+export const episodeDetailsCache = new LimitedMap<string, any[]>(200);   // Max 200 list episode
 
 // Helpers
 export const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);

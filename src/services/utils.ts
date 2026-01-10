@@ -20,8 +20,21 @@ const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.le
 
 
 
-// Simple in-memory cache for server-side requests
-const serverCache = new Map<string, { data: any, expiry: number }>();
+// Simple in-memory cache for server-side requests dengan limit RAM
+class LimitedMap<K, V> extends Map<K, V> {
+    constructor(private maxSize: number) {
+        super();
+    }
+    set(key: K, value: V): this {
+        if (this.size >= this.maxSize) {
+            const firstKey = this.keys().next().value;
+            if (firstKey) this.delete(firstKey);
+        }
+        return super.set(key, value);
+    }
+}
+
+const serverCache = new LimitedMap<string, { data: any, expiry: number }>(1000); // Max 1000 item
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function withCache<T>(key: string, fetcher: () => Promise<T>, ttl: number = CACHE_TTL): Promise<T> {
