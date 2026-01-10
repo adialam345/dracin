@@ -1,5 +1,6 @@
 import { encryptRequestParams, decryptResponseData } from '../../utils/shortmax-crypto';
 import { normalizeShortMax, type UnifiedDrama } from '../adapter';
+import { fetchCached, withCache } from '../utils';
 
 // 🌍 GUNAKAN WEB API URL
 const API_BASE = 'https://shortweb.shorttv.live/app-api';
@@ -195,89 +196,66 @@ export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: numbe
 
 
 export async function getShortMaxDetail(id: string, knownCover?: string): Promise<{ drama: any, episodes: any[] } | null> {
-    try {
-        // console.log(`[ShortMax] Fetching detail via Play API for: ${id} (Cover known: ${!!knownCover})`);
-        // Fetch valid info by trying to play Episode 1
-        // This gives us the 'total' episode count and basic info
-        const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;
-
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${getRandomToken()}`,
-                'Accept': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            console.error(`[ShortMax] Detail fetch error: ${response.status}`);
-            return null;
-        }
-
-        const json = await response.json();
-
-        if (!json || !json.data) {
-            return null;
-        }
-
-        const d = json.data;
-        // d structure: { id, name, episode, total, video: {...}, ... }
-
-        // 🔍 Fetch Cover: Use known cover or Search (since Play API doesn't return it)
-        let coverUrl = knownCover || '';
-        if (!coverUrl && d.name) {
-            try {
-                // Remove [Dubbed] prefix for better search results
-                const cleanName = d.name.replace(/^\[.*?\]\s*/, '').trim();
-                const searchResults = await searchShortMax(cleanName);
-
-                // Try to find matching ID or Title
-                const match = searchResults.find(s =>
-                    String(s.id) === String(id) ||
-                    s.title.toLowerCase() === d.name.toLowerCase() ||
-                    s.title.toLowerCase().includes(cleanName.toLowerCase())
-                );
-
-                if (match) {
-                    coverUrl = match.cover;
-                } else if (searchResults.length > 0) {
-                    // Fallback to first result if it seems relevant (optional, but risky)
-                    coverUrl = searchResults[0].cover;
-                }
-            } catch (err) {
-                console.warn('[ShortMax] Failed to fetch cover via search:', err);
-            }
-        }
-
-        const drama = {
-            id: id, // Pass through the ID used to fetch
-            title: d.name || d.title,
-            cover: coverUrl || '',
-            description: d.summary || '',
-            chapterCount: d.total || 0,
-            labels: [],
-            source: 'shortmax'
-        };
-
-        // Generate Episodes List based on Total
-        const episodes = [];
-        const total = d.total || 0;
-        for (let i = 1; i <= total; i++) {
-            episodes.push({
-                id: `${id}_${i}`, // Standard ID format for ShortMax aggregator: {dramaId}_{epNum}
-                name: `Episode ${i}`,
-                index: i - 1,
-                unlock: true, // Optimistically unlock all since we have the Play API
-                raw: {
-                    episodeNum: i,
-                    // For item 1, we have video data!
-                    ...(i === 1 ? { videoUrl: d.video?.video_720 || d.video?.video_480 } : {})
-                }
+    const cacheKey = `sm_detail_v3_${id}`;
+    return withCache(cacheKey, async () => {
+        try {
+            const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;
+            const json = await fetchCached(url, 2, {
+                'Authorization': `Bearer ${getRandomToken()}`
             });
-        }
 
-        return { drama, episodes };
-    } catch (e) {
-        console.error('[ShortMax] Error fetching detail:', e);
-        return null;
-    }
+            if (!json || !json.data) {
+                return null;
+            }
+
+            const d = json.data;
+            let coverUrl = knownCover || '';
+
+            if (!coverUrl && d.name) {
+                try {
+                    const cleanName = d.name.replace(/^\[.*?\]\s*/, '').trim();
+                    const searchResults = await searchShortMax(cleanName);
+                    const match = searchResults.find(s =>
+                        String(s.id) === String(id) ||
+                        s.title.toLowerCase() === d.name.toLowerCase() ||
+                        s.title.toLowerCase().includes(cleanName.toLowerCase())
+                    );
+                    if (match) coverUrl = match.cover;
+                    else if (searchResults.length > 0) coverUrl = searchResults[0].cover;
+                } catch (err) {
+                    console.warn('[ShortMax] Failed to fetch cover via search:', err);
+                }
+            }
+
+            const drama = {
+                id: id,
+                title: d.name || d.title,
+                cover: coverUrl || '',
+                description: d.summary || '',
+                chapterCount: d.total || 0,
+                labels: [],
+                source: 'shortmax'
+            };
+
+            const episodes = [];
+            const total = d.total || 0;
+            for (let i = 1; i <= total; i++) {
+                episodes.push({
+                    id: `${id}_${i}`,
+                    name: `Episode ${i}`,
+                    index: i - 1,
+                    unlock: true,
+                    raw: {
+                        episodeNum: i,
+                        ...(i === 1 ? { videoUrl: d.video?.video_720 || d.video?.video_480 } : {})
+                    }
+                });
+            }
+
+            return { drama, episodes };
+        } catch (e) {
+            console.error('[ShortMax] Error fetching detail:', e);
+            return null;
+        }
+    }, 60 * 60 * 1000); // Cache for 1 hour
 }

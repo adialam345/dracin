@@ -57,7 +57,7 @@ const httpsAgent = new https.Agent({
 /**
  * Make HTTPS request using node:https instead of fetch (more reliable on some hosts)
  */
-function httpsRequest(url: string): Promise<string> {
+function httpsRequest(url: string, customHeaders: any = {}): Promise<string> {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
 
@@ -68,19 +68,12 @@ function httpsRequest(url: string): Promise<string> {
             method: 'GET',
             agent: httpsAgent,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': customHeaders['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
+                ...customHeaders,
                 ...(url.includes('api.sansekai.my.id') ? {
                     'Referer': 'https://sansekai.my.id/',
                     'Origin': 'https://sansekai.my.id'
@@ -137,13 +130,13 @@ function httpsRequest(url: string): Promise<string> {
     });
 }
 
-export async function fetchCached(url: string, retries: number = 3): Promise<any> {
+export async function fetchCached(url: string, retries: number = 3, headers: any = {}): Promise<any> {
     const cached = serverCache.get(url);
     if (cached && cached.expiry > Date.now()) {
         return cached.data;
     }
 
-    const data = await fetchFromEndpoint(url, retries);
+    const data = await fetchFromEndpoint(url, retries, 300, headers);
     // Only cache successful, non-empty results
     if (data && (!Array.isArray(data) || data.length > 0)) {
         serverCache.set(url, { data, expiry: Date.now() + CACHE_TTL });
@@ -151,7 +144,7 @@ export async function fetchCached(url: string, retries: number = 3): Promise<any
     return data;
 }
 
-export async function fetchFromEndpoint(url: string, retries: number = 3, delay: number = 300): Promise<any> {
+export async function fetchFromEndpoint(url: string, retries: number = 3, delay: number = 300, headers: any = {}): Promise<any> {
     // Try each proxy in the list at least once if needed
     const proxiesToTry = [...PROXY_LIST];
 
@@ -169,7 +162,7 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
                 ? `${currentProxy}?url=${encodeURIComponent(url)}`
                 : url;
 
-            const text = await httpsRequest(targetUrl);
+            const text = await httpsRequest(targetUrl, headers);
             const data = JSON.parse(text);
 
             // Flexible empty check for various API structures
@@ -184,11 +177,14 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
             else if (data.books) items = data.books;
             else if (data.shortPlayEpisodeInfos) items = data.shortPlayEpisodeInfos;
 
-            const isDetailOrStream = url.includes('detail') || url.includes('stream') || url.includes('allepisode');
+            const isDetailOrStream = url.includes('detail') || url.includes('stream') || url.includes('allepisode') ||
+                url.includes('drama') || url.includes('program') || url.includes('compilations') ||
+                url.includes('play') || url.includes('info');
             const isSearch = url.includes('search');
+            // If it's a detail/stream page, we don't consider empty list as a failure that needs retry
             const isEmpty = (Array.isArray(items) && items.length === 0) && !isDetailOrStream;
 
-            if (isSearch || !isEmpty) return data;
+            if (isSearch || !isEmpty || isDetailOrStream) return data;
 
         } catch (error: any) {
             const isBlocked = error.message.includes('403');

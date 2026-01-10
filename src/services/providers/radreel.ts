@@ -1,4 +1,5 @@
 import { normalizeRadReel, type UnifiedDrama } from '../adapter';
+import { withCache } from '../utils';
 
 const RADREEL_HEADERS = {
     'Host': 'cdp.wolftv.online',
@@ -62,57 +63,52 @@ export async function searchRadReel(query: string): Promise<UnifiedDrama[]> {
 }
 
 export async function getRadReelDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
-    // Unpack composite ID: fakeId_compilationsId
-    const parts = id.split('_');
-    const fakeId = parts[0];
-    const metadataUrl = 'https://cdp.wolftv.online/content/compilations/v2/' + fakeId;
+    return withCache(`radreel_detail_v2_${id}`, async () => {
+        const parts = id.split('_');
+        const fakeId = parts[0];
+        const metadataUrl = 'https://cdp.wolftv.online/content/compilations/v2/' + fakeId;
 
-    // We try to fetch detail. Note: Main bootstrapping logic is complex and ideally kept here.
-    // Simplifying for clarity, assuming ID is correct.
+        const metadata = await fetchRadReel(metadataUrl);
 
-    // 1. Fetch Metadata
-    const metadata = await fetchRadReel(metadataUrl);
+        if (metadata && metadata.title) {
+            const dramaInfo = {
+                title: metadata.title,
+                cover: metadata.coverImgUrl,
+                description: metadata.introduce,
+                chapterCount: 0,
+                labels: metadata.compilationsTags || [],
+                viewCount: metadata.shareTimes || 0,
+                source: 'radreel'
+            };
 
-    if (metadata && metadata.title) {
-        const dramaInfo = {
-            title: metadata.title,
-            cover: metadata.coverImgUrl,
-            description: metadata.introduce,
-            chapterCount: 0,
-            labels: metadata.compilationsTags || [],
-            viewCount: metadata.shareTimes || 0,
-            source: 'radreel'
-        };
+            const episodeListUrl = 'https://cdp.wolftv.online/content/state_res/episodic_movie/movies/' + fakeId;
+            const episodeData = await fetchRadReel(episodeListUrl);
+            let episodes: any[] = [];
 
-        // 2. Fetch Episodes
-        const episodeListUrl = 'https://cdp.wolftv.online/content/state_res/episodic_movie/movies/' + fakeId;
-        const episodeData = await fetchRadReel(episodeListUrl);
-        let episodes: any[] = [];
+            if (episodeData && Array.isArray(episodeData)) {
+                episodes = episodeData.map((ep: any, index: number) => ({
+                    id: ep.videoFakeId,
+                    name: 'Episode ' + (index + 1),
+                    index: index,
+                    unlock: !ep.lock,
+                    raw: ep
+                }));
+                dramaInfo.chapterCount = episodes.length;
+            } else if (metadata.videoUrl) {
+                episodes.push({
+                    id: '0',
+                    name: 'Putar Film',
+                    index: 0,
+                    unlock: true,
+                    raw: { videoUrl: metadata.videoUrl }
+                });
+                dramaInfo.chapterCount = 1;
+            }
 
-        if (episodeData && Array.isArray(episodeData)) {
-            episodes = episodeData.map((ep: any, index: number) => ({
-                id: ep.videoFakeId,
-                name: 'Episode ' + (index + 1),
-                index: index,
-                unlock: !ep.lock,
-                raw: ep
-            }));
-            dramaInfo.chapterCount = episodes.length;
-        } else if (metadata.videoUrl) {
-            // Fallback single episode
-            episodes.push({
-                id: '0',
-                name: 'Putar Film',
-                index: 0,
-                unlock: true,
-                raw: { videoUrl: metadata.videoUrl }
-            });
-            dramaInfo.chapterCount = 1;
+            return { drama: dramaInfo, episodes };
         }
-
-        return { drama: dramaInfo, episodes };
-    }
-    return { drama: null, episodes: [] };
+        return { drama: null, episodes: [] };
+    }, 60 * 60 * 1000);
 }
 
 function extractList(data: any): UnifiedDrama[] {

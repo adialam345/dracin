@@ -1,4 +1,5 @@
 import { normalizeDramaWave, type UnifiedDrama } from '../adapter';
+import { fetchCached, withCache } from '../utils';
 
 // API CONSTANTS
 const API_BASE = 'https://sapimu.au/dramawave/api/v1';
@@ -17,31 +18,9 @@ function getRandomToken() {
 
 async function fetchInternal(endpoint: string): Promise<any> {
     const url = `${API_BASE}${endpoint}`;
-    const token = getRandomToken();
-
-    // console.log(`[DramaWave] Fetching: ${url}`);
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        });
-
-        if (!response.ok) {
-            console.error(`[DramaWave] HTTP Error ${response.status} for ${endpoint}`);
-            return null;
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (e) {
-        console.error(`[DramaWave] Network Error for ${endpoint}:`, e);
-        return null;
-    }
+    return fetchCached(url, 3, {
+        'Authorization': `Bearer ${getRandomToken()}`
+    });
 }
 
 export async function getDramaWaveForYou(): Promise<UnifiedDrama[]> {
@@ -92,36 +71,37 @@ export async function searchDramaWave(query: string): Promise<UnifiedDrama[]> {
 }
 
 export async function getDramaWaveDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
-    // URL: https://sapimu.au/dramawave/api/v1/dramas/xuyr3DtXPt?lang=in&lang=id-ID
-    const data = await fetchInternal(`/dramas/${id}?lang=in&lang=id-ID`);
-    console.log(`[DramaWave] Detail for ${id}:`, data ? (data.data?.id ? 'HAS_DATA' : 'EMPTY_DATA') : 'NULL');
+    return withCache(`dw_detail_v2_${id}`, async () => {
+        // URL: https://sapimu.au/dramawave/api/v1/dramas/xuyr3DtXPt?lang=in&lang=id-ID
+        const data = await fetchInternal(`/dramas/${id}?lang=in&lang=id-ID`);
 
-    if (!data || !data.data) {
-        return { drama: null, episodes: [] };
-    }
-    const info = data.data.info || (data.data.id || data.data.name ? data.data : null);
+        if (!data || !data.data) {
+            return { drama: null, episodes: [] };
+        }
+        const info = data.data.info || (data.data.id || data.data.name ? data.data : null);
 
-    if (!info || (!info.id && !info.name && !info.title)) {
-        return { drama: null, episodes: [] };
-    }
+        if (!info || (!info.id && !info.name && !info.title)) {
+            return { drama: null, episodes: [] };
+        }
 
-    const dramaInfo = {
-        title: info.name || info.title,
-        cover: info.cover,
-        description: info.desc || info.introduction || info.summary,
-        chapterCount: info.episode_count || (info.episode_list && info.episode_list.length) || 0,
-        labels: info.tags || info.series_tag || [],
-        source: 'dramawave'
-    };
+        const dramaInfo = {
+            title: info.name || info.title,
+            cover: info.cover,
+            description: info.desc || info.introduction || info.summary,
+            chapterCount: info.episode_count || (info.episode_list && info.episode_list.length) || 0,
+            labels: info.tags || info.series_tag || [],
+            source: 'dramawave'
+        };
 
-    const rawEpisodes = info.episode_list || info.episodes || [];
-    const episodes = rawEpisodes.map((ep: any, index: number) => ({
-        id: ep.id,
-        name: ep.name || `Episode ${index + 1}`,
-        index: index,
-        unlock: true, // Proxied content is unlocked
-        raw: ep
-    }));
+        const rawEpisodes = info.episode_list || info.episodes || [];
+        const episodes = rawEpisodes.map((ep: any, index: number) => ({
+            id: ep.id,
+            name: ep.name || `Episode ${index + 1}`,
+            index: index,
+            unlock: true, // Proxied content is unlocked
+            raw: ep
+        }));
 
-    return { drama: dramaInfo, episodes };
+        return { drama: dramaInfo, episodes };
+    }, 60 * 60 * 1000);
 }

@@ -1,18 +1,11 @@
 import { normalizeVigloo, type UnifiedDrama } from '../adapter';
+import { fetchCached, withCache } from '../utils';
 
 const VIGLOO_BASE = 'https://dramabos.asia/api/viglo/api/v1';
 
 export async function fetchVigloo(endpoint: string): Promise<any> {
     const url = `${VIGLOO_BASE}${endpoint}`;
-    try {
-        const response = await fetch(url);
-        if (response.ok) {
-            return await response.json();
-        }
-    } catch (e) {
-        console.error('[Vigloo] Fetch error:', e);
-    }
-    return null;
+    return fetchCached(url);
 }
 
 export async function getViglooHome(): Promise<UnifiedDrama[]> {
@@ -45,31 +38,33 @@ export async function searchVigloo(query: string): Promise<UnifiedDrama[]> {
 const episodeCache = new Map<string, any[]>();
 
 export async function getViglooDetail(id: string): Promise<{ drama: any, episodes: any[] } | null> {
-    const data = await fetchVigloo(`/program/${id}`);
-    if (!data || !data.payload) return null;
+    return withCache(`vigloo_detail_v2_${id}`, async () => {
+        const data = await fetchVigloo(`/program/${id}`);
+        if (!data || !data.payload) return null;
 
-    const drama = normalizeVigloo(data.payload);
+        const drama = normalizeVigloo(data.payload);
 
-    // Get episodes from the seasons endpoint
-    const seasonsData = await fetchVigloo(`/program/${id}/seasons`);
-    let episodes: any[] = [];
+        // Get episodes from the seasons endpoint
+        const seasonsData = await fetchVigloo(`/program/${id}/seasons`);
+        let episodes: any[] = [];
 
-    if (seasonsData && seasonsData.payloads && seasonsData.payloads.length > 0) {
-        // Just take the first season for now
-        const season = seasonsData.payloads[0];
-        if (season.episodes) {
-            episodeCache.set(String(id), season.episodes);
-            episodes = season.episodes.map((ep: any) => ({
-                id: String(ep.episodeNumber),
-                name: `Episode ${ep.episodeNumber}`,
-                index: ep.episodeNumber - 1,
-                unlock: ep.price === 0,
-                raw: { ...ep, seasonId: season.id }
-            }));
+        if (seasonsData && seasonsData.payloads && seasonsData.payloads.length > 0) {
+            // Just take the first season for now
+            const season = seasonsData.payloads[0];
+            if (season.episodes) {
+                episodeCache.set(String(id), season.episodes);
+                episodes = season.episodes.map((ep: any) => ({
+                    id: String(ep.episodeNumber),
+                    name: `Episode ${ep.episodeNumber}`,
+                    index: ep.episodeNumber - 1,
+                    unlock: ep.price === 0,
+                    raw: { ...ep, seasonId: season.id }
+                }));
+            }
         }
-    }
 
-    return { drama, episodes };
+        return { drama, episodes };
+    }, 60 * 60 * 1000);
 }
 
 export async function getViglooVideoUrl(programId: string, episodeNum: number): Promise<string> {
