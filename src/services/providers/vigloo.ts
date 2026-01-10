@@ -5,6 +5,23 @@ const VIGLOO_BASE = 'https://dramabos.asia/api/viglo/api/v1';
 
 export async function fetchVigloo(endpoint: string): Promise<any> {
     const url = `${VIGLOO_BASE}${endpoint}`;
+
+    try {
+        // Try direct fetch first
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (e) {
+        // Fallback to proxy
+    }
+
     return fetchCached(url);
 }
 
@@ -84,11 +101,10 @@ export async function getViglooVideoUrl(programId: string, episodeNum: number): 
 
         if (!seasonId) return '';
 
-        const url = `${VIGLOO_BASE}/pool/play?seasonId=${seasonId}&ep=${episodeNum}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        const path = `/pool/play?seasonId=${seasonId}&ep=${episodeNum}`;
+        const data = await fetchVigloo(path);
 
-        if (data.status !== 'OK') {
+        if (!data || data.status !== 'OK') {
             if (data?.error) console.error('[Vigloo] Play API Error:', data.error);
             return '';
         }

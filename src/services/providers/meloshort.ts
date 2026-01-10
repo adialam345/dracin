@@ -8,12 +8,25 @@ const SEARCH_API = `${API_BASE}/search`;
 const DETAIL_API = `${API_BASE}/drama`;
 const PLAY_API = `${API_BASE}/play`;
 
+async function fetchMeloshort(url: string): Promise<any> {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) return await response.json();
+    } catch (e) { }
+    return fetchCached(url);
+}
+
 /**
  * Get Meloshort Homepage / For You
  */
 export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
     try {
-        const json = await fetchCached(BERANDA_API);
+        const json = await fetchMeloshort(BERANDA_API);
 
         if (json && json.code === 0 && json.data?.place_list) {
             const allItems: any[] = [];
@@ -45,7 +58,7 @@ export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
 export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
     try {
         const url = `${SEARCH_API}?q=${encodeURIComponent(query)}&page=1&page_size=20`;
-        const json = await fetchCached(url);
+        const json = await fetchMeloshort(url);
 
         if (json && json.code === 0 && Array.isArray(json.data)) {
             return json.data.map(normalizeMeloshort);
@@ -65,9 +78,9 @@ export async function getMeloshortDetail(id: string): Promise<{ drama: any, epis
     return withCache(`ms_detail_v2_${id}`, async () => {
         try {
             // Step 1: Fetch Drama Metadata from Play API (Episode 1 usually has it)
-            // Sequential is bad, but these are small JSONs. fetchCached should help.
+            // Sequential is bad, but these are small JSONs. fetchMeloshort should help.
             const playUrl = `${PLAY_API}/${id}/1`;
-            const playJson = await fetchCached(playUrl);
+            const playJson = await fetchMeloshort(playUrl);
             let dramaMetadata: any = null;
 
             if (playJson && playJson.code === 0 && playJson.data) {
@@ -85,7 +98,7 @@ export async function getMeloshortDetail(id: string): Promise<{ drama: any, epis
 
             // Step 2: Fetch Episode List from Drama API
             const detailUrl = `${DETAIL_API}/${id}`;
-            const detailJson = await fetchCached(detailUrl);
+            const detailJson = await fetchMeloshort(detailUrl);
             let episodes = [];
 
             if (detailJson && detailJson.code === 0 && Array.isArray(detailJson.data)) {

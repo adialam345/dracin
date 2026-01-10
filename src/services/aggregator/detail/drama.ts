@@ -153,26 +153,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
 
                 return { drama: finalDrama, episodes: finalEpisodes };
             case 'dotdrama':
-                const ddData = cached ? {
-                    title: cached.title,
-                    cover: cached.cover,
-                    description: cached.description || '',
-                    chapterCount: cached.chapterCount || 0,
-                    labels: [],
-                    source: 'dotdrama'
-                } : null;
-
-                let ddEpisodes: any[] = [];
-                if (ddData && ddData.chapterCount > 0) {
-                    ddEpisodes = Array.from({ length: ddData.chapterCount }, (_, i) => ({
-                        id: String(i + 1),
-                        name: 'Episode ' + (i + 1),
-                        index: i,
-                        unlock: true
-                    }));
-                }
-
-                return { drama: ddData, episodes: ddEpisodes };
+                return DotDrama.getDotDramaDetail(id);
             case 'stardusttv':
                 return StardustTV.getStardustTVDetail(id);
             case 'reelife':

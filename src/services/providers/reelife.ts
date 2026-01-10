@@ -1,22 +1,27 @@
-
 import { normalizeReelLife, type UnifiedDrama } from '../adapter';
+import { fetchCached } from '../utils';
 
 const REELLIFE_HOME_API = 'https://apikupas.my.id/reelife/home?_t=1767904804553';
+
+async function fetchReelLife(url: string): Promise<any> {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) return await response.json();
+    } catch (e) { }
+    return fetchCached(url);
+}
 
 /**
  * Get ReelLife Homepage / For You
  */
 export async function getReelLifeForYou(): Promise<UnifiedDrama[]> {
     try {
-        // console.log('[ReelLife] Fetching home...');
-        const response = await fetch(REELLIFE_HOME_API);
-
-        if (!response.ok) {
-            console.error(`[ReelLife] Home error: ${response.status}`);
-            return [];
-        }
-
-        const json = await response.json();
+        const json = await fetchReelLife(REELLIFE_HOME_API);
 
         // Combine slider and latest if available
         let list: any[] = [];
@@ -52,14 +57,7 @@ export async function searchReelLife(query: string): Promise<UnifiedDrama[]> {
     try {
         // console.log(`[ReelLife] Searching: ${query}`);
         const url = `${REELLIFE_SEARCH_API}/${encodeURIComponent(query)}?_t=${Date.now()}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            console.error(`[ReelLife] Search error: ${response.status}`);
-            return [];
-        }
-
-        const json = await response.json();
+        const json = await fetchReelLife(url);
 
         if (!json || !Array.isArray(json)) return [];
 
@@ -88,14 +86,7 @@ export async function getReelLifeDetail(id: string): Promise<{ drama: any, episo
         // console.log(`[ReelLife] Fetching detail: ${id}`);
         // Endpoint: https://apikupas.my.id/reelife/anime/{id}
         const url = `${REELLIFE_DETAIL_API}/${id}?_t=${Date.now()}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            console.error(`[ReelLife] Detail error: ${response.status}`);
-            return null;
-        }
-
-        const json = await response.json();
+        const json = await fetchReelLife(url);
 
         if (!json || !json.id) return null;
 

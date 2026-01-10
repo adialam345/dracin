@@ -18,6 +18,17 @@ function getRandomToken() {
 
 async function fetchInternal(endpoint: string): Promise<any> {
     const url = `${API_BASE}${endpoint}`;
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${getRandomToken()}`,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) return await response.json();
+    } catch (e) { }
+
     return fetchCached(url, 3, {
         'Authorization': `Bearer ${getRandomToken()}`
     });

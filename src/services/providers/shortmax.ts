@@ -142,6 +142,20 @@ function getRandomToken() {
     return API_TOKENS[Math.floor(Math.random() * API_TOKENS.length)];
 }
 
+async function fetchShortMaxExternal(url: string): Promise<any> {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${getRandomToken()}`,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) return await response.json();
+    } catch (e) { }
+    return fetchCached(url, 2, { 'Authorization': `Bearer ${getRandomToken()}` });
+}
+
 export async function getShortMaxVideoUrl(shortPlayId: string, episodeNum: number): Promise<string> {
     // Shuffle tokens to avoid hot-spotting the first one, but try ALL of them if needed
     const tokens = [...API_TOKENS].sort(() => Math.random() - 0.5);
@@ -200,9 +214,7 @@ export async function getShortMaxDetail(id: string, knownCover?: string): Promis
     return withCache(cacheKey, async () => {
         try {
             const url = `${SHORTMAX_PLAY_API}/${id}?lang=id&ep=1`;
-            const json = await fetchCached(url, 2, {
-                'Authorization': `Bearer ${getRandomToken()}`
-            });
+            const json = await fetchShortMaxExternal(url);
 
             if (!json || !json.data) {
                 return null;

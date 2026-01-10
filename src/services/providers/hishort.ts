@@ -16,9 +16,28 @@ function getRandomToken() {
 }
 
 async function fetchFromApi(endpoint: string) {
+    const url = `${API_BASE}${endpoint}`;
     try {
-        // console.log(`[HiShort] Fetching: ${endpoint}`);
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        // Try direct fetch first
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${getRandomToken()}`,
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (e) {
+        // Fallback or log
+    }
+
+    try {
+        // Existing logic with implicit retry/error handling if needed
+        const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${getRandomToken()}`,
                 'Accept': 'application/json',
@@ -26,11 +45,7 @@ async function fetchFromApi(endpoint: string) {
             }
         });
 
-        if (!response.ok) {
-            console.error(`[HiShort] API error: ${response.status} for ${endpoint}`);
-            return null;
-        }
-
+        if (!response.ok) return null;
         return await response.json();
     } catch (e) {
         console.error(`[HiShort] Network error:`, e);

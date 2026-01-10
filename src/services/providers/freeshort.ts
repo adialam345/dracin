@@ -20,6 +20,19 @@ const BASE_HEADERS = {
 };
 
 async function fetchWithAuth(url: string) {
+    try {
+        // Try direct fetch first
+        const response = await fetch(url, {
+            headers: {
+                ...BASE_HEADERS,
+                'Authorization': `Bearer ${getRandomToken()}`,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) return response;
+    } catch (e) { }
+
     return fetch(url, {
         headers: {
             ...BASE_HEADERS,

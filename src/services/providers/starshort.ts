@@ -1,4 +1,5 @@
 import { normalizeStarShort, type UnifiedDrama } from '../adapter';
+import { fetchCached } from '../utils';
 
 // API CONSTANTS
 const API_BASE = 'https://dramabos.asia/api/starshort/api/v1';
@@ -10,20 +11,16 @@ export async function fetchStarShort(endpoint: string): Promise<any> {
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
+            },
+            signal: AbortSignal.timeout(5000)
         });
         if (response.ok) {
-            const data = await response.json();
-            return data;
-        } else {
-            console.error(`[fetchStarShort] HTTP Error ${response.status} for ${url}`);
-            const text = await response.text();
-            console.error(`[fetchStarShort] Response body: ${text}`);
+            return await response.json();
         }
     } catch (e) {
-        console.error('[fetchStarShort] Error:', e);
+        // Fallback
     }
-    return null;
+    return fetchCached(url);
 }
 
 export async function getStarShortForYou(): Promise<UnifiedDrama[]> {
