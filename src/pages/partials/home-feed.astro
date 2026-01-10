@@ -5,6 +5,11 @@ import MovieCard from '../../components/MovieCard.astro';
 export const partial = true;
 
 const { forYou, trending, latest } = await fetchAggregatedHome();
+
+// Enable Cloudflare edge caching for the partial feed
+// Cache for 2 hours (7200s)
+Astro.response.headers.set('Cache-Control', 'public, max-age=7200, s-maxage=7200');
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=7200');
 ---
 
 <div id="deferred-results">

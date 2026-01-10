@@ -129,54 +129,102 @@ try {
   </div>
 
 <script>
-  // Deferred Loading Logic
-  window.addEventListener('load', async () => {
-    // Only fetch if we suspect missing data (or always? "Keep trying until show")
-    // Always specific fetch for full resilience
-    console.log('[Home] Starting background content refresh...');
+  // Home Content Persistence Logic
+  const initHome = async () => {
+    if (window.location.pathname !== '/') return;
     
+    const getSections = () => ({
+      'section-foryou-content': document.getElementById('section-foryou-content'),
+      'section-trending-content': document.getElementById('section-trending-content'),
+      'section-latest-content': document.getElementById('section-latest-content')
+    });
+    
+    let sections = getSections();
+    const loader = document.getElementById('initial-loader');
+    
+    // Helper to determine if we ALREADY have enough content in DOM
+    const hasEnoughContent = () => {
+      const counts = Object.values(sections).map(el => el ? el.children.length : 0);
+      return counts.some(c => c >= 5); // Heuristic: if any section has 5+ items, it's "populated"
+    };
+
+    // 1. Try to restore from session storage
+    const cachedHTML = sessionStorage.getItem('home_feed_cache');
+    const cacheTime = sessionStorage.getItem('home_feed_time');
+    // Cache is considered fresh for 2 hours
+    const isCacheFresh = cacheTime && (Date.now() - parseInt(cacheTime) < 120 * 60 * 1000); 
+    
+    if (cachedHTML) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cachedHTML, 'text/html');
+      
+      let restoredCount = 0;
+      Object.keys(sections).forEach(id => {
+        const newContent = doc.getElementById(id);
+        const currentContent = sections[id];
+        
+        // ONLY restore if DOM is empty OR cache has significantly more items (avoid flicker if same)
+        if (newContent && newContent.children.length > 0) {
+           if (!currentContent || currentContent.children.length < newContent.children.length) {
+              // If container is missing (server returned 0), we might need to refresh full page or wait for partial
+              // But if it's there, update it.
+              if (currentContent) {
+                currentContent.innerHTML = newContent.innerHTML;
+                restoredCount++;
+              }
+           }
+        }
+      });
+      
+      if (restoredCount > 0 && loader) {
+        loader.style.display = 'none';
+      }
+
+      // If we already have content (from server or now from cache) and cache is fresh, stop here.
+      if (hasEnoughContent() && isCacheFresh) {
+        if (loader) loader.style.display = 'none';
+        return;
+      }
+    }
+
+    // 2. Background Refresh (ONLY if absolutely empty)
+    if (hasEnoughContent()) {
+       console.log('[Home] Content already present, skipping background fetch to maintain stability.');
+       if (loader) loader.style.display = 'none';
+       return;
+    }
+
+    console.log('[Home] Sections empty, fetching content...');
     try {
        const res = await fetch('/partials/home-feed');
        if (!res.ok) throw new Error('Fetch failed');
-       
        const html = await res.text();
        const parser = new DOMParser();
        const doc = parser.parseFromString(html, 'text/html');
        
-       // Helper to update section
-       const updateSection = (id) => {
+       sections = getSections();
+       Object.keys(sections).forEach(id => {
           const newContent = doc.getElementById(id);
-          const currentContent = document.getElementById(id);
-          
-          if (newContent && currentContent) {
-              // Simple heuristic: If new content has MORE children, replace.
-              // Or just replace always to ensure we have the "complete" set including slow providers
-              if (newContent.children.length >= currentContent.children.length) {
-                 console.log(`[Home] Updating ${id} with ${newContent.children.length} items (was ${currentContent.children.length})`);
-                 currentContent.innerHTML = newContent.innerHTML;
-              }
-          } else if (newContent && !currentContent) {
-             // Section didn't exist? (Should not happen with current layout structure unless empty hidden)
+          const currentContent = sections[id];
+          if (newContent && currentContent && newContent.children.length > 0) {
+              currentContent.innerHTML = newContent.innerHTML;
           }
-       };
+       });
 
-       updateSection('section-foryou-content');
-       updateSection('section-trending-content');
-       updateSection('section-latest-content');
-       
-       // Hide loader if present
-       const loader = document.getElementById('initial-loader');
+       sessionStorage.setItem('home_feed_cache', html);
+       sessionStorage.setItem('home_feed_time', Date.now().toString());
        if (loader) loader.style.display = 'none';
-       
     } catch (e) {
-       console.error('[Home] Background refresh failed:', e);
-       const loader = document.getElementById('initial-loader');
+       console.error('[Home] Fetch failed:', e);
        if (loader) {
            loader.style.display = 'none';
-           document.getElementById('error-msg').classList.remove('hidden');
-           document.getElementById('refresh-btn').classList.remove('hidden');
+           document.getElementById('error-msg')?.classList.remove('hidden');
+           document.getElementById('refresh-btn')?.classList.remove('hidden');
        }
     }
-  });
+  };
+
+  // Run on every View Transition navigation (including initial load)
+  document.addEventListener('astro:page-load', initHome);
 </script>
 </Layout>
