@@ -5,8 +5,7 @@ export const VPS_PROXY = '/api/proxy';
 
 export const shouldUseFallback = (url: string, source: string) => {
     // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
-    // Vigloo needs custom headers from our local VPS proxy
-    return (source === 'netshort' && url.includes('awscdn.netshort.com')) || source === 'vigloo';
+    return (source === 'netshort' && url.includes('awscdn.netshort.com'));
 };
 
 export const getProxyUrl = (url: string, source: string) => {
@@ -16,8 +15,8 @@ export const getProxyUrl = (url: string, source: string) => {
     const encryptedQ = encodeURIComponent(encrypt({ url }));
 
     if (
-        (source === 'netshort' || source === 'vigloo' || source === 'meloshort') &&
-        (shouldUseFallback(url, source) || source === 'meloshort') &&
+        source === 'netshort' &&
+        shouldUseFallback(url, source) &&
         !url.includes(VPS_PROXY)
     ) {
         console.log('[VideoPlayer] Using Encrypted VPS Proxy for', source);

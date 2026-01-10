@@ -50,17 +50,33 @@ export default {
             headers.set('bundleIdentifier', 'com.farsun.shortplay');
             headers.set('Version', '2.2.2.0');
             headers.set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148');
+        } else if (targetUrl.includes('vividshort.com')) {
+            headers.set('Origin', 'https://www.vividshort.com');
+            headers.set('Referer', 'https://www.vividshort.com/');
         } else if (targetUrl.includes('netshort.com')) {
             headers.set('Referer', 'https://www.netshort.com/');
+            headers.set('Accept', '*/*');
+            headers.set('Accept-Encoding', 'identity');
         } else if (targetUrl.includes('wolftv.online')) {
             headers.set('Referer', 'https://www.wolftv.online/');
             headers.set('Origin', 'https://www.wolftv.online');
         } else if (targetUrl.includes('tiktokcdn.com')) {
             headers.set('Referer', 'https://www.tiktok.com/');
             headers.set('Origin', 'https://www.tiktok.com');
+        } else if (targetUrl.includes('cloudflarestream.com')) {
+            headers.set('User-Agent', 'DramaDash/50 CFNetwork/1474 Darwin/23.0.0');
+            headers.set('Origin', 'https://dramadash.app');
+            headers.set('Referer', 'https://dramadash.app/');
         } else if (targetUrl.includes('shorttv.live')) {
             headers.set('Origin', 'https://www.shorttv.live');
             headers.set('Referer', 'https://www.shorttv.live/');
+        } else if (targetUrl.includes('stardusttv.cc') || targetUrl.includes('stardust-tv.com')) {
+            headers.set('Origin', 'https://www.stardusttv.net');
+            headers.set('Referer', 'https://www.stardusttv.net/');
+        } else if (targetUrl.includes('vigloo.com')) {
+            headers.set('Origin', 'https://www.vigloo.com');
+            headers.set('Referer', 'https://www.vigloo.com/');
+            headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         } else {
             try {
                 headers.set('Referer', new URL(targetUrl).origin + '/');
