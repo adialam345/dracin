@@ -66,14 +66,6 @@ export function parseTargetUrl(url: URL): { urlStr: string; error: Response | nu
             console.warn('[Proxy] decodeURIComponent failed, attempting manual fix for:', urlStr.substring(0, 50));
             urlStr = urlStr.replace(/^https%3A%2F%2F/i, 'https://')
                 .replace(/^http%3A%2F%2F/i, 'http://');
-
-            // After manual fix, check if rest of URL is garbage
-            // If there's still encoded garbage, reject early
-            const suspiciousAfterDomain = /[%][0-9A-F]{2}[^a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]/i;
-            if (suspiciousAfterDomain.test(urlStr)) {
-                console.error(`[Proxy] 400 URL still corrupted after manual decode: ${urlStr.substring(0, 60)}`);
-                return { urlStr: '', error: new Response('Corrupted URL', { status: 400 }) };
-            }
         }
     }
 
