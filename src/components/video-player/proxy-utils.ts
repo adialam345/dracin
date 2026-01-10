@@ -1,7 +1,15 @@
 import { encrypt } from '../../utils/security';
 
-export const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
+export const VIDEO_PROXIES = [
+    'https://videoproxy.cobaakun116.workers.dev/',
+    'https://video-proxy.mrxnexsus.workers.dev/',
+];
+
+export const PROXY_BASE = VIDEO_PROXIES[0];
 export const VPS_PROXY = '/api/proxy';
+
+const isAlreadyProxied = (url: string) => VIDEO_PROXIES.some(p => url.includes(p));
+const getRandomProxy = () => VIDEO_PROXIES[Math.floor(Math.random() * VIDEO_PROXIES.length)];
 
 export const shouldUseFallback = (url: string, source: string) => {
     // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
@@ -22,22 +30,23 @@ export const getProxyUrl = (url: string, source: string) => {
         console.log('[VideoPlayer] Using Encrypted VPS Proxy for', source);
         return `${VPS_PROXY}?q=${encryptedQ}`;
     } else if (
-        (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes(PROXY_BASE)) ||
-        (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
-        (source === 'radreel' && url.includes('wolftv.online') && !url.includes(PROXY_BASE)) ||
-        (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes(PROXY_BASE)) ||
-        (source === 'dramadash' && !url.includes(PROXY_BASE)) ||
-        (source === 'dramabox' && !url.includes(PROXY_BASE)) ||
-        (source === 'shortmax' && !url.includes(PROXY_BASE)) ||
-        (source === 'freeshort' && !url.includes(PROXY_BASE)) ||
-        (source === 'stardusttv' && !url.includes(PROXY_BASE)) ||
-        (source === 'dotdrama' && !url.includes(PROXY_BASE)) ||
-        (source === 'reelife' && !url.includes(PROXY_BASE)) ||
-        (source === 'meloshort' && !url.includes(PROXY_BASE)) ||
-        (source === 'starshort' && !url.includes(PROXY_BASE))
+        (source === 'dramawave' && url.includes('mydramawave.com') && !isAlreadyProxied(url)) ||
+        (source === 'dramaflickreels' && !isAlreadyProxied(url)) ||
+        (source === 'radreel' && url.includes('wolftv.online') && !isAlreadyProxied(url)) ||
+        (source === 'melolo' && url.includes('tiktokcdn.com') && !isAlreadyProxied(url)) ||
+        (source === 'dramadash' && !isAlreadyProxied(url)) ||
+        (source === 'dramabox' && !isAlreadyProxied(url)) ||
+        (source === 'shortmax' && !isAlreadyProxied(url)) ||
+        (source === 'freeshort' && !isAlreadyProxied(url)) ||
+        (source === 'stardusttv' && !isAlreadyProxied(url)) ||
+        (source === 'dotdrama' && !isAlreadyProxied(url)) ||
+        (source === 'reelife' && !isAlreadyProxied(url)) ||
+        (source === 'meloshort' && !isAlreadyProxied(url)) ||
+        (source === 'starshort' && !isAlreadyProxied(url))
     ) {
         // For external proxy, we still use 'url' because it doesn't know our 'q' encryption
-        return `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
+        const selectedProxy = getRandomProxy();
+        return `${selectedProxy}?url=${encodeURIComponent(url)}`;
     }
 
     return url;

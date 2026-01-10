@@ -10,8 +10,10 @@ if (dns.setDefaultResultOrder) {
 export const API_BASE = 'https://api.sansekai.my.id/api';
 
 export const PROXY_LIST = [
-    'https://twilight-wildflower-192b.mrxnexsus.workers.dev', // Primary: Confirmed working Cloudflare Worker
-    'https://winter-paper-bc72.mrxnexsus.workers.dev',   // Backup 1
+    'https://rapid-shadow-ff75.cobaakun116.workers.dev',
+    'https://shiny-water-1c5f.cobaakun116.workers.dev',
+    'https://twilight-wildflower-192b.mrxnexsus.workers.dev',
+    'https://winter-paper-bc72.mrxnexsus.workers.dev',
 ];
 
 const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.length)];
