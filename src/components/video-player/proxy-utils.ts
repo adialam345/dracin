@@ -1,16 +1,19 @@
-export const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
+// External proxy is currently rate-limited (429) causing CORS errors.
+// Switching to internal VPS proxy for reliability.
+export const PROXY_BASE = '/api/proxy';
 export const VPS_PROXY = '/api/proxy';
 
 export const shouldUseFallback = (url: string, source: string) => {
     // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
     // Vigloo needs custom headers from our local VPS proxy
-    return (source === 'netshort' && url.includes('awscdn.netshort.com')) || source === 'vigloo';
+    // DramaDash uses Cloudflare Stream which is blocked by external proxy (429/CORS)
+    return (source === 'netshort' && url.includes('awscdn.netshort.com')) || source === 'vigloo' || source === 'dramadash';
 };
 
 export const getProxyUrl = (url: string, source: string) => {
     if (!url) return '';
 
-    if ((source === 'netshort' || source === 'vigloo') && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
+    if ((source === 'netshort' || source === 'vigloo' || source === 'dramadash') && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
         console.log('[VideoPlayer] Using VPS Proxy for', source);
         return VPS_PROXY + '?url=' + encodeURIComponent(url);
     } else if (
@@ -18,7 +21,6 @@ export const getProxyUrl = (url: string, source: string) => {
         (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
         (source === 'radreel' && url.includes('wolftv.online') && !url.includes(PROXY_BASE)) ||
         (source === 'melolo' && url.includes('tiktokcdn.com') && !url.includes(PROXY_BASE)) ||
-        (source === 'dramadash' && !url.includes(PROXY_BASE)) ||
         (source === 'dramabox' && !url.includes(PROXY_BASE)) ||
         (source === 'shortmax' && !url.includes(PROXY_BASE)) ||
         (source === 'freeshort' && !url.includes(PROXY_BASE)) ||

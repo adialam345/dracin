@@ -53,14 +53,54 @@ export function decrypt(cipher: string): any {
             output += String.fromCharCode(charCode);
         }
 
+        // VALIDATION: Detect garbage output before returning
+        // Garbage typically has high-entropy characters, control chars, or non-ASCII
+        const isGarbage = (str: string): boolean => {
+            // Check for suspicious control characters or binary garbage
+            const suspiciousChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/;
+            if (suspiciousChars.test(str)) return true;
+
+            // Check for high concentration of special characters (likely garbage)
+            const specialChars = str.match(/[^a-zA-Z0-9\s\-_./:?=&%#@+,;'"()[\]{}~!$*\\|<>^`]/g) || [];
+            if (specialChars.length > str.length * 0.3) return true;
+
+            // If string doesn't start with http or { and has weird chars, it's garbage
+            if (!str.startsWith('http') && !str.startsWith('{') && !str.startsWith('"http')) {
+                const printable = str.match(/[a-zA-Z0-9]/g) || [];
+                if (printable.length < str.length * 0.5) return true;
+            }
+
+            return false;
+        };
+
         try {
             return JSON.parse(decodeURIComponent(output));
         } catch (e) {
             try {
-                return decodeURIComponent(output);
+                const decoded = decodeURIComponent(output);
+                // Validate decoded output
+                if (isGarbage(decoded)) {
+                    console.warn('[Decrypt] Garbage detected after decode, rejecting');
+                    return null;
+                }
+                return decoded;
             } catch (e2) {
-                // If output looks like http..., return it
-                if (output.startsWith('http')) return output;
+                // If output looks like http..., validate and return it
+                if (output.startsWith('http')) {
+                    // Extra validation for URL-like output
+                    try {
+                        const testUrl = new URL(output);
+                        // Check hostname is reasonable
+                        if (!/^[a-z0-9.-]+$/i.test(testUrl.hostname)) {
+                            console.warn('[Decrypt] Invalid hostname in decrypted URL');
+                            return null;
+                        }
+                        return output;
+                    } catch (urlErr) {
+                        console.warn('[Decrypt] Decrypted output looks like URL but is malformed');
+                        return null;
+                    }
+                }
 
                 // Try reading directly from cleaned base64 just in case it wasn't encrypted but just encoded
                 try {
@@ -68,9 +108,21 @@ export function decrypt(cipher: string): any {
                     if (directInfo.includes('http')) {
                         // might be JSON
                         if (directInfo.startsWith('{')) return JSON.parse(directInfo);
-                        if (directInfo.startsWith('http')) return directInfo;
+                        if (directInfo.startsWith('http')) {
+                            // Validate the URL
+                            try {
+                                new URL(directInfo);
+                                return directInfo;
+                            } catch { return null; }
+                        }
                     }
                 } catch (e3) { }
+
+                // Final garbage check before returning raw output
+                if (isGarbage(output)) {
+                    console.warn('[Decrypt] Final output is garbage, rejecting');
+                    return null;
+                }
 
                 return output;
             }

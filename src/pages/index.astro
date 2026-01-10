@@ -165,15 +165,121 @@ try {
 
 
 <script>
-  // Deferred Loading Logic
-  window.addEventListener('load', async () => {
-    // Only refresh if we have very little content
+  // Home Page State Caching
+  const CACHE_KEY = 'home_content_cache';
+  const CACHE_TIMESTAMP_KEY = 'home_content_timestamp';
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
+
+  // Save current content to cache
+  function saveToCache() {
+    try {
+      const sections = ['section-foryou-content', 'section-trending-content', 'section-latest-content'];
+      const cache = {};
+      let hasContent = false;
+      
+      sections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.children.length > 0) {
+          cache[id] = el.innerHTML;
+          hasContent = true;
+        }
+      });
+      
+      if (hasContent) {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        sessionStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
+        console.log('[Home] Content cached to sessionStorage');
+      }
+    } catch (e) {
+      console.warn('[Home] Failed to cache content:', e);
+    }
+  }
+
+  // Restore content from cache
+  function restoreFromCache() {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      const timestamp = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
+      
+      if (!cached || !timestamp) return false;
+      
+      // Check if cache is still valid
+      const age = Date.now() - parseInt(timestamp);
+      if (age > CACHE_TTL) {
+        console.log('[Home] Cache expired, will refresh');
+        return false;
+      }
+      
+      const cache = JSON.parse(cached);
+      let restored = false;
+      
+      Object.keys(cache).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = cache[id];
+          restored = true;
+        }
+      });
+      
+      if (restored) {
+        console.log(`[Home] Restored from cache (age: ${Math.round(age/1000)}s)`);
+        // Hide loader
+        const loader = document.getElementById('initial-loader');
+        if (loader) loader.style.display = 'none';
+      }
+      
+      return restored;
+    } catch (e) {
+      console.warn('[Home] Failed to restore from cache:', e);
+      return false;
+    }
+  }
+
+  // Check if this is a "back navigation" via View Transitions
+  let isBackNavigation = false;
+  document.addEventListener('astro:before-swap', (e) => {
+    // Save cache before leaving home page
+    if (window.location.pathname === '/') {
+      saveToCache();
+    }
+  });
+
+  // Detect back navigation
+  window.addEventListener('popstate', () => {
+    isBackNavigation = true;
+  });
+
+  // Main initialization
+  document.addEventListener('astro:page-load', async () => {
+    // Only run on home page
+    if (window.location.pathname !== '/') return;
+
     const contentArea = document.getElementById('section-foryou-content');
-    if (contentArea && contentArea.children.length >= 10) {
-       console.log('[Home] Content already loaded, skipping background refresh.');
-       return;
+    const hasServerContent = contentArea && contentArea.children.length >= 5;
+    
+    // Try restore from cache first (for back navigation or if server content is minimal)
+    const restoredFromCache = restoreFromCache();
+    
+    // If we have good server content already, just save it to cache
+    if (hasServerContent && !restoredFromCache) {
+      saveToCache();
+      console.log('[Home] Server content good, saved to cache');
+      return;
     }
     
+    // If restored from cache, skip background refresh unless cache is getting old
+    if (restoredFromCache) {
+      const timestamp = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
+      const age = Date.now() - parseInt(timestamp || '0');
+      
+      // Only background refresh if cache is older than 2 minutes
+      if (age < 2 * 60 * 1000) {
+        console.log('[Home] Cache is fresh, skipping background refresh');
+        return;
+      }
+    }
+    
+    // Background refresh for stale/missing content
     console.log('[Home] Starting background content refresh...');
     
     try {
@@ -190,20 +296,19 @@ try {
           const currentContent = document.getElementById(id);
           
           if (newContent && currentContent) {
-              // Simple heuristic: If new content has MORE children, replace.
-              // Or just replace always to ensure we have the "complete" set including slow providers
               if (newContent.children.length >= currentContent.children.length) {
                  console.log(`[Home] Updating ${id} with ${newContent.children.length} items (was ${currentContent.children.length})`);
                  currentContent.innerHTML = newContent.innerHTML;
               }
-          } else if (newContent && !currentContent) {
-             // Section didn't exist? (Should not happen with current layout structure unless empty hidden)
           }
        };
 
        updateSection('section-foryou-content');
        updateSection('section-trending-content');
        updateSection('section-latest-content');
+       
+       // Save updated content to cache
+       saveToCache();
        
        // Hide loader if present
        const loader = document.getElementById('initial-loader');
@@ -212,12 +317,20 @@ try {
     } catch (e) {
        console.error('[Home] Background refresh failed:', e);
        const loader = document.getElementById('initial-loader');
-       if (loader) {
+       if (loader && !restoredFromCache) {
            loader.style.display = 'none';
-           document.getElementById('error-msg').classList.remove('hidden');
-           document.getElementById('refresh-btn').classList.remove('hidden');
+           const errorMsg = document.getElementById('error-msg');
+           const refreshBtn = document.getElementById('refresh-btn');
+           if (errorMsg) errorMsg.classList.remove('hidden');
+           if (refreshBtn) refreshBtn.classList.remove('hidden');
        }
     }
+    
+    // Reset back navigation flag
+    isBackNavigation = false;
   });
+
+  // Also save on page unload (for hard refresh scenarios)
+  window.addEventListener('beforeunload', saveToCache);
 </script>
 </Layout>

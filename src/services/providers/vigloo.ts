@@ -104,18 +104,33 @@ export async function getViglooVideoUrl(programId: string, episodeNum: number): 
         else if (data.payload && data.payload.m3u8) videoUrl = data.payload.m3u8;
 
         if (videoUrl && data.cookies) {
-            // Convert CloudFront cookies to query parameters
-            // CloudFront-Policy=...; CloudFront-Signature=...; CloudFront-Key-Pair-Id=...
-            const params = data.cookies
-                .split(';')
-                .map((s: string) => s.trim())
-                .map((s: string) => {
-                    // Remove 'CloudFront-' prefix for query parameters
-                    return s.replace('CloudFront-', '');
-                })
-                .join('&');
+            try {
+                const urlObj = new URL(videoUrl);
 
-            videoUrl += (videoUrl.includes('?') ? '&' : '?') + params;
+                // Parse cookies string manually as it's just a semi-colon list
+                const cookieParts = data.cookies.split(';');
+                for (const part of cookieParts) {
+                    const trimmed = part.trim();
+                    if (!trimmed) continue;
+
+                    const eqIdx = trimmed.indexOf('=');
+                    if (eqIdx === -1) continue;
+
+                    const rawKey = trimmed.substring(0, eqIdx);
+                    const rawValue = trimmed.substring(eqIdx + 1);
+
+                    const cleanKey = rawKey.replace('CloudFront-', '');
+
+                    // CloudFront params (Policy, Signature, Key-Pair-Id)
+                    if (['Policy', 'Signature', 'Key-Pair-Id'].includes(cleanKey)) {
+                        urlObj.searchParams.set(cleanKey, rawValue);
+                    }
+                }
+
+                videoUrl = urlObj.toString();
+            } catch (e) {
+                console.error('[Vigloo] Error constructing signed URL:', e);
+            }
         }
 
         if (videoUrl) return videoUrl;
