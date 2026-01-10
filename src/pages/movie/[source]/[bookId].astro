@@ -10,9 +10,24 @@ const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 if (!drama) {
   return new Response("Drama not found or API error. Please try again later.", { status: 404 });
 }
+
+const movieSchema = {
+  "@context": "https://schema.org",
+  "@type": "Movie",
+  "name": drama.title,
+  "description": drama.description,
+  "image": drama.cover,
+  "genre": drama.labels || [],
+  "numberOfEpisodes": episodes.length,
+  "actor": (drama.performerList || []).map((p: any) => ({
+    "@type": "Person",
+    "name": p.performerName
+  }))
+};
 ---
 
 <Layout title={`${drama.title} - DramaIn`} description={drama.description} image={drama.cover}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(movieSchema)} />
   <div class="container mx-auto px-4 py-6 md:py-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
       

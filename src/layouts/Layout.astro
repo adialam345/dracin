@@ -48,12 +48,13 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={Astro.url.href} />
 
     <meta property="og:locale" content="id_ID" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={Astro.url} />
+    <meta property="og:url" content={Astro.url.href} />
     <meta property="og:image" content={socialImageURL} />
     <meta property="og:site_name" content="DramaIn" />
 
@@ -61,6 +62,19 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageURL} />
+
+    {/* JSON-LD Structured Data */}
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DramaIn",
+      "url": "https://nontonin.site",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://nontonin.site/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    })} />
 
     {/* Mobile Web App Meta Tags */}
     <meta name="theme-color" content="#09090b" />
