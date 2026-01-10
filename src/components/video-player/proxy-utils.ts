@@ -1,3 +1,5 @@
+import { encrypt } from '../../utils/security';
+
 export const PROXY_BASE = 'https://video-proxy.mrxnexsus.workers.dev/';
 export const VPS_PROXY = '/api/proxy';
 
@@ -10,9 +12,16 @@ export const shouldUseFallback = (url: string, source: string) => {
 export const getProxyUrl = (url: string, source: string) => {
     if (!url) return '';
 
-    if ((source === 'netshort' || source === 'vigloo') && shouldUseFallback(url, source) && !url.includes(VPS_PROXY)) {
-        console.log('[VideoPlayer] Using VPS Proxy for', source);
-        return VPS_PROXY + '?url=' + encodeURIComponent(url);
+    // Encrypt the URL for our internal proxy
+    const encryptedQ = encodeURIComponent(encrypt({ url }));
+
+    if (
+        (source === 'netshort' || source === 'vigloo' || source === 'meloshort') &&
+        (shouldUseFallback(url, source) || source === 'meloshort') &&
+        !url.includes(VPS_PROXY)
+    ) {
+        console.log('[VideoPlayer] Using Encrypted VPS Proxy for', source);
+        return `${VPS_PROXY}?q=${encryptedQ}`;
     } else if (
         (source === 'dramawave' && url.includes('mydramawave.com') && !url.includes(PROXY_BASE)) ||
         (source === 'dramaflickreels' && !url.includes(PROXY_BASE)) ||
@@ -28,12 +37,8 @@ export const getProxyUrl = (url: string, source: string) => {
         (source === 'meloshort' && !url.includes(PROXY_BASE)) ||
         (source === 'starshort' && !url.includes(PROXY_BASE))
     ) {
-        const proxiedUrl = PROXY_BASE + '?url=' + encodeURIComponent(url);
-        if (proxiedUrl.endsWith('?url=')) {
-            console.error('[VideoPlayer] Constructed invalid proxy URL');
-            return null;
-        }
-        return proxiedUrl;
+        // For external proxy, we still use 'url' because it doesn't know our 'q' encryption
+        return `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
     }
 
     return url;

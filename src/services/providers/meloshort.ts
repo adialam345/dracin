@@ -1,18 +1,18 @@
 
 import { normalizeMeloshort, type UnifiedDrama } from '../adapter';
 
-const MELOSHORT_HOME_API = 'https://apikupas.my.id/meloshort/home?_t=1767910096749';
-const MELOSHORT_SEARCH_API = 'https://apikupas.my.id/meloshort/search';
-const MELOSHORT_DETAIL_API = 'https://apikupas.my.id/meloshort/anime'; // Guessing based on ReelLife
-const MELOSHORT_EPISODE_API = 'https://apikupas.my.id/meloshort/episode'; // Guessing based on ReelLife
+const API_BASE = 'https://dramabos.asia/api/meloshort/api';
+const BERANDA_API = `${API_BASE}/ranking?page=1&page_size=20`;
+const SEARCH_API = `${API_BASE}/search`;
+const DETAIL_API = `${API_BASE}/drama`;
+const PLAY_API = `${API_BASE}/play`;
 
 /**
  * Get Meloshort Homepage / For You
  */
 export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
     try {
-        // console.log('[Meloshort] Fetching home...');
-        const response = await fetch(MELOSHORT_HOME_API);
+        const response = await fetch(BERANDA_API);
 
         if (!response.ok) {
             console.error(`[Meloshort] Home error: ${response.status}`);
@@ -21,26 +21,25 @@ export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
 
         const json = await response.json();
 
-        // Combine spotlight and latest if available
-        let list: any[] = [];
-        if (json.spotlight && Array.isArray(json.spotlight)) {
-            list = list.concat(json.spotlight);
-        }
-        if (json.latest && Array.isArray(json.latest)) {
-            list = list.concat(json.latest);
-        }
+        // Response format is { code: 0, data: { place_list: [ { list: [...] } ] } }
+        if (json.code === 0 && json.data?.place_list) {
+            const allItems: any[] = [];
+            json.data.place_list.forEach((p: any) => {
+                if (p.list && Array.isArray(p.list)) {
+                    allItems.push(...p.list);
+                }
+            });
 
-        // Deduplicate by ID
-        const unique = new Map();
-        for (const item of list) {
-            const id = item.slug || item.id;
-            if (id && !unique.has(id)) {
-                unique.set(id, item);
+            // Deduplicate
+            const unique = new Map();
+            for (const item of allItems) {
+                if (item.drama_id) unique.set(item.drama_id, item);
             }
+
+            return Array.from(unique.values()).map(normalizeMeloshort);
         }
 
-        const results = Array.from(unique.values()).map(normalizeMeloshort);
-        return results;
+        return [];
     } catch (e) {
         console.error('[Meloshort] Home exception:', e);
         return [];
@@ -52,9 +51,7 @@ export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
  */
 export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
     try {
-        // console.log(`[Meloshort] Searching: ${query}`);
-        // Endpoint: https://apikupas.my.id/meloshort/search/{query}
-        const url = `${MELOSHORT_SEARCH_API}/${encodeURIComponent(query)}?_t=${Date.now()}`;
+        const url = `${SEARCH_API}?q=${encodeURIComponent(query)}&page=1&page_size=20`;
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -64,18 +61,11 @@ export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
 
         const json = await response.json();
 
-        if (!json || !Array.isArray(json)) return [];
-
-        // Deduplicate by ID
-        const unique = new Map();
-        for (const item of json) {
-            const id = item.slug || item.id;
-            if (id && !unique.has(id)) {
-                unique.set(id, item);
-            }
+        if (json.code === 0 && Array.isArray(json.data)) {
+            return json.data.map(normalizeMeloshort);
         }
 
-        return Array.from(unique.values()).map(normalizeMeloshort);
+        return [];
     } catch (e) {
         console.error('[Meloshort] Search exception:', e);
         return [];
@@ -87,49 +77,79 @@ export async function searchMeloshort(query: string): Promise<UnifiedDrama[]> {
  */
 export async function getMeloshortDetail(id: string): Promise<{ drama: any, episodes: any[] } | null> {
     try {
-        // console.log(`[Meloshort] Fetching detail: ${id}`);
-        // Endpoint: https://apikupas.my.id/meloshort/anime/{id}
-        const url = `${MELOSHORT_DETAIL_API}/${id}?_t=${Date.now()}`;
-        const response = await fetch(url);
+        // Step 1: Fetch Drama Metadata from Play API (Episode 1 usually has it)
+        // This is necessary because the /drama/{id} endpoint only returns episodes list
+        const playUrl = `${PLAY_API}/${id}/1`;
+        const playResponse = await fetch(playUrl);
+        let dramaMetadata: any = null;
 
-        if (!response.ok) {
-            console.error(`[Meloshort] Detail error: ${response.status}`);
-            return null;
+        if (playResponse.ok) {
+            const playJson = await playResponse.json();
+            if (playJson.code === 0 && playJson.data) {
+                const d = playJson.data;
+                dramaMetadata = {
+                    id: id,
+                    title: d.drama_title || d.title,
+                    cover: d.drama_cover || d.cover,
+                    description: d.drama_description || d.description || '',
+                    chapterCount: d.chapters || 0,
+                    labels: d.drama_tags || (d.drama_sub_tags || []).map((t: any) => t.title) || [],
+                    source: 'meloshort'
+                };
+            }
         }
 
-        const json = await response.json();
+        // Step 2: Fetch Episode List from Drama API
+        const detailUrl = `${DETAIL_API}/${id}`;
+        const detailResponse = await fetch(detailUrl);
+        let episodes = [];
 
-        // Response format: { title, poster, synopsis, status, episodes: [...] }
-        if (!json || (!json.title && !json.episodes)) return null;
-
-        // Poster handling similar to normalizeMeloshort
-        let cover = json.poster || json.cover || '';
-        if (cover.startsWith('/img?url=')) {
-            cover = 'https://apikupas.my.id' + cover;
+        if (detailResponse.ok) {
+            const detailJson = await detailResponse.json();
+            if (detailJson.code === 0 && Array.isArray(detailJson.data)) {
+                episodes = detailJson.data.map((ep: any) => ({
+                    id: String(ep.chapter_index),
+                    name: ep.chapter_name || `Episode ${ep.chapter_index}`,
+                    index: ep.chapter_index - 1,
+                    unlock: true,
+                    raw: { dramaId: id, episodeNum: ep.chapter_index }
+                }));
+            }
         }
 
-        const drama = {
-            id: id, // The ID passed in is the slug/ID used for fetching
-            title: json.title,
-            cover: cover,
-            description: json.description || json.synopsis || '',
-            chapterCount: json.totalEpisodes || (json.episodes ? json.episodes.length : 0),
-            labels: json.status ? [json.status] : [],
-            source: 'meloshort'
-        };
+        // Fallback: If drama metadata couldn't be fetched (e.g. play/1 failed) but we have episodes
+        if (!dramaMetadata && episodes.length > 0) {
+            console.warn(`[Meloshort] Metadata fetch failed for ${id}, using fallback`);
+            dramaMetadata = {
+                id: id,
+                title: 'Meloshort Drama',
+                cover: '',
+                description: '',
+                chapterCount: episodes.length,
+                labels: [],
+                source: 'meloshort'
+            };
+        }
 
-        const episodes = (json.episodes || []).map((ep: any) => ({
-            id: ep.slug, // Use slug as ID because play API needs it
-            name: `Episode ${ep.number}`,
-            index: ep.number - 1,
-            unlock: true, // Optimistic unlock
-            raw: ep
-        }));
+        if (!dramaMetadata) return null;
 
-        return { drama, episodes };
+        // If metadata has chapterCount but episodes list is empty, generate synthetic ones
+        if (episodes.length === 0 && dramaMetadata.chapterCount > 0) {
+            for (let i = 1; i <= dramaMetadata.chapterCount; i++) {
+                episodes.push({
+                    id: String(i),
+                    name: `Episode ${i}`,
+                    index: i - 1,
+                    unlock: true,
+                    raw: { dramaId: id, episodeNum: i }
+                });
+            }
+        }
+
+        return { drama: dramaMetadata, episodes };
     } catch (e) {
         console.error('[Meloshort] Detail exception:', e);
-        return null; // Return null effectively implies fallback or error
+        return null;
     }
 }
 
@@ -138,10 +158,7 @@ export async function getMeloshortDetail(id: string): Promise<{ drama: any, epis
  */
 export async function getMeloshortVideoUrl(id: string, episodeNum: number): Promise<string> {
     try {
-        // console.log(`[Meloshort] Fetching video for Slug: ${id}`);
-        // Endpoint: https://apikupas.my.id/meloshort/episode/{slug}
-        // Note: The 'id' passed here is the episode slug we mapped in Detail
-        const url = `${MELOSHORT_EPISODE_API}/${encodeURIComponent(id)}?_t=${Date.now()}`;
+        const url = `${PLAY_API}/${id}/${episodeNum}`;
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -151,8 +168,23 @@ export async function getMeloshortVideoUrl(id: string, episodeNum: number): Prom
 
         const json = await response.json();
 
-        if (json.servers && Array.isArray(json.servers) && json.servers.length > 0) {
-            return json.servers[0].url || '';
+        if (json.code === 0 && json.data) {
+            const data = json.data;
+            const videoUrl = data.full_play_url || data.play_url || '';
+
+            // Subtitles handling
+            if (data.sublist && Array.isArray(data.sublist) && data.sublist.length > 0) {
+                return JSON.stringify({
+                    videoUrl: videoUrl,
+                    subtitles: data.sublist.map((sub: any) => ({
+                        label: sub.language === 'ind-ID' ? 'Indonesia' : sub.language,
+                        lang: sub.language || 'id-ID',
+                        url: sub.url
+                    }))
+                });
+            }
+
+            return videoUrl;
         }
 
         return '';

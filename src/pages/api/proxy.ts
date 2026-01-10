@@ -13,16 +13,13 @@ export const GET: APIRoute = async ({ url, request }) => {
     if (q) {
         const decrypted = decrypt(q);
         if (decrypted) {
-            if (decrypted.startsWith('http')) {
+            if (typeof decrypted === 'string' && decrypted.startsWith('http')) {
                 targetUrl = decrypted;
+            } else if (typeof decrypted === 'object' && decrypted.url) {
+                targetUrl = decrypted.url;
             } else {
-                try {
-                    const parsed = JSON.parse(decrypted);
-                    if (parsed.url) targetUrl = parsed.url;
-                    else targetUrl = decrypted;
-                } catch (e) {
-                    targetUrl = decrypted;
-                }
+                // Fallback for cases where decrypted might be just the string but not starting with http (not expected)
+                targetUrl = typeof decrypted === 'string' ? decrypted : null;
             }
         }
     }

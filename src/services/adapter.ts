@@ -24,21 +24,22 @@ function wrapProxyImage(url: string | undefined): string {
 }
 
 export function normalizeMeloshort(data: any): UnifiedDrama {
-    // Poster URL comes as "/img?url=https%3A%2F%2F..." or raw https
-    let cover = data.poster || data.cover || '';
+    // New API uses drama_cover or cover
+    let cover = data.drama_cover || data.cover || data.poster || '';
+
+    // Legacy support for apikupas proxy
     if (cover.startsWith('/img?url=')) {
-        // Option A: Use the API's proxy
         cover = 'https://apikupas.my.id' + cover;
-        // Option B: Extract the real URL if prefer direct (but maybe 403?)
-        // Let's stick to the proxy format or construct full URL if relative
     }
 
     return {
-        id: data.slug || data.id,
-        title: data.title || 'Unknown Title',
+        // Search API uses 'dramaId', ranking/play uses 'drama_id'
+        id: data.drama_id || data.dramaId || data.slug || data.id,
+        title: data.drama_title || data.title || 'Unknown Title',
         cover: wrapProxyImage(cover),
-        description: data.description || '', // Not in Home feed
-        chapterCount: 0, // Not in Home feed
+        description: data.drama_description || data.description || '',
+        // Search uses 'chapterTotal', ranking uses 'chapters'
+        chapterCount: data.chapters || data.chapterTotal || 0,
         source: 'meloshort',
         raw: data
     };
@@ -319,8 +320,7 @@ export function normalizeAny(data: any, defaultSource: 'dramabox' | 'netshort' |
     if (data.poster && data.videoUrl) return normalizeDramaDash(data); // Crude heuristic
     if (data.bookId && (data.alias1 || data.columnId)) return normalizeGoodShort(data); // GoodShort heuristic
     if (data.vid && (data.title || data.image)) return normalizeStarDustTV(data); // StarDust heuristic
-    // Heuristic for ReelLife/Meloshort if needed (both have slug)
-    // if (data.slug && data.poster) return normalizeReelLife(data);
+    if ((data.drama_id || data.dramaId) && (data.drama_title || data.title || data.drama_cover || data.cover)) return normalizeMeloshort(data); // MeloShort heuristic
 
     return normalizeDramabox(data);
 }

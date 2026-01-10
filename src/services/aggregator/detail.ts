@@ -419,9 +419,8 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
         } else if (source === 'reelife') {
             videoUrl = await ReelLife.getReelLifeVideoUrl(bookId, parseInt(episodeId) || 1);
         } else if (source === 'meloshort') {
-            // Meloshort uses the unique episode slug as the ID, so we pass episodeId (which contains the slug)
-            // The signature is (id, episodeNum), but we only need the id (slug) now.
-            videoUrl = await Meloshort.getMeloshortVideoUrl(episodeId, 1);
+            // Meloshort now uses dramaId as bookId and episode index as episodeId
+            videoUrl = await Meloshort.getMeloshortVideoUrl(bookId, parseInt(episodeId) || 1);
         } else if (source === 'vigloo') {
             // episodeId in our mapping is the episode number
             videoUrl = await Vigloo.getViglooVideoUrl(bookId, parseInt(episodeId) || 1);

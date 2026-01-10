@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ url, request }) => {
 
     let source, bookId, episodeId;
 
-    // Try to get encrypted payload first
+    // Require encrypted payload 'q'
     const q = url.searchParams.get('q');
     if (q) {
         const payload = decrypt(q);
@@ -31,13 +31,8 @@ export const GET: APIRoute = async ({ url, request }) => {
         }
     }
 
-    // Fallback to legacy params (can be removed later for strict security)
-    if (!source) source = url.searchParams.get('source');
-    if (!bookId) bookId = url.searchParams.get('bookId');
-    if (!episodeId) episodeId = url.searchParams.get('episodeId');
-
     if (!source || !bookId || !episodeId) {
-        return new Response(JSON.stringify({ error: 'Missing parameters' }), { status: 400 });
+        return new Response(JSON.stringify({ error: 'Missing parameters or invalid encryption' }), { status: 400 });
     }
 
     try {
