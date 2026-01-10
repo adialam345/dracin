@@ -14,12 +14,15 @@ export function encrypt(data: any): string {
     try {
         const json = JSON.stringify(data);
         const text = encodeURIComponent(json);
-        let output = "";
-        for (let i = 0; i < text.length; i++) {
-            const charCode = text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-            output += String.fromCharCode(charCode);
+        const textBuffer = Buffer.from(text, 'utf8');
+        const keyBuffer = Buffer.from(SECRET_KEY, 'utf8');
+        const output = Buffer.alloc(textBuffer.length);
+
+        for (let i = 0; i < textBuffer.length; i++) {
+            output[i] = textBuffer[i] ^ keyBuffer[i % keyBuffer.length];
         }
-        return Buffer.from(output, 'binary').toString('base64');
+
+        return output.toString('base64');
     } catch (e) {
         console.error("Encryption error:", e);
         return "";
@@ -32,14 +35,16 @@ export function encrypt(data: any): string {
 export function decrypt(cipher: string): any {
     try {
         if (!cipher) return null;
-        const input = Buffer.from(cipher, 'base64').toString('binary');
+        const inputBuffer = Buffer.from(cipher, 'base64');
+        const keyBuffer = Buffer.from(SECRET_KEY, 'utf8');
+        const output = Buffer.alloc(inputBuffer.length);
 
-        let output = "";
-        for (let i = 0; i < input.length; i++) {
-            const charCode = input.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-            output += String.fromCharCode(charCode);
+        for (let i = 0; i < inputBuffer.length; i++) {
+            output[i] = inputBuffer[i] ^ keyBuffer[i % keyBuffer.length];
         }
-        return JSON.parse(decodeURIComponent(output));
+
+        const decodedText = output.toString('utf8');
+        return JSON.parse(decodeURIComponent(decodedText));
     } catch (e) {
         console.error("Decryption error:", e);
         return null;
