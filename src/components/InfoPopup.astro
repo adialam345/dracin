@@ -97,10 +97,13 @@ const { latestUpdate } = Astro.props;
             // Check if user has dismissed it THIS session? No, persist forever until new update.
             setTimeout(() => {
                 popup.classList.remove('hidden');
-                // Trigger reflow
-                void popup.offsetWidth; 
-                popup.classList.remove('opacity-0');
-                if(content) content.classList.remove('scale-95');
+                // Use requestAnimationFrame instead of forced reflow for better performance
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    popup.classList.remove('opacity-0');
+                    if(content) content.classList.remove('scale-95');
+                  });
+                });
             }, 1000); // Delay slightly for effect
         }
 

@@ -25,10 +25,7 @@ const {
 const socialImageURL = new URL(image, Astro.site).href;
 
 // --- CLOUDFLARE OPTIMIZATIONS ---
-// 1. Early Hints: Beritahu CF untuk preload aset penting sebelum HTML selesai dirender
-Astro.response.headers.set('Link', '</styles/global.css>; rel=preload; as=style, <https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect');
-
-// 2. Security Headers
+// 1. Security Headers
 Astro.response.headers.set('X-Content-Type-Options', 'nosniff');
 Astro.response.headers.set('X-Frame-Options', 'DENY');
 Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
@@ -41,8 +38,10 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    {/* Optimized Font Connection */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <ViewTransitions />
 

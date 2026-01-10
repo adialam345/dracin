@@ -1,5 +1,6 @@
 import { Providers, dramaDetailsCache, episodeDetailsCache } from '../common';
 import { withCache } from '../../utils';
+import { wrapProxyImage } from '../../adapter';
 
 export async function fetchUnifiedDramaData(source: string, id: string): Promise<{ drama: any, episodes: any[] }> {
     const {
@@ -37,7 +38,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
     const cacheKey = `unified_detail_v2_${source}_${id}`;
     const ttl = 30 * 60 * 1000; // 30 minutes
 
-    return withCache(cacheKey, async () => {
+    const result = await withCache(cacheKey, async () => {
         switch (source) {
             case 'dramabox':
                 return Dramabox.getDramaboxDetail(id);
@@ -187,4 +188,11 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
                 return { drama: null, episodes: [] };
         }
     }, ttl);
+
+    // Ensure cover is wrapped in proxy for caching and security
+    if (result && result.drama && result.drama.cover) {
+        result.drama.cover = wrapProxyImage(result.drama.cover);
+    }
+
+    return result;
 }

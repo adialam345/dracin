@@ -13,7 +13,7 @@ export interface UnifiedDrama {
 /**
  * Helper to wrap image URLs in the encrypted proxy
  */
-function wrapProxyImage(url: string | undefined): string {
+export function wrapProxyImage(url: string | undefined): string {
     if (!url) return '';
     // If it's already a relative path or already proxied, skip
     if (url.startsWith('/api/proxy')) return url;

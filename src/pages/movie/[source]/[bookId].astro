@@ -41,6 +41,8 @@ const movieSchema = {
                 src={drama.cover}
                 alt={drama.title}
                 class="w-full aspect-[2/3] object-cover"
+                fetchpriority="high"
+                loading="eager"
               />
             </div>
           </div>
@@ -84,6 +86,8 @@ const movieSchema = {
               src={drama.cover}
               alt={drama.title}
               class="w-full aspect-[2/3] object-cover"
+              fetchpriority="high"
+              loading="eager"
             />
           </div>
 

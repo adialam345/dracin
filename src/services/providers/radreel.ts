@@ -1,4 +1,4 @@
-import { normalizeRadReel, type UnifiedDrama } from '../adapter';
+import { normalizeRadReel, type UnifiedDrama, wrapProxyImage } from '../adapter';
 import { withCache } from '../utils';
 
 const RADREEL_HEADERS = {
@@ -47,7 +47,7 @@ export async function getRadReelForYou(): Promise<UnifiedDrama[]> {
 
             const meta = await fetchRadReel(`https://cdp.wolftv.online/content/compilations/v2/${fakeId}`);
             if (meta && meta.coverImgUrl) {
-                item.cover = meta.coverImgUrl; // Update cover
+                item.cover = wrapProxyImage(meta.coverImgUrl); // Update cover WITH proxy
             }
         } catch (e) {
             // Ignore enrichment errors

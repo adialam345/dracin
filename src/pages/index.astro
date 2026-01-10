@@ -72,8 +72,14 @@ try {
           </div>
           
           <div id="section-foryou-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {forYouDramas.map((drama: any) => (
-              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+            {forYouDramas.map((drama: any, index: number) => (
+              <MovieCard 
+                {...drama} 
+                bookId={drama.id} 
+                posterUrl={drama.cover} 
+                loading={index < 6 ? "eager" : "lazy"}
+                priority={index < 6 ? "high" : "auto"}
+              />
             ))}
           </div>
         </section>
@@ -89,8 +95,14 @@ try {
           </div>
           
           <div id="section-trending-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {trendingDramas.map((drama: any) => (
-              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+            {trendingDramas.map((drama: any, index: number) => (
+              <MovieCard 
+                {...drama} 
+                bookId={drama.id} 
+                posterUrl={drama.cover} 
+                loading={index < 6 ? "eager" : "lazy"}
+                priority={index < 6 ? "high" : "auto"}
+              />
             ))}
           </div>
         </section>
@@ -169,7 +181,9 @@ try {
               // If container is missing (server returned 0), we might need to refresh full page or wait for partial
               // But if it's there, update it.
               if (currentContent) {
-                currentContent.innerHTML = newContent.innerHTML;
+                requestAnimationFrame(() => {
+                  currentContent.innerHTML = newContent.innerHTML;
+                });
                 restoredCount++;
               }
            }
@@ -207,7 +221,9 @@ try {
           const newContent = doc.getElementById(id);
           const currentContent = sections[id];
           if (newContent && currentContent && newContent.children.length > 0) {
-              currentContent.innerHTML = newContent.innerHTML;
+              requestAnimationFrame(() => {
+                currentContent.innerHTML = newContent!.innerHTML;
+              });
           }
        });
 
