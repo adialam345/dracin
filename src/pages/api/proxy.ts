@@ -7,8 +7,9 @@ import { convertSrtToVtt } from './proxy/subtitles';
 import { assembleProxyResponse, handle304Response } from './proxy/utils';
 
 export const GET: APIRoute = async ({ url, request }) => {
-    let targetUrl = url.searchParams.get('url');
-    const q = url.searchParams.get('q');
+    // Parse and validate target URL
+    const { urlStr, error } = parseTargetUrl(url);
+    if (error) return error;
 
     if (q) {
         const decrypted = decrypt(q);

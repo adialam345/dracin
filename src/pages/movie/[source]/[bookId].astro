@@ -10,9 +10,28 @@ const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 if (!drama) {
   return new Response("Drama not found or API error. Please try again later.", { status: 404 });
 }
+const dramaSchema = {
+  "@context": "https://schema.org",
+  "@type": "TVSeries",
+  "name": drama.title,
+  "description": drama.description,
+  "image": drama.cover,
+  "genre": drama.labels || [],
+  "numberOfEpisodes": drama.chapterCount || episodes.length,
+  "author": {
+    "@type": "Organization",
+    "name": source
+  }
+};
 ---
 
-<Layout title={`${drama.title} - DramaIn`} description={drama.description} image={drama.cover}>
+<Layout 
+  title={`Nonton ${drama.title} Sub English / Indo Gratis - DramaIn`} 
+  description={`Streaming Drama ${drama.title} subtitle Indonesia / English full episode gratis. ${drama.description?.slice(0, 150) || 'Nonton drama pendek viral terbaru di DramaIn'}...`} 
+  image={drama.cover}
+  lcpImage={drama.cover}
+  extraSchema={dramaSchema}
+>
   <div class="container mx-auto px-4 py-6 md:py-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
       

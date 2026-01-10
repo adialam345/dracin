@@ -21,7 +21,7 @@ const { latestUpdate } = Astro.props;
       <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-[40px] opacity-50 pointer-events-none"></div>
 
       <!-- Close Button -->
-      <button id="close-popup" class="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors p-1 bg-black/30 rounded-full">
+      <button id="close-popup" aria-label="Tutup" class="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors p-1 bg-black/30 rounded-full">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
 
@@ -66,7 +66,7 @@ const { latestUpdate } = Astro.props;
           Lihat Semua Info
         </a>
         
-        <button id="dismiss-popup" class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+        <button id="dismiss-popup" class="text-xs text-zinc-400 hover:text-zinc-300 transition-colors">
             Tutup & Jangan Tampilkan Lagi
         </button>
       </div>

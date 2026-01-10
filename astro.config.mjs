@@ -11,12 +11,29 @@ export default defineConfig({
     mode: 'standalone'
   }),
   integrations: [tailwind()],
+  build: {
+    inlineStylesheets: 'always'
+  },
   devToolbar: {
     enabled: false
   },
   vite: {
     server: {
-      allowedHosts: ['nontonin.site']
+      allowedHosts: ['nontonin.site'],
+      hmr: {
+        host: 'nontonin.site',
+        protocol: 'wss'
+      }
+    },
+    build: {
+      assetsInlineLimit: 102400, // Inline assets under 100kb
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined
+        }
+      }
     }
   }
 });

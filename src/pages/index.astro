@@ -7,12 +7,21 @@ import InfoPopup from '../components/InfoPopup.astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { encrypt } from '../utils/security.server';
+
 // Fetch Aggregated Data
 const { forYou, trending, latest } = await fetchAggregatedHome();
 
 const forYouDramas = forYou;
 const trendingDramas = trending;
 const latestDramas = latest;
+
+// Identify LCP Image for preloading (first item in "For You")
+let proxiedLcpImage = '';
+if (forYouDramas.length > 0) {
+    const encrypted = encrypt(forYouDramas[0].cover);
+    proxiedLcpImage = `/api/proxy?q=${encodeURIComponent(encrypted)}`;
+}
 
 // Fetch Latest Update
 let latestUpdate = null;
@@ -27,7 +36,7 @@ try {
 }
 ---
 
-<Layout title="DramaIn - Tonton Drama & Film Terbaik">
+<Layout title="DramaIn - Nonton Drama Pendek & Dracin Sub Indo Gratis" lcpImage={proxiedLcpImage}>
   <InfoPopup latestUpdate={latestUpdate} />
   {/* Ambient Background */}
   <div class="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-zinc-950 to-zinc-950 -z-10"></div>
@@ -39,17 +48,17 @@ try {
       <h1 class="text-5xl md:text-7xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500 tracking-tight animate-fade-in-up">
         DramaIn
       </h1>
-      <p class="text-xl md:text-2xl text-zinc-400 mb-5 font-light leading-relaxed animate-fade-in-up delay-100">
+      <p class="text-xl md:text-2xl text-zinc-400 mb-5 font-light leading-relaxed animate-fade-in-up">
         Akses semua drama dari <span class="text-white font-semibold">17 Platform</span> dalam satu website.<br />
         Unlock semua episode. <span class="text-white font-semibold">GRATIS</span>.
       </p>
 
-      <div class="mb-6 animate-fade-in-up delay-150 relative">
+      <div class="mb-6 animate-fade-in-up relative">
         <ProviderMarquee />
       </div>
 
       {/* Search Bar & Tags */}
-      <div class="flex flex-col items-center gap-8 animate-fade-in-up delay-200">
+      <div class="flex flex-col items-center gap-8 animate-fade-in-up">
         <button data-open-search class="group relative inline-flex items-center gap-3 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full transition-all duration-300 border border-white/10 hover:border-white/20 hover:scale-105 active:scale-95 shadow-xl shadow-black/20">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-400 group-hover:text-white transition-colors">
             <circle cx="11" cy="11" r="8"></circle>
@@ -63,7 +72,7 @@ try {
     {/* Sections */}
     <div class="space-y-16">
       {forYouDramas.length > 0 && (
-        <section class="opacity-0 animate-fade-in-up delay-300 fill-mode-forwards">
+        <section class="animate-fade-in-up fill-mode-forwards">
           <div class="flex items-end justify-between mb-8 px-2">
             <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
               Rekomendasi Untuk Kamu
@@ -72,15 +81,15 @@ try {
           </div>
           
           <div id="section-foryou-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {forYouDramas.map((drama: any) => (
-              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} />
+            {forYouDramas.map((drama: any, index: number) => (
+              <MovieCard {...drama} bookId={drama.id} posterUrl={drama.cover} fetchpriority={index < 2 ? 'high' : 'auto'} />
             ))}
           </div>
         </section>
       )}
 
       {trendingDramas.length > 0 && (
-        <section class="opacity-0 animate-fade-in-up delay-[400ms] fill-mode-forwards">
+        <section class="animate-fade-in-up fill-mode-forwards">
           <div class="flex items-end justify-between mb-8 px-2">
             <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
               Sedang Populer
@@ -97,7 +106,7 @@ try {
       )}
 
       {latestDramas.length > 0 && (
-        <section class="opacity-0 animate-fade-in-up delay-[500ms] fill-mode-forwards">
+        <section class="animate-fade-in-up fill-mode-forwards">
           <div class="flex items-end justify-between mb-8 px-2">
             <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
               Rilis Terbaru
@@ -125,8 +134,35 @@ try {
            </button>
         </div>
       )}
+      {/* Content Section for SEO */}
+      <div class="mt-20 pt-12 border-t border-white/5 space-y-12">
+        <section class="max-w-4xl">
+          <h2 class="text-3xl font-bold text-white mb-6">Pusat Nonton Dracin (Drama China) Terbaik</h2>
+          <p class="text-zinc-400 leading-relaxed">
+            DramaIn adalah tempat terbaik untuk <strong>nonton dracin</strong> favorit Anda. Kami menyatukan seluruh konten drama dari lebih dari 15 penyedia streaming ternama. Nikmati kemudahan <strong>nonton judul drama</strong> pilihan Anda dengan subtitle Indonesia yang akurat, mulai dari <strong>dracin</strong> romantis, kolosal, hingga film pendek modern.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            <div class="space-y-3">
+              <h3 class="text-xl font-semibold text-white">Kenapa Nonton Dracin di Sini?</h3>
+              <ul class="text-zinc-400 space-y-2 list-disc list-inside">
+                <li>Koleksi <strong>dracin</strong> paling lengkap dan selalu update.</li>
+                <li>Streaming lancar untuk semua judul drama favorit.</li>
+                <li>Tersedia subtitle Bahasa Indonesia untuk kenyamanan menonton.</li>
+                <li>Akses gratis ke ribuan episode drama populer.</li>
+              </ul>
+            </div>
+            <div class="space-y-3">
+              <h3 class="text-xl font-semibold text-white">Streaming Dracin Tanpa Batas</h3>
+              <p class="text-zinc-400">
+                Temukan konten eksklusif dan <strong>nonton dracin</strong> dari Dramabox, ShortMax, NetShort, RadReel, dan lainnya. Gunakan fitur pencarian untuk langsung <strong>nonton judul drama</strong> yang Anda cari dalam sekejap.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
+
 
 <script>
   // Home Content Persistence Logic

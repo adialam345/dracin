@@ -49,7 +49,7 @@ export const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
 export async function safeExecute<T>(promise: Promise<T[]>, name: string): Promise<T[]> {
     const timeoutMsg = 'AGGREGATOR_TIMEOUT';
     const timeout = new Promise<T[]>((_, reject) =>
-        setTimeout(() => reject(new Error(timeoutMsg)), 6000)
+        setTimeout(() => reject(new Error(timeoutMsg)), 3000)
     );
 
     try {

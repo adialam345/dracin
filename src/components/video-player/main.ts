@@ -20,7 +20,7 @@ export async function initPlayer() {
         const episodeDataScript = document.getElementById('episode-data');
 
         if (!videoElement) {
-            console.error('[VideoPlayer] Video element not found!');
+            // Silently return if we're not on a page with a video player
             (window as any).isInitializingPlayer = false;
             return;
         }

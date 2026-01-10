@@ -235,8 +235,8 @@ export function normalizeDotDrama(data: any): UnifiedDrama {
 }
 
 export function normalizeStarDustTV(data: any): UnifiedDrama {
-    const rawCover = data.image || data.cover || '';
-    const cover = rawCover ? `/api/proxy?q=${encodeURIComponent(encrypt(rawCover))}` : '';
+    // Disable proxy for StardustTV images to avoid 504/403 errors (direct access works better)
+    const cover = data.image || data.cover || '';
 
     return {
         id: String(data.vid || data.id || ''),
@@ -262,8 +262,8 @@ export function normalizeReelLife(data: any): UnifiedDrama {
 }
 
 export function normalizeVigloo(data: any): UnifiedDrama {
-    const rawCover = data.thumbnailExpanded || data.thumbnail || data.titleImage || '';
-    const cover = rawCover ? `/api/proxy?q=${encodeURIComponent(encrypt(rawCover))}` : '';
+    // Disable proxy for Vigloo images to avoid 504/403 errors
+    const cover = data.thumbnailExpanded || data.thumbnail || data.titleImage || '';
 
     return {
         id: String(data.id || ''),

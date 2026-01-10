@@ -15,6 +15,12 @@ import { encrypt } from '../utils/security';
 
 // Encrypt initial URL to hide it in DOM
 const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUrl }) : '';
+
+// Use Proxy for poster to avoid CORS issues
+let proxiedPoster = poster;
+if (poster && poster.startsWith('http')) {
+    proxiedPoster = `/api/proxy?q=${encodeURIComponent(encrypt(poster))}`;
+}
 ---
 
 <div class="relative bg-black w-full h-full group overflow-hidden" id="video-container">
@@ -38,7 +44,7 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
     class="w-full h-full object-contain opacity-0 transition-opacity duration-700"
     controls
     preload="metadata"
-    poster={poster}
+    poster={proxiedPoster}
     data-video-url={encryptedInitialUrl}
     data-source={source}
     data-book-id={bookId}
@@ -111,9 +117,4 @@ const encryptedInitialUrl = initialVideoUrl ? encrypt({ videoUrl: initialVideoUr
   document.addEventListener('astro:page-load', () => {
     initPlayer();
   });
-
-  // Fallback for initial load if needed
-  if (document.readyState === 'complete') {
-    initPlayer();
-  }
 </script>

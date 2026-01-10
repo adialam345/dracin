@@ -1,5 +1,5 @@
 
-const _k = ['flickreels', 'media', 'secure', 'key', 'v1', '2026'];
+const _k = ['flickreels', 'media', 'secure', 'key', 'v1', '2026', 'fixed', 'stable'];
 const _getKey = () => _k.join('-');
 
 /**

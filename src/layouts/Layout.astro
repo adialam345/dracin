@@ -13,13 +13,17 @@ interface Props {
   description?: string;
   image?: string;
   hideFooter?: boolean;
+  extraSchema?: object;
+  lcpImage?: string;
 }
 
 const {
   title = 'DramaIn - Platform Streaming Drama Terbaik',
   description = 'Nonton drama gratis dari DramaBox, NetShort, RadReel, ShortMax, StarShort, DramaWave, Melolo, FlickReels, GoodShort, HiShort, FreeShort, dan DramaDash. Platform streaming modern, cepat, dan ringan.',
   image = '/og-image.png',
-  hideFooter = false
+  hideFooter = false,
+  extraSchema,
+  lcpImage
 } = Astro.props;
 
 const socialImageURL = new URL(image, Astro.site).href;
@@ -39,22 +43,32 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/favicon-small.png" />
+    <link rel="preload" href="/logo.webp" as="image" type="image/webp" crossorigin>
+    <link rel="manifest" href="/manifest.json" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href={Astro.url.origin} crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    {lcpImage && <link rel="preload" href={lcpImage} as="image" fetchpriority="high" />}
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
     <ViewTransitions />
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="keywords" content="dracin, nonton dracin, nonton drama, streaming drama, drama sub indo, dracin sub indo, drama gratis, dramabox, shortmax, netshort, drama china, drama korea, drakor sub indo, film pendek" />
+    <link rel="canonical" href={Astro.url.href} />
 
     <meta property="og:locale" content="id_ID" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={Astro.url} />
+    <meta property="og:url" content={Astro.url.href} />
     <meta property="og:image" content={socialImageURL} />
+
     <meta property="og:site_name" content="DramaIn" />
 
     <meta name="twitter:card" content="summary_large_image" />
@@ -62,11 +76,54 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageURL} />
 
+    {/* JSON-LD Structured Data */}
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DramaIn",
+      "alternateName": "DramaIn Indonesia",
+      "url": Astro.site,
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": `${Astro.site}/search?q={search_term_string}`
+        },
+        "query-input": "required name=search_term_string"
+      }
+    })} />
+
+    {extraSchema && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify(extraSchema)} />
+    )}
+
     {/* Mobile Web App Meta Tags */}
     <meta name="theme-color" content="#09090b" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <script is:inline>
+      // Global Image Error Handler (Must be in head to catch early errors)
+      window.handleImageError = function(img) {
+        if (!img || img.dataset.errorHandled === "final") return;
+        
+        // 1. First Failure: Try Original URL if Proxy Failed
+        if (!img.dataset.triedOriginal && img.dataset.originalSrc) {
+            img.dataset.triedOriginal = "true";
+            // console.log('Proxy failed, trying original:', img.dataset.originalSrc);
+            img.src = img.dataset.originalSrc;
+            return;
+        }
+
+        // 2. Second Failure (or no original src): Show Placeholder
+        img.dataset.errorHandled = "final";
+        const fallback = 'https://placehold.co/400x600/18181b/ffffff?text=Image+N/A';
+        img.src = fallback;
+        img.classList.add('opacity-40');
+        img.style.objectFit = 'cover';
+      };
+    </script>
   </head>
   <body class="min-h-screen flex flex-col font-sans bg-zinc-950 text-white selection:bg-red-500/30">
     <Header />
@@ -91,6 +148,14 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
       document.addEventListener('astro:page-load', () => {
         const bar = document.getElementById('loading-bar');
         if (bar) bar.classList.remove('loading-bar-animate');
+      });
+    </script>
+    <script is:inline>
+      // Force remove Rocket Loader impact if still present
+      window.addEventListener('load', () => {
+        if (window.RocketLoader) {
+           console.log('Rocket Loader detected, cleaning up scripts...');
+        }
       });
     </script>
   </body>
