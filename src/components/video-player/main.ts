@@ -40,9 +40,10 @@ export async function initPlayer() {
 
         // Helper to find next episode ID
         const getNextEpisodeId = (currentId: string | null) => {
-            const idx = episodes.findIndex((e: any) => e.id === currentId);
+            if (!currentId) return null;
+            const idx = episodes.findIndex((e: any) => String(e.id) === String(currentId));
             if (idx !== -1 && idx < episodes.length - 1) {
-                return episodes[idx + 1].id;
+                return String(episodes[idx + 1].id);
             }
             return null;
         };
@@ -394,8 +395,10 @@ export async function initPlayer() {
                 // Existing Logic: Redirect to next page
                 window.location.href = `/watch/${source}/${bookId}/${nextId}?autoplay=1`;
             } else {
-                // Exit fullscreen if no next episode
-                if (document.exitFullscreen) document.exitFullscreen();
+                // Exit fullscreen if no next episode and document is still active
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => { /* ignore error if doc not active */ });
+                }
             }
         };
 

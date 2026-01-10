@@ -20,11 +20,14 @@ export const GET: APIRoute = async ({ request }) => {
         return new Response('Analytics not initialized', { status: 500 });
     }
 
-    // Set headers for SSE
+    // Set headers for SSE yang lebih robust
     const headers = {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no', // Sangat penting untuk Nginx agar tidak buffering
+        'Content-Encoding': 'none', // Mencegah kompresi yang merusak SSE
+        'Access-Control-Allow-Origin': '*'
     };
 
     const stream = new ReadableStream({
