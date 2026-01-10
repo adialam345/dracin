@@ -63,6 +63,10 @@ export function getProxyHeaders(targetUrl: string, incomingHeaders: Headers): Re
         headers['Referer'] = 'https://www.vigloo.com/';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     }
+    else if (targetUrl.includes('dramaboxdb.com')) {
+        headers['Origin'] = 'https://www.dramabox.com';
+        headers['Referer'] = 'https://www.dramabox.com/';
+    }
     else {
         try {
             headers['Referer'] = new URL(targetUrl).origin + '/';

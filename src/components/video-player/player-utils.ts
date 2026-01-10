@@ -1,10 +1,34 @@
-export const handleHlsError = (hls: any, data: any, videoElement: HTMLVideoElement, url: string, errorState: HTMLElement, onReady: () => void) => {
+export const handleHlsError = (
+    hls: any,
+    data: any,
+    videoElement: HTMLVideoElement,
+    url: string,
+    errorState: HTMLElement,
+    onReady: () => void,
+    onFailover?: () => void
+) => {
     console.log('[VideoPlayer] HLS Error:', data.type, data.details, data.fatal);
 
     if (data.fatal) {
+        // Deteksi 429 (Too Many Requests) dari Cloudflare
+        const is429 = data.response && data.response.code === 429;
+
+        if (is429 && onFailover) {
+            console.warn('[VideoPlayer] Proxy limit hit (429). Triggering failover...');
+            onFailover();
+            return;
+        }
+
         switch (data.type) {
             case hls.constructor.ErrorTypes.NETWORK_ERROR:
                 console.log('[VideoPlayer] Network error, attempting recovery...');
+
+                // Jika error network terjadi berulang kali, coba ganti proxy
+                if (onFailover) {
+                    onFailover();
+                    return;
+                }
+
                 if (!url || url.includes('?url=')) {
                     console.error('[VideoPlayer] Aborting recovery for invalid URL');
                     hls.destroy();

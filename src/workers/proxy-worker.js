@@ -6,29 +6,30 @@
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
+
+        // Handle CORS preflight requests
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                status: 204,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
+                    'Access-Control-Allow-Headers': '*',
+                    'Access-Control-Max-Age': '86400',
+                }
+            });
+        }
+
         const targetUrlParam = url.searchParams.get('url') || url.searchParams.get('q');
 
-        // Simple decryption (if you use the same simple hex/base64 logic, add it here)
-        // For now, assuming the worker receives the RAW target url or we implement the same decrypt logic.
-        // Since 'security.server.ts' uses AES/compat logic, we might need to port it or 
-        // simply trust that the client sends the right URL.
-        // FOR SAFETY: You should implement a shared secret or token check here.
-
         if (!targetUrlParam) {
-            return new Response('Missing URL', { status: 400 });
+            return new Response('Missing URL', {
+                status: 400,
+                headers: { 'Access-Control-Allow-Origin': '*' }
+            });
         }
 
         let targetUrl = targetUrlParam;
-
-        // If the URL is encrypted (starts with http? no), handle decryption
-        // NOTE: This worker example assumes the client sends the DECODED url or handles decryption before calling.
-        // If you need shared decryption, copy your `decrypt` logic here.
-
-        // HACK: If the client sends "http...", use it.
-        // If it is encrypted, the worker needs the key. 
-
-        // For this example, we assume we modify the client to send the plain URL to the worker 
-        // OR the worker is set up with the same encryption key.
 
         // Headers construction
         const headers = new Headers();
@@ -41,7 +42,7 @@ export default {
             }
         }
 
-        // Specific Provider Logic (Mirrors proxy.ts)
+        // Specific Provider Logic
         if (targetUrl.includes('mydramawave.com')) {
             headers.set('Referer', 'https://www.mydramawave.com/');
             headers.set('Origin', 'https://www.mydramawave.com');
@@ -77,36 +78,41 @@ export default {
             headers.set('Origin', 'https://www.vigloo.com');
             headers.set('Referer', 'https://www.vigloo.com/');
             headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        } else if (targetUrl.includes('dramaboxdb.com')) {
+            headers.set('Origin', 'https://www.dramabox.com');
+            headers.set('Referer', 'https://www.dramabox.com/');
         } else {
             try {
                 headers.set('Referer', new URL(targetUrl).origin + '/');
             } catch (e) { }
         }
 
-        // Filter User-Agent if needed
         if (!headers.has('User-Agent')) {
             headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         }
 
         try {
-            // Cloudflare Workers fetch options
-            // Note: Workers don't support cf.ssl.strict option
-            // Instead, we can use cf.cacheTtl or other valid options
             const response = await fetch(targetUrl, {
                 method: request.method,
                 headers: headers,
                 redirect: 'follow',
-                // Remove invalid SSL option - Workers handle SSL automatically
-                // If you need to bypass SSL verification, you may need to use a different approach
             });
 
-            // Cloning headers to modify them
             const newHeaders = new Headers(response.headers);
             newHeaders.set('Access-Control-Allow-Origin', '*');
-            newHeaders.set('Cache-Control', 'public, max-age=31536000'); // Aggressive Caching
+            newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+            newHeaders.set('Access-Control-Allow-Headers', '*');
 
-            // Handle M3U8 Rewrite if needed
-            // (This is tricky in a worker without simple text processing, but doable)
+            // If it's a 429, we still want to pass it through with CORS headers
+            if (response.status === 429) {
+                return new Response(response.body, {
+                    status: 429,
+                    headers: newHeaders
+                });
+            }
+
+            newHeaders.set('Cache-Control', 'public, max-age=31536000');
+
             const contentType = newHeaders.get('content-type') || '';
             if (contentType.includes('mpegurl') || contentType.includes('hls') || targetUrl.includes('.m3u8')) {
                 const text = await response.text();
@@ -118,7 +124,6 @@ export default {
                     if (trimmed && !trimmed.startsWith('#')) {
                         try {
                             const absUrl = new URL(trimmed, baseUrl).href;
-                            // We just pass it as ?url=... assuming no encryption for now or client handles it
                             return `${workerOrigin}/?url=${encodeURIComponent(absUrl)}`;
                         } catch (e) { return line; }
                     }
@@ -145,7 +150,6 @@ export default {
             });
 
         } catch (e) {
-            // Enhanced error logging for debugging
             console.error('Proxy Error:', {
                 message: e.message,
                 targetUrl: targetUrl,
@@ -156,14 +160,16 @@ export default {
                 error: 'Proxy Error',
                 message: e.message,
                 targetUrl: targetUrl,
-                hint: 'If this is a 526 error, the upstream server may have an invalid SSL certificate'
             }), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
+                    'Access-Control-Allow-Headers': '*',
                 }
             });
         }
     }
+
 };

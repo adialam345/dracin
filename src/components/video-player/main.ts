@@ -1,7 +1,7 @@
 
 import { saveWatchHistory } from './history';
 import { getHlsConfig, createDecryptLoader } from './hls-config';
-import { getProxyUrl, shouldUseFallback, VPS_PROXY } from './proxy-utils';
+import { getAllProxyOptions, shouldUseFallback, VPS_PROXY } from './proxy-utils';
 import { addSubtitleTracks } from './subtitles';
 import { handleHlsError, setupQualityManagement } from './player-utils';
 
@@ -140,14 +140,16 @@ export async function initPlayer() {
                 } catch (e) { /* ignore */ }
             }
 
-            // --- PROXY LOGIC ---
-            const finalUrl = getProxyUrl(url, source);
-            if (!finalUrl) {
+            // --- PROXY LOGIC WITH AUTOMATIC FAILOVER ---
+            const proxyOptions = getAllProxyOptions(url, source);
+            let currentProxyIndex = 0;
+            url = proxyOptions[currentProxyIndex];
+
+            if (!url) {
                 if (loader) loader.style.display = 'none';
                 if (errorState) errorState.classList.remove('hidden');
                 return;
             }
-            url = finalUrl;
             // -------------------
 
             const decodedUrl = decodeURIComponent(url);
@@ -172,6 +174,37 @@ export async function initPlayer() {
                     setTimeout(() => loader.style.display = 'none', 500);
                 }
                 videoElement.play().catch(e => console.log('Autoplay blocked:', e));
+            };
+
+            // Helper untuk pindah ke proxy berikutnya
+            const tryNextProxy = () => {
+                if (currentProxyIndex < proxyOptions.length - 1) {
+                    currentProxyIndex++;
+                    const nextUrl = proxyOptions[currentProxyIndex];
+                    console.warn(`[VideoPlayer] Gagal memutar (429/Network). Mencoba proxy berikutnya (${currentProxyIndex + 1}/${proxyOptions.length}):`, nextUrl);
+
+                    url = nextUrl;
+
+                    if ((window as any).hlsInstance) {
+                        const hls = (window as any).hlsInstance;
+                        hls.loadSource(url);
+                        hls.startLoad();
+                    } else {
+                        // Untuk Native Player / MP4
+                        videoElement.src = url;
+                        videoElement.load();
+                    }
+                    return true;
+                }
+                return false;
+            };
+
+            // Pasang event error global pada elemen video (untuk Native & MP4)
+            videoElement.onerror = () => {
+                console.error('[VideoPlayer] Video element error event fired');
+                if (!tryNextProxy()) {
+                    if (errorState) errorState.classList.remove('hidden');
+                }
             };
 
             if (isHLS) {
@@ -254,7 +287,14 @@ export async function initPlayer() {
                         onReady();
                     });
 
-                    hls.on(Hls.Events.ERROR, (event: any, data: any) => handleHlsError(hls, data, videoElement, url, errorState!, onReady));
+                    hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+                        handleHlsError(hls, data, videoElement, url, errorState!, onReady, () => {
+                            if (!tryNextProxy()) {
+                                console.error('[VideoPlayer] All proxy options failed.');
+                                if (errorState) errorState.classList.remove('hidden');
+                            }
+                        });
+                    });
 
                 } else {
                     console.error('[VideoPlayer] No HLS support available');
@@ -277,6 +317,7 @@ export async function initPlayer() {
                 videoElement.load();
                 videoElement.onloadeddata = onReady;
             }
+
         };
 
         // Initialize First Video
