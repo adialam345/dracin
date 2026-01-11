@@ -3,6 +3,8 @@ import { encrypt } from '../../utils/security';
 export const VIDEO_PROXIES = [
     'https://videoproxy.cobaakun116.workers.dev/',
     'https://video-proxy.mrxnexsus.workers.dev/',
+    'https://video.adialam347.workers.dev',
+    'https://video.thinkaboutzuu.workers.dev',
 ];
 
 export const VPS_PROXY = '/api/proxy';
