@@ -50,7 +50,7 @@ export async function fetchAggregatedSearch(query: string, providerFilter?: stri
 // Map for streaming search
 export function getSearchTasks(query: string, providerFilter?: string) {
     const {
-        Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, Flick, DramaDash,
+        Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
         ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
         StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
@@ -72,8 +72,7 @@ export function getSearchTasks(query: string, providerFilter?: string) {
         { id: 'stardusttv', name: 'StardustTV', task: () => safeExecute(StardustTV.searchStardustTV(query), 'StardustTV') },
         { id: 'reelife', name: 'ReelLife', task: () => safeExecute(ReelLife.searchReelLife(query), 'ReelLife') },
         { id: 'meloshort', name: 'Meloshort', task: () => safeExecute(Meloshort.searchMeloshort(query), 'Meloshort') },
-        { id: 'vigloo', name: 'Vigloo', task: () => safeExecute(Vigloo.searchVigloo(query), 'Vigloo') },
-        { id: 'flickreels', name: 'Flick', task: () => safeExecute(Flick.searchFlick(query), 'Flick') }
+        { id: 'vigloo', name: 'Vigloo', task: () => safeExecute(Vigloo.searchVigloo(query), 'Vigloo') }
     ];
 
     if (providerFilter && providerFilter !== 'all') {

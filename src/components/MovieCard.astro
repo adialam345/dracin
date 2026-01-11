@@ -4,7 +4,7 @@ interface Props {
   title: string;
   posterUrl: string;
   description?: string;
-  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'flickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' | 'vigloo';
+  source?: 'dramabox' | 'netshort' | 'melolo' | 'radreel' | 'dramawave' | 'dramaflickreels' | 'dramadash' | 'shortmax' | 'starshort' | 'freeshort' | 'hishort' | 'goodshort' | 'dotdrama' | 'stardusttv' | 'reelife' | 'meloshort' | 'vigloo';
   loading?: 'lazy' | 'eager';
   priority?: 'high' | 'low' | 'auto';
 }
@@ -29,7 +29,7 @@ const sourceLabels = {
   reelife: { label: 'RL', color: 'bg-orange-600/90' }, // ReelLife
   meloshort: { label: 'MS', color: 'bg-rose-500/90' }, // Meloshort - using slightly different color from DotDrama/DB
   vigloo: { label: 'VG', color: 'bg-black/90' }, // Vigloo - using black for variety
-  flickreels: { label: 'FL', color: 'bg-indigo-700/90' }, // Flickreels
+
 };
 
 const badge = source ? sourceLabels[source] : null;

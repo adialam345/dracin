@@ -3,7 +3,7 @@ import { fetchCached, withCache, API_BASE } from '../../utils';
 
 export async function fetchVideoUrl(source: string, bookId: string, episodeId: string): Promise<string> {
     const {
-        Dramabox, Netshort, Melolo, RadReel, FlickReels, Flick, DramaWave,
+        Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
         DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
@@ -154,14 +154,6 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
 
             if (!foundInCache) {
                 videoUrl = await FlickReels.getFlickReelsVideoUrl(bookId, episodeId);
-            }
-        } else if (source === 'flickreels') {
-            const cachedEps = episodeDetailsCache.get('flickreels_' + bookId);
-            if (cachedEps) {
-                const ep = cachedEps.find(e => String(e.id) === String(episodeId));
-                if (ep && ep.raw && ep.raw.hls_url) {
-                    videoUrl = ep.raw.hls_url;
-                }
             }
         } else if (source === 'dramadash') {
             const { episodes } = await DramaDash.getDramaDashDetail(bookId);
