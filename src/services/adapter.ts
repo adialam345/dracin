@@ -124,7 +124,7 @@ export function normalizeDramaWave(data: any): UnifiedDrama {
     const description = data.intro || data.introduction || data.desc || '';
 
     // Video URL: Only available in feed items, not in search results
-    let videoUrl = data.h265_m3u8 || data.h264_m3u8 || '';
+    let videoUrl = data.h264_m3u8 || data.h265_m3u8 || data.m3u8_url || '';
 
     // Next Episode Logic (only in feed)
     const nextEpisode = data.next_episode || null;

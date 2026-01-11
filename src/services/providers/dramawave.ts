@@ -131,20 +131,20 @@ export async function getDramaWaveDetail(id: string): Promise<{ drama: any, epis
 }
 
 /**
- * Get Video URL for DramaWave
+ * Get Play Data for DramaWave
  */
-export async function getDramaWaveVideoUrl(dramaId: string, episodeNum: number): Promise<string> {
+export async function getDramaWaveVideoUrl(dramaId: string, episodeId: string | number): Promise<any> {
     try {
         // Format: /dramas/ID/play/EP?lang=id
-        const url = `/dramas/${dramaId}/play/${episodeNum}?lang=id`;
+        // EP can be index or ID
+        const url = `/dramas/${dramaId}/play/${episodeId}?lang=id`;
         const data = await fetchInternal(url);
 
-        if (data && data.data && data.data.video) {
-            const v = data.data.video;
-            return v.h264_m3u8 || v.h265_m3u8 || v.video_url || v.url || '';
+        if (data && data.data) {
+            return data.data;
         }
     } catch (e) {
         console.error('[DramaWave] Error fetching video URL:', e);
     }
-    return '';
+    return null;
 }

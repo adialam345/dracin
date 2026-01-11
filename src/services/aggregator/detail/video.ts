@@ -110,32 +110,36 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             }
 
             const episode = episodes.find(e => String(e.id) === String(episodeId));
+            let playData = episode?.raw;
 
-            if (episode && episode.raw) {
-                videoUrl = episode.raw.h264_m3u8 ||
-                    episode.raw.h265_m3u8 ||
-                    episode.raw.external_audio_h264_m3u8 ||
-                    episode.raw.external_audio_h265_m3u8 ||
-                    episode.raw.video_url ||
-                    episode.raw.videoUrl ||
+            // If URL is missing (often for locked episodes in detail list), fetch from play endpoint
+            if (!playData || (!playData.h264_m3u8 && !playData.h265_m3u8 && !playData.m3u8_url && !playData.video_url)) {
+                console.log('[DramaWave] URL missing in detail, fetching from play endpoint...');
+                const data = await DramaWave.getDramaWaveVideoUrl(bookId, episodeId);
+                if (data) playData = data;
+            }
+
+            if (playData) {
+                const v = playData.video || playData;
+                videoUrl = v.h264_m3u8 ||
+                    v.h265_m3u8 ||
+                    v.m3u8_url ||
+                    v.external_audio_h264_m3u8 ||
+                    v.external_audio_h265_m3u8 ||
+                    v.video_url ||
+                    v.videoUrl ||
+                    v.url ||
                     '';
 
-                if (episode.raw.vtt_list && Array.isArray(episode.raw.vtt_list)) {
+                // Subtitles
+                const subList = v.vtt_list || v.subtitle_list || [];
+                if (subList && Array.isArray(subList) && subList.length > 0) {
                     return JSON.stringify({
                         videoUrl: videoUrl,
-                        subtitles: episode.raw.vtt_list.map((sub: any) => ({
-                            label: sub.display_name,
-                            lang: sub.language,
-                            url: sub.vtt
-                        }))
-                    });
-                } else if (episode.raw.subtitle_list && Array.isArray(episode.raw.subtitle_list)) {
-                    return JSON.stringify({
-                        videoUrl: videoUrl,
-                        subtitles: episode.raw.subtitle_list.map((sub: any) => ({
-                            label: sub.display_name,
-                            lang: sub.language,
-                            url: sub.subtitle
+                        subtitles: subList.map((sub: any) => ({
+                            label: sub.display_name || sub.language || 'Unknown',
+                            lang: sub.language || 'en',
+                            url: sub.vtt || sub.subtitle || sub.url
                         }))
                     });
                 }
