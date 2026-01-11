@@ -21,7 +21,13 @@ export const PROXY_LIST = [
     'https://cold-term-8847.cobaa8853.workers.dev',
     'https://super-brook-9cf2.cobaa614.workers.dev',
     'https://muddy-wood-2580.isthatkidi.workers.dev',
-    'https://tight-sea-4556.allaboutjijiyaya.workers.dev'
+    'https://tight-sea-4556.allaboutjijiyaya.workers.dev',
+    'https://young-sky-0806.kidicursor.workers.dev',
+    'https://black-bar-8145.kidicursor7.workers.dev',
+    'https://noisy-bird-9259.kidicursor8.workers.dev',
+    'https://dry-paper-962e.kidicursor85.workers.dev',
+    'https://tiny-wildflower-eb1c.kidicursor11.workers.dev',
+
 
 ];
 
