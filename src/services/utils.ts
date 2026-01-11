@@ -16,11 +16,16 @@ export const PROXY_LIST = [
     'https://winter-paper-bc72.mrxnexsus.workers.dev',
     'https://late-cake-20fd.acoba937.workers.dev',
     'https://proud-wind-d018.bagaass5456.workers.dev',
+    'https://plain-recipe-e04b.adialam345.workers.dev',
+    'https://weathered-recipe-4654.thinkaboutzuu.workers.dev',
+    'https://cold-term-8847.cobaa8853.workers.dev',
+    'https://super-brook-9cf2.cobaa614.workers.dev',
+    'https://muddy-wood-2580.isthatkidi.workers.dev',
+    'https://tight-sea-4556.allaboutjijiyaya.workers.dev'
+
 ];
 
 const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.length)];
-
-
 
 // Simple in-memory cache for server-side requests dengan limit RAM
 class LimitedMap<K, V> extends Map<K, V> {
@@ -61,6 +66,8 @@ export async function withCache<T>(key: string, fetcher: () => Promise<T>, ttl: 
 
 // Global state to handle rate limiting
 let globalBackoffuntil = 0;
+const DEAD_PROXIES = new Set<string>();
+let lastDeadReset = Date.now();
 
 // Custom HTTPS agent with better connection handling
 const httpsAgent = new https.Agent({
@@ -125,7 +132,10 @@ function httpsRequest(url: string, customHeaders: any = {}): Promise<string> {
                 } else if (res.statusCode === 429) {
                     reject(new Error('RATE_LIMITED'));
                 } else {
-                    reject(new Error(`HTTP ${res.statusCode}`));
+                    const error = new Error(`HTTP ${res.statusCode}`);
+                    (error as any).statusCode = res.statusCode;
+                    (error as any).body = data;
+                    reject(error);
                 }
             });
 
@@ -162,17 +172,31 @@ export async function fetchCached(url: string, retries: number = 3, headers: any
 }
 
 export async function fetchFromEndpoint(url: string, retries: number = 3, delay: number = 300, headers: any = {}): Promise<any> {
-    // Try each proxy in the list at least once if needed
-    const proxiesToTry = [...PROXY_LIST];
+    // Reset dead proxies every hour
+    if (Date.now() - lastDeadReset > 3600000) {
+        DEAD_PROXIES.clear();
+        lastDeadReset = Date.now();
+    }
 
-    for (let i = 0; i < Math.max(retries, proxiesToTry.length); i++) {
+    // Filter out dead proxies
+    let availableProxies = PROXY_LIST.filter(p => !DEAD_PROXIES.has(p));
+
+    // If all dead, clear dead list to retry all (failover)
+    if (availableProxies.length === 0) {
+        console.warn('[Proxy] All proxies marked dead. Resetting list.');
+        DEAD_PROXIES.clear();
+        availableProxies = [...PROXY_LIST];
+    }
+
+    const maxAttempts = Math.max(retries, availableProxies.length);
+
+    for (let i = 0; i < maxAttempts; i++) {
         const now = Date.now();
         if (now < globalBackoffuntil) {
             await new Promise(resolve => setTimeout(resolve, globalBackoffuntil - now));
         }
 
-        // Use sequential proxy selection to avoid hitting the same blocked one repeatedly during retries
-        const currentProxy = proxiesToTry[i % proxiesToTry.length];
+        const currentProxy = availableProxies[i % availableProxies.length];
 
         try {
             const targetUrl = currentProxy
@@ -180,6 +204,12 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
                 : url;
 
             const text = await httpsRequest(targetUrl, headers);
+
+            // Check for Cloudflare specific text error even in 200 OK
+            if (text.includes('Worker threw exception') || text.includes('Error 1101') || text.includes('Error 1027')) {
+                throw new Error('WORKER_ERROR_IN_BODY');
+            }
+
             const data = JSON.parse(text);
 
             // Flexible empty check for various API structures
@@ -204,26 +234,41 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
             if (isSearch || !isEmpty || isDetailOrStream) return data;
 
         } catch (error: any) {
-            const isBlocked = error.message.includes('403');
+            const statusCode = error.statusCode;
+            const body = error.body || (error.message === 'WORKER_ERROR_IN_BODY' ? 'Worker Error' : '');
 
-            if (error.message === 'RATE_LIMITED') {
+            const isBlocked = error.message.includes('403') || statusCode === 403;
+            const isWorkerLimited =
+                statusCode === 529 ||
+                statusCode === 503 ||
+                body.includes('1015') ||
+                body.includes('1027') ||
+                body.includes('Worker exceeded description') ||
+                error.message === 'WORKER_ERROR_IN_BODY';
+
+            if (error.message === 'RATE_LIMITED' || statusCode === 429) {
                 globalBackoffuntil = Date.now() + 1000 + Math.random() * 1000;
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 continue;
             }
 
-            // If blocked (403), don't wait too long, just try the next proxy
+            if (isWorkerLimited) {
+                console.warn(`[Proxy Dead] ${currentProxy} limit reached. Marking as dead.`);
+                DEAD_PROXIES.add(currentProxy);
+                if (availableProxies.length > 1) continue;
+            }
+
             if (isBlocked) {
                 console.warn(`[Proxy Blocked] ${currentProxy} returned 403 for ${url}. Trying next...`);
                 continue;
             }
 
-            if (i === Math.max(retries, proxiesToTry.length) - 1) {
+            if (i === maxAttempts - 1) {
                 console.error(`[Fetch Error] ${url} : ${error.message || error}`);
             }
         }
 
-        if (i < Math.max(retries, proxiesToTry.length) - 1) {
+        if (i < maxAttempts - 1) {
             const waitTime = delay * Math.pow(2, i) + (Math.random() * 200);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
