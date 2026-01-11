@@ -2,26 +2,13 @@ import { normalizeDramaWave, type UnifiedDrama } from '../adapter';
 import { fetchCached, withCache } from '../utils';
 
 // API CONSTANTS
-const API_BASE = 'https://sapimu.au/dramawave/api/v1';
-
-// Token Rotation (Shared with ShortMax)
-const API_TOKENS = [
-    '14dcdd925122153afdb1e6e51d6c496e42d38c4149b9974d83eb5b8cb2eef8bb', // Original
-    'ba3f5eb1a23ef0c00dee764bd05cee7bc6606453deca551185301200cf35b941', // kido345
-    '8c02960a5aa268ac4ca89b9e86d9d93ea4bb257ed9dc89bc584e3e4aa87c9d8d', // nxxzzz286919
-    'b53a335e49b725f092cda317fee26c2707c5eb2f5bc87a60eb1a1367aa6b090e'  // nexsus72
-];
-
-function getRandomToken() {
-    return API_TOKENS[Math.floor(Math.random() * API_TOKENS.length)];
-}
+const API_BASE = 'https://dramabos.asia/api/dramawave/api/v1';
 
 async function fetchInternal(endpoint: string): Promise<any> {
     const url = `${API_BASE}${endpoint}`;
     try {
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${getRandomToken()}`,
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
             signal: AbortSignal.timeout(5000)
@@ -30,20 +17,18 @@ async function fetchInternal(endpoint: string): Promise<any> {
     } catch (e) { }
 
     return fetchCached(url, 3, {
-        'Authorization': `Bearer ${getRandomToken()}`
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
 }
 
 export async function getDramaWaveForYou(): Promise<UnifiedDrama[]> {
-    // URL: https://sapimu.au/dramawave/api/v1/feed/popular?lang=in&page=1&lang=id-ID
-    const data = await fetchInternal('/feed/popular?lang=in&page=1&lang=id-ID');
+    // Gunakan feed/free sesuai instruksi user
+    const data = await fetchInternal('/feed/free?lang=id');
 
     if (!data || !data.data || !Array.isArray(data.data.items)) return [];
 
     let allItems: any[] = [];
 
-    // The feed returns a list of modules (banner, vertical list, horizontal list, etc.)
-    // We need to extract the actual drama items from inside these modules.
     data.data.items.forEach((module: any) => {
         if (module.items && Array.isArray(module.items)) {
             allItems = allItems.concat(module.items);
@@ -52,7 +37,35 @@ export async function getDramaWaveForYou(): Promise<UnifiedDrama[]> {
         }
     });
 
-    // Remove duplicates based on ID/Key
+    const uniqueItems = new Map();
+    allItems.forEach(item => {
+        const id = item.key || item.id;
+        if (id && !uniqueItems.has(id)) {
+            uniqueItems.set(id, item);
+        }
+    });
+
+    return Array.from(uniqueItems.values())
+        .map((item: any) => normalizeDramaWave(item))
+        .filter((i: UnifiedDrama) => i.id);
+}
+
+export async function getDramaWaveTrending(): Promise<UnifiedDrama[]> {
+    // Gunakan feed/popular sesuai instruksi user
+    const data = await fetchInternal('/feed/popular?lang=id');
+
+    if (!data || !data.data || !Array.isArray(data.data.items)) return [];
+
+    let allItems: any[] = [];
+
+    data.data.items.forEach((module: any) => {
+        if (module.items && Array.isArray(module.items)) {
+            allItems = allItems.concat(module.items);
+        } else if (module.list && Array.isArray(module.list)) {
+            allItems = allItems.concat(module.list);
+        }
+    });
+
     const uniqueItems = new Map();
     allItems.forEach(item => {
         const id = item.key || item.id;
@@ -67,24 +80,24 @@ export async function getDramaWaveForYou(): Promise<UnifiedDrama[]> {
 }
 
 export async function searchDramaWave(query: string): Promise<UnifiedDrama[]> {
-    // URL: https://sapimu.au/dramawave/api/v1/search?lang=in&q=cinta-ID
-    const data = await fetchInternal(`/search?lang=in&q=${encodeURIComponent(query)}`);
+    // Format: /search?q=love&lang=id&page=1
+    const data = await fetchInternal(`/search?q=${encodeURIComponent(query)}&lang=id&page=1`);
 
     if (!data) return [];
 
     let list = [];
     if (Array.isArray(data)) list = data;
     else if (Array.isArray(data.data)) list = data.data;
-    else if (data.data && Array.isArray(data.data.items)) list = data.data.items; // Search items are here
-    else if (data.data && Array.isArray(data.data.result_list)) list = data.data.result_list; // Possible variation
+    else if (data.data && Array.isArray(data.data.items)) list = data.data.items;
+    else if (data.data && Array.isArray(data.data.result_list)) list = data.data.result_list;
 
     return list.map((item: any) => normalizeDramaWave(item)).filter((i: UnifiedDrama) => i.id);
 }
 
 export async function getDramaWaveDetail(id: string): Promise<{ drama: any, episodes: any[] }> {
-    return withCache(`dw_detail_v2_${id}`, async () => {
-        // URL: https://sapimu.au/dramawave/api/v1/dramas/xuyr3DtXPt?lang=in&lang=id-ID
-        const data = await fetchInternal(`/dramas/${id}?lang=in&lang=id-ID`);
+    return withCache(`dw_detail_v3_${id}`, async () => {
+        // Format: /dramas/ID?lang=id
+        const data = await fetchInternal(`/dramas/${id}?lang=id`);
 
         if (!data || !data.data) {
             return { drama: null, episodes: [] };
@@ -109,10 +122,29 @@ export async function getDramaWaveDetail(id: string): Promise<{ drama: any, epis
             id: ep.id,
             name: ep.name || `Episode ${index + 1}`,
             index: index,
-            unlock: true, // Proxied content is unlocked
+            unlock: true,
             raw: ep
         }));
 
         return { drama: dramaInfo, episodes };
     }, 60 * 60 * 1000);
+}
+
+/**
+ * Get Video URL for DramaWave
+ */
+export async function getDramaWaveVideoUrl(dramaId: string, episodeNum: number): Promise<string> {
+    try {
+        // Format: /dramas/ID/play/EP?lang=id
+        const url = `/dramas/${dramaId}/play/${episodeNum}?lang=id`;
+        const data = await fetchInternal(url);
+
+        if (data && data.data && data.data.video) {
+            const v = data.data.video;
+            return v.h264_m3u8 || v.h265_m3u8 || v.video_url || v.url || '';
+        }
+    } catch (e) {
+        console.error('[DramaWave] Error fetching video URL:', e);
+    }
+    return '';
 }
