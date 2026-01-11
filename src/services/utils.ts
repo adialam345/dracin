@@ -14,6 +14,8 @@ export const PROXY_LIST = [
     'https://shiny-water-1c5f.cobaakun116.workers.dev',
     'https://twilight-wildflower-192b.mrxnexsus.workers.dev',
     'https://winter-paper-bc72.mrxnexsus.workers.dev',
+    'https://late-cake-20fd.acoba937.workers.dev',
+    'https://proud-wind-d018.bagaass5456.workers.dev',
 ];
 
 const getRandomProxy = () => PROXY_LIST[Math.floor(Math.random() * PROXY_LIST.length)];
