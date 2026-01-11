@@ -18,6 +18,7 @@ import * as StardustTV from '../providers/stardusttv';
 import * as ReelLife from '../providers/reelife';
 import * as Meloshort from '../providers/meloshort';
 import * as Vigloo from '../providers/vigloo';
+import * as Flick from '../providers/flickreels';
 
 export const Providers = {
     Dramabox,
@@ -26,6 +27,7 @@ export const Providers = {
     RadReel,
     DramaWave,
     FlickReels,
+    Flick,
     DramaDash,
     ShortMax,
     StarShort,

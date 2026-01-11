@@ -5,7 +5,7 @@ import { Providers, safeExecute, shuffle, dramaDetailsCache } from './common';
 export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], trending: UnifiedDrama[], latest: UnifiedDrama[] }> {
     return withCache('aggregated_home_final', async () => {
         const {
-            Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
+            Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, Flick, DramaDash,
             ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
             StardustTV, ReelLife, Meloshort, Vigloo
         } = Providers;
@@ -27,7 +27,9 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
             sdtvForYou,
             rlForYou,
             msForYou,
-            vForYou
+            vForYou,
+            flForYou,
+            flTrending
         ] = await Promise.all([
             safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
             safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
@@ -49,15 +51,17 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
             safeExecute(withCache('rl_home', () => ReelLife.getReelLifeForYou()), 'ReelLife ForYou'),
             safeExecute(withCache('ms_home', () => Meloshort.getMeloshortForYou()), 'Meloshort ForYou'),
             safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'Vigloo ForYou'),
+            safeExecute(withCache('flick_home', () => Flick.getFlickHome()), 'Flick Home'),
+            safeExecute(withCache('flick_trending', () => Flick.getFlickTrending()), 'Flick Trending'),
         ]);
 
         // Cache items for Detail fallback
         const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-        [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou].forEach(list => cacheItems(list || []));
+        [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, flForYou, flTrending, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou].forEach(list => cacheItems(list || []));
 
-        const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]);
-        const allTrending = shuffle([...dbTrending, ...mlTrending]);
-        const allLatest = shuffle([...dbLatest, ...mlLatest]);
+        const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...flForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]);
+        const allTrending = shuffle([...dbTrending, ...mlTrending, ...flTrending]);
+        const allLatest = shuffle([...dbLatest, ...mlLatest, ...flTrending.slice(0, 10)]);
 
         return { forYou: allForYou, trending: allTrending, latest: allLatest };
     }, 2 * 60 * 60 * 1000); // Lock order for 2 hours

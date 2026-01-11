@@ -4,11 +4,10 @@ import { wrapProxyImage } from '../../adapter';
 
 export async function fetchUnifiedDramaData(source: string, id: string): Promise<{ drama: any, episodes: any[] }> {
     const {
-        Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
+        Dramabox, Netshort, Melolo, RadReel, FlickReels, Flick, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
         DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
     } = Providers;
-
     // Try to get cached metadata for fallback
     const cached = dramaDetailsCache.get(source + '_' + id);
 
@@ -67,6 +66,25 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
                     episodeDetailsCache.set(source + '_' + id, frResult.episodes);
                 }
                 return frResult;
+            case 'flickreels':
+                const flResult = await Flick.getFlickDetail(id);
+                if (!flResult.drama && cached) {
+                    return {
+                        drama: {
+                            title: cached.title,
+                            cover: cached.cover,
+                            description: cached.description || '',
+                            chapterCount: cached.chapterCount || 0,
+                            labels: [],
+                            source: 'flickreels'
+                        },
+                        episodes: []
+                    };
+                }
+                if (flResult.episodes) {
+                    episodeDetailsCache.set(source + '_' + id, flResult.episodes);
+                }
+                return flResult;
             case 'dramawave':
                 const result = await DramaWave.getDramaWaveDetail(id);
                 if (!result.drama && cached) {
