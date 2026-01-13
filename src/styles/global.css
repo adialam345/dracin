@@ -3,12 +3,21 @@
 @tailwind utilities;
 
 @layer base {
-  body {
+  html, body {
     @apply bg-zinc-950 text-zinc-100 font-sans;
+    width: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
   }
 
   * {
     scroll-behavior: smooth;
+    box-sizing: border-box;
   }
 }
 

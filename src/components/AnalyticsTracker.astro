@@ -123,11 +123,17 @@
      isBlocked = true;
      
      // 1. Force Exit Fullscreen (sangat penting jika user sedang menonton)
-     if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-     } else if ((document as any).webkitFullscreenElement) {
-        (document as any).webkitExitFullscreen();
-     }
+     const exitFS = () => {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+        else if ((document as any).webkitCancelFullScreen) (document as any).webkitCancelFullScreen();
+        else if ((document as any).mozCancelFullScreen) (document as any).mozCancelFullScreen();
+        else if ((document as any).msExitFullscreen) (document as any).msExitFullscreen();
+     };
+     exitFS();
+     
+     // Double check after a short delay for mobile Safari
+     setTimeout(exitFS, 300);
 
      // 2. Matikan paksa semua video yang sedang diputar
      const videos = document.querySelectorAll('video');
@@ -144,12 +150,33 @@
      
      sessionStorage.removeItem('_sid_v1'); // Clear session
      
-     // 4. Tampilkan Overlay Blokir
+      // 4. Tampilkan Overlay Blokir
+     document.body.style.overflow = 'hidden'; // Prevent scroll
      if(document.getElementById('kick-overlay')) return;
 
      const overlay = document.createElement('div');
      overlay.id = 'kick-overlay';
-     overlay.className = 'fixed inset-0 z-[9999] bg-zinc-950 flex flex-col items-center justify-center p-4 text-center animate-fade-in';
+     overlay.className = 'fixed inset-0 z-[2147483647] bg-zinc-950 flex flex-col items-center justify-center p-4 text-center animate-fade-in';
+     
+     // Reset viewport and prevent zoom
+     const meta = document.querySelector('meta[name="viewport"]');
+     if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+
+     Object.assign(overlay.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        right: '0',
+        bottom: '0',
+        width: '100%',
+        height: '100%',
+        zIndex: '2147483647',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+     });
+
      overlay.innerHTML = `
         <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,6 +190,40 @@
         </a>
      `;
      document.body.appendChild(overlay);
+  }
+
+  function handleMaintenance(data: any) {
+     // 1. Force Exit Fullscreen (comprehensive)
+     const exitFS = () => {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+        else if ((document as any).webkitCancelFullScreen) (document as any).webkitCancelFullScreen();
+        else if ((document as any).mozCancelFullScreen) (document as any).mozCancelFullScreen();
+        else if ((document as any).msExitFullscreen) (document as any).msExitFullscreen();
+     };
+     exitFS();
+     
+     // Double check after a short delay for mobile Safari
+     setTimeout(exitFS, 300);
+
+     // 2. Kill all videos
+     const videos = document.querySelectorAll('video');
+     videos.forEach(v => {
+        try {
+           v.pause();
+           v.src = "";
+           v.load();
+           v.remove();
+        } catch(e) {}
+     });
+
+     // 3. Show Dynamic Overlay (if function exists from MaintenanceNotice)
+     if ((window as any).showGlobalMaintenance) {
+        (window as any).showGlobalMaintenance(data.message, data.expectedReturn);
+     } else {
+        // Fallback if component not loaded or script not ready
+        window.location.reload();
+     }
   }
 
   // Delayed tracking to ensure DOM is ready with retry logic
@@ -199,6 +260,17 @@
     evtSource.onmessage = (event) => {
         if (event.data === 'kick') {
              handleBlock();
+        } else if (event.data.startsWith('maintenance|')) {
+             const dataStr = event.data.replace('maintenance|', '');
+             try {
+                const data = JSON.parse(dataStr);
+                if (data.isMaintenance) {
+                   handleMaintenance(data);
+                } else {
+                   // If maintenance turned off, reload
+                   if(document.getElementById('maint-overlay')) window.location.reload();
+                }
+             } catch(e) {}
         }
     };
     

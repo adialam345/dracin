@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav.astro';
 import ContinueWatching from '../components/ContinueWatching.astro';
 import SearchModal from '../components/SearchModal.astro';
 import AnalyticsTracker from '../components/AnalyticsTracker.astro';
+import MaintenanceNotice from '../components/MaintenanceNotice.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -35,7 +36,7 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
 <html lang="id" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
     
@@ -94,6 +95,7 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <ContinueWatching />
     <SearchModal />
     <AnalyticsTracker />
+    <MaintenanceNotice />
     {/* Global Loading Bar */}
     <div id="loading-bar" class="loading-bar"></div>
 

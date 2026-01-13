@@ -42,7 +42,7 @@ export const GET: APIRoute = async ({ request }) => {
                 }
             }, 15000);
 
-            // Listener function
+            // Listener functions
             const onKick = (kickedSessionId: string) => {
                 if (kickedSessionId === sessionId) {
                     console.log(`[SSE] Kicking user: ${sessionId}`);
@@ -61,13 +61,24 @@ export const GET: APIRoute = async ({ request }) => {
                 }
             };
 
+            const onMaintenance = (data: any) => {
+                console.log(`[SSE] Maintenance signal sent to: ${sessionId}`);
+                try {
+                    controller.enqueue(encoder.encode(`data: maintenance|${JSON.stringify(data)}\n\n`));
+                } catch (e) {
+                    clearInterval(pingInterval);
+                }
+            };
+
             // Subscribe
             store.events.on('kick', onKick);
+            store.events.on('maintenance', onMaintenance);
 
             // Cleanup when connection closes (client disconnects)
             request.signal.addEventListener('abort', () => {
                 console.log(`[SSE] User disconnected: ${sessionId}`);
                 store.events.off('kick', onKick);
+                store.events.off('maintenance', onMaintenance);
                 clearInterval(pingInterval);
             });
         }

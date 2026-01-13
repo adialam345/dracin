@@ -1,0 +1,182 @@
+---
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+let maintenance = { isMaintenance: false, message: '', expectedReturn: '' };
+
+try {
+  const data = await fs.readFile(path.join(process.cwd(), 'public/data/maintenance.json'), 'utf-8');
+  maintenance = JSON.parse(data);
+} catch (e) {
+  // Ignore
+}
+
+const { isMaintenance, message, expectedReturn } = maintenance;
+
+// Don't show maintenance on admin pages so we can disable it
+const isAdminPage = Astro.url.pathname.startsWith('/admin');
+const showMaintenance = isMaintenance && !isAdminPage;
+---
+
+{showMaintenance && (
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md">
+    <div class="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden group">
+      {/* Decorative background */}
+      <div class="absolute -top-24 -left-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl group-hover:bg-red-500/20 transition-all duration-700"></div>
+      <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-700"></div>
+
+      <div class="relative z-10">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-zinc-800 border border-zinc-700 mb-6 shadow-inner relative">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <div class="absolute -top-1 -right-1 flex h-4 w-4">
+             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+             <span class="relative inline-flex rounded-full h-4 w-4 bg-yellow-500"></span>
+          </div>
+        </div>
+
+        <h1 class="text-3xl font-extrabold text-white mb-4 tracking-tight">
+          Maintenance Mode
+        </h1>
+        
+        <p class="text-zinc-400 leading-relaxed mb-8">
+          {message}
+        </p>
+
+        <div class="bg-zinc-800/50 rounded-2xl p-4 border border-zinc-700/50 mb-8">
+          <span class="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Perkiraan Kembali</span>
+          <span class="text-white font-semibold">{expectedReturn}</span>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button onclick="window.location.reload()" class="w-full py-4 bg-white text-black rounded-2xl font-bold hover:bg-zinc-200 transition-all active:scale-95">
+                Coba Segarkan
+            </button>
+            <p class="text-xs text-zinc-500 italic">
+                Kami mohon maaf atas ketidaknyamanannya.
+            </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+<script define:vars={{ initialIsMaintenance: showMaintenance }}>
+  // Maintenance Real-time Checker
+  let isMaintActive = initialIsMaintenance;
+
+  const showMaintOverlay = (message, expectedReturn) => {
+    if (document.getElementById('maint-overlay')) return;
+
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'maint-overlay';
+    overlay.className = 'fixed inset-0 z-[2147483647] flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-fade-in';
+    
+    // Reset viewport and prevent zoom
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      width: '100%',
+      height: '100%',
+      zIndex: '2147483647',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    });
+    
+    overlay.innerHTML = `
+      <div class="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden mx-auto">
+        <div class="absolute -top-24 -left-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
+
+        <div class="relative z-10">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-zinc-800 border border-zinc-700 mb-6 shadow-inner relative">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            <div class="absolute -top-1 -right-1 flex h-4 w-4">
+               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+               <span class="relative inline-flex rounded-full h-4 w-4 bg-yellow-500"></span>
+            </div>
+          </div>
+
+          <h1 class="text-3xl font-extrabold text-white mb-4 tracking-tight">Maintenance Mode</h1>
+          <p class="text-zinc-400 leading-relaxed mb-8">${message}</p>
+
+          <div class="bg-zinc-800/50 rounded-2xl p-4 border border-zinc-700/50 mb-8">
+            <span class="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Perkiraan Kembali</span>
+            <span class="text-white font-semibold">${expectedReturn}</span>
+          </div>
+
+          <button onclick="window.location.reload()" class="w-full py-4 bg-white text-black rounded-2xl font-bold hover:bg-zinc-200 transition-all active:scale-95">
+              Coba Segarkan
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  };
+
+  (window as any).showGlobalMaintenance = showMaintOverlay;
+
+  const checkMaintenance = async () => {
+    // Skip if on admin page
+    if (window.location.pathname.startsWith('/admin')) return;
+
+    try {
+      const res = await fetch('/api/maintenance', { cache: 'no-store' });
+      const data = await res.json();
+
+      if (data.isMaintenance) {
+        isMaintActive = true;
+        
+        // 1. Force exit fullscreen (comprehensive)
+        const exitFS = () => {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+          else if ((document as any).webkitCancelFullScreen) (document as any).webkitCancelFullScreen();
+          else if ((document as any).mozCancelFullScreen) (document as any).mozCancelFullScreen();
+          else if ((document as any).msExitFullscreen) (document as any).msExitFullscreen();
+        };
+        exitFS();
+        
+        // Retry for mobile Safari
+        setTimeout(exitFS, 300);
+
+        // 2. Kill all videos
+        document.querySelectorAll('video').forEach(v => {
+          try {
+            v.pause();
+            v.src = "";
+            v.load();
+            v.remove();
+          } catch (e) {}
+        });
+
+        // 3. Show dynamic overlay
+        showMaintOverlay(data.message, data.expectedReturn);
+      } else if (isMaintActive && !data.isMaintenance) {
+          // If was active but now not, reload to restore site
+          window.location.reload();
+      }
+    } catch (e) {
+      // Ignore poll errors
+    }
+  };
+
+  // Poll every 5 seconds for very responsive detection during test
+  setInterval(checkMaintenance, 5000);
+  
+  // Also check on tab focus
+  window.addEventListener('focus', checkMaintenance);
+</script>

@@ -318,6 +318,70 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
             </div>
           </div>
         </div>
+
+        <!-- Maintenance Management -->
+        <div class="mt-8 stat-card rounded-2xl border border-red-800/50 overflow-hidden mb-12">
+          <div class="p-6 border-b border-red-800/50">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+              Sistem Maintenance
+            </h2>
+          </div>
+          
+          <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              <div class="space-y-6">
+                <div class="flex items-center justify-between p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
+                  <div>
+                    <h3 class="font-bold text-white">Status Maintenance</h3>
+                    <p class="text-xs text-zinc-500">Aktifkan untuk menampilkan halaman pemeliharaan ke semua user.</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="maintStatus" class="sr-only peer">
+                    <div class="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  </label>
+                </div>
+
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Pesan Maintenance</label>
+                    <textarea id="maintMessage" rows="3" class="w-full bg-zinc-900/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 outline-none transition-all resize-none" placeholder="Masukkan pesan yang akan ditampilkan ke user..."></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Perkiraan Kembali</label>
+                    <input type="text" id="maintReturn" class="w-full bg-zinc-900/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 outline-none transition-all" placeholder="Contoh: 1 jam lagi, Pukul 12:00 WIB, dsb." />
+                  </div>
+                  <button id="saveMaintBtn" class="w-full py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan Konfigurasi Maintenance
+                  </button>
+                </div>
+              </div>
+              
+              <div class="bg-zinc-950/50 border border-zinc-800 rounded-2xl p-6">
+                <h3 class="text-sm font-bold text-zinc-500 mb-4 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Preview Tampilan User
+                </h3>
+                <div class="border border-zinc-800 rounded-xl p-4 bg-zinc-900/30">
+                   <div class="flex flex-col items-center text-center">
+                     <div class="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                     </div>
+                     <h4 class="font-bold text-sm mb-1">Maintenance Mode</h4>
+                     <p id="previewMaintMessage" class="text-[10px] text-zinc-500 line-clamp-2 mb-3">Pesan akan muncul di sini...</p>
+                     <div class="bg-zinc-800/50 rounded-lg p-2 w-full text-center border border-zinc-700/30">
+                        <p class="text-[8px] text-zinc-500 uppercase font-bold">Kembali pukul:</p>
+                        <p id="previewMaintReturn" class="text-xs font-bold">-</p>
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -913,7 +977,75 @@ if (!sessionCookie || !validateSession(sessionCookie.value)) {
          }
       };
 
+      // --- Maintenance Logic ---
+      async function fetchMaintenance() {
+          try {
+              const res = await fetch('/api/admin/maintenance');
+              if(res.ok) {
+                  const data = await res.json();
+                  (document.getElementById('maintStatus') as HTMLInputElement).checked = data.isMaintenance;
+                  (document.getElementById('maintMessage') as HTMLTextAreaElement).value = data.message;
+                  (document.getElementById('maintReturn') as HTMLInputElement).value = data.expectedReturn;
+                  updateMaintPreview();
+              }
+          } catch(e) {
+              console.error(e);
+          }
+      }
+
+      function updateMaintPreview() {
+          const msg = (document.getElementById('maintMessage') as HTMLTextAreaElement).value;
+          const ret = (document.getElementById('maintReturn') as HTMLInputElement).value;
+          document.getElementById('previewMaintMessage').textContent = msg || 'Pesan akan muncul di sini...';
+          document.getElementById('previewMaintReturn').textContent = ret || '-';
+      }
+
+      document.getElementById('maintMessage')?.addEventListener('input', updateMaintPreview);
+      document.getElementById('maintReturn')?.addEventListener('input', updateMaintPreview);
+
+      document.getElementById('saveMaintBtn')?.addEventListener('click', async () => {
+          const btn = document.getElementById('saveMaintBtn');
+          const isMaintenance = (document.getElementById('maintStatus') as HTMLInputElement).checked;
+          const message = (document.getElementById('maintMessage') as HTMLTextAreaElement).value;
+          const expectedReturn = (document.getElementById('maintReturn') as HTMLInputElement).value;
+
+          try {
+              btn.disabled = true;
+              const originalBtnHTML = btn.innerHTML;
+              btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Menyimpan...`;
+              
+              const res = await fetch('/api/admin/maintenance', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ isMaintenance, message, expectedReturn })
+              });
+
+              if(res.ok) {
+                  showToast('Konfigurasi maintenance berhasil disimpan!');
+              } else {
+                  throw new Error('Failed');
+              }
+              
+              // Restore state on success (before finally just in case)
+              btn.disabled = false;
+              btn.innerHTML = originalBtnHTML;
+          } catch(e) {
+              console.error(e);
+              showToast('Gagal menyimpan konfigurasi', 'error');
+              // Restore state on error
+              btn.disabled = false;
+              btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Konfigurasi Maintenance`;
+          } finally {
+              // Final fallback
+              if (btn.disabled) {
+                btn.disabled = false;
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Konfigurasi Maintenance`;
+              }
+          }
+      });
+
       // Initial Load
+      fetchMaintenance();
       fetchUpdates();
 
     </script>
