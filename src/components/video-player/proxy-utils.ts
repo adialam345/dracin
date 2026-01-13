@@ -1,23 +1,10 @@
 import { encrypt } from '../../utils/security';
 
 export const VIDEO_PROXIES = [
-    'https://rapid-shadow-ff75.cobaakun116.workers.dev/',
-    'https://shiny-water-1c5f.cobaakun116.workers.dev/',
-    'https://twilight-wildflower-192b.mrxnexsus.workers.dev/',
-    'https://winter-paper-bc72.mrxnexsus.workers.dev/',
-    'https://late-cake-20fd.acoba937.workers.dev/',
-    'https://proud-wind-d018.bagaass5456.workers.dev/',
-    'https://plain-recipe-e04b.adialam345.workers.dev/',
-    'https://weathered-recipe-4654.thinkaboutzuu.workers.dev/',
-    'https://cold-term-8847.cobaa8853.workers.dev/',
-    'https://super-brook-9cf2.cobaa614.workers.dev/',
-    'https://muddy-wood-2580.isthatkidi.workers.dev/',
-    'https://tight-sea-4556.allaboutjijiyaya.workers.dev/',
-    'https://young-sky-0806.kidicursor.workers.dev/',
-    'https://black-bar-8145.kidicursor7.workers.dev/',
-    'https://noisy-bird-9259.kidicursor8.workers.dev/',
-    'https://dry-paper-962e.kidicursor85.workers.dev/',
-    'https://tiny-wildflower-eb1c.kidicursor11.workers.dev/',
+    'https://videoproxy.cobaakun116.workers.dev/',
+    'https://video-proxy.mrxnexsus.workers.dev/',
+    'https://video.adialam347.workers.dev',
+    'https://video.thinkaboutzuu.workers.dev',
 ];
 
 export const VPS_PROXY = '/api/proxy';
@@ -50,7 +37,7 @@ export const getAllProxyOptions = (url: string, source: string): string[] => {
     const proxyProviders = [
         'dramawave', 'dramaflickreels', 'radreel', 'melolo', 'dramadash',
         'dramabox', 'shortmax', 'freeshort', 'stardusttv', 'dotdrama',
-        'reelife', 'meloshort', 'starshort', 'vividshort', 'shorttv', 'dashshort', 'hishort'
+        'reelife', 'meloshort', 'starshort', 'vividshort', 'shorttv', 'dashshort'
     ];
 
     if (proxyProviders.includes(source) || url.includes('dramaboxdb.com') || url.includes('wolftv.online')) {
