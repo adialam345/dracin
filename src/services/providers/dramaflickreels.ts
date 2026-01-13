@@ -86,11 +86,18 @@ export async function getFlickReelsForYou(): Promise<UnifiedDrama[]> {
 
         if (!response.ok) return [];
         const data = await response.json();
+
+        if (data && data.code === 2019) {
+            console.warn('[FlickReels] Token expired (Code 2019). Need fresh Token.');
+            return [];
+        }
+
         if (!data || !data.data) return [];
+        const resultItems = data.data;
 
         let allItems: any[] = [];
-        if (Array.isArray(data.data)) {
-            data.data.forEach((group: any) => {
+        if (Array.isArray(resultItems)) {
+            resultItems.forEach((group: any) => {
                 if (group.list && Array.isArray(group.list)) {
                     allItems.push(...group.list);
                 }
@@ -276,6 +283,11 @@ export async function searchFlickReels(query: string): Promise<UnifiedDrama[]> {
 
         if (!response.ok) return [];
         const data = await response.json();
+
+        if (data && data.code === 2019) {
+            console.warn('[FlickReels] Search Token expired (Code 2019).');
+            return [];
+        }
 
         if (!data || !data.data) return [];
 
