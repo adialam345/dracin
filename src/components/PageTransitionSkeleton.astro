@@ -1,0 +1,392 @@
+---
+/**
+ * PageTransitionSkeleton - Shows context-aware skeleton loading during page transitions
+ * Detects the target URL and shows the appropriate skeleton template
+ */
+---
+
+<!-- Page Transition Skeleton Overlay -->
+<div id="page-transition-skeleton" class="fixed inset-0 z-[100] bg-zinc-950 pointer-events-none opacity-0 transition-opacity duration-200 hidden overflow-y-auto">
+  
+  <!-- Home/Grid Skeleton (default) -->
+  <div id="skeleton-home" class="skeleton-template hidden">
+    <div class="container mx-auto px-4 py-12 md:py-20">
+      
+      <!-- Hero Section Skeleton -->
+      <section class="mb-12 text-center max-w-5xl mx-auto">
+        <!-- DramaIn Title -->
+        <div class="mb-6 flex justify-center">
+          <div class="skeleton h-16 md:h-20 w-64 md:w-80 rounded-2xl"></div>
+        </div>
+        
+        <!-- Subtitle -->
+        <div class="space-y-2 mb-5 max-w-lg mx-auto">
+          <div class="skeleton h-6 w-full rounded-lg mx-auto"></div>
+          <div class="skeleton h-6 w-3/4 rounded-lg mx-auto"></div>
+        </div>
+
+        <!-- Provider Marquee Skeleton -->
+        <div class="mb-6 flex justify-center gap-3 overflow-hidden">
+          <div class="skeleton h-10 w-24 rounded-xl"></div>
+          <div class="skeleton h-10 w-28 rounded-xl"></div>
+          <div class="skeleton h-10 w-20 rounded-xl"></div>
+          <div class="skeleton h-10 w-24 rounded-xl"></div>
+          <div class="skeleton h-10 w-28 rounded-xl hidden sm:block"></div>
+          <div class="skeleton h-10 w-20 rounded-xl hidden md:block"></div>
+        </div>
+
+        <!-- Search Button Skeleton -->
+        <div class="flex justify-center">
+          <div class="skeleton h-14 w-48 rounded-full"></div>
+        </div>
+      </section>
+
+      <!-- Section 1: Rekomendasi -->
+      <div class="space-y-16">
+        <section>
+          <div class="flex items-end justify-between mb-8 px-2">
+            <div class="skeleton h-8 w-64 rounded-lg"></div>
+            <div class="skeleton h-1 w-20 rounded-full"></div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
+                  <div class="absolute inset-0 skeleton-shimmer-fast"></div>
+                  <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
+                  <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+                    <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+                    <div class="h-3 w-1/2 rounded skeleton-shimmer-fast"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <!-- Section 2: Trending -->
+        <section>
+          <div class="flex items-end justify-between mb-8 px-2">
+            <div class="skeleton h-8 w-48 rounded-lg"></div>
+            <div class="skeleton h-1 w-20 rounded-full"></div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div class="skeleton-card-transition" style={`animation-delay: ${(i + 6) * 50}ms`}>
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
+                  <div class="absolute inset-0 skeleton-shimmer-fast"></div>
+                  <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
+                  <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+                    <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Page Skeleton -->
+  <div id="skeleton-detail" class="skeleton-template hidden">
+    <div class="container mx-auto px-4 py-24">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <!-- Mobile layout -->
+        <div class="lg:hidden">
+          <div class="flex gap-4">
+            <div class="flex-shrink-0 w-32 sm:w-40">
+              <div class="skeleton rounded-xl aspect-[2/3]"></div>
+            </div>
+            <div class="flex-1 flex flex-col justify-between py-1">
+              <div class="space-y-2">
+                <div class="skeleton h-6 w-full rounded"></div>
+                <div class="skeleton h-6 w-3/4 rounded"></div>
+                <div class="skeleton h-5 w-24 rounded-full"></div>
+              </div>
+              <div class="skeleton h-12 w-full rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desktop sidebar -->
+        <div class="hidden lg:block lg:col-span-1">
+          <div class="skeleton rounded-2xl aspect-[2/3] mb-6"></div>
+          <div class="skeleton h-14 w-full rounded-lg"></div>
+        </div>
+
+        <!-- Content area -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="skeleton h-10 w-3/4 rounded-lg hidden lg:block"></div>
+          <div class="hidden lg:flex gap-4">
+            <div class="skeleton h-8 w-28 rounded-full"></div>
+            <div class="skeleton h-8 w-36 rounded-full"></div>
+          </div>
+          
+          <!-- Labels -->
+          <div class="flex flex-wrap gap-2">
+            <div class="skeleton h-10 w-20 rounded-lg"></div>
+            <div class="skeleton h-10 w-24 rounded-lg"></div>
+            <div class="skeleton h-10 w-16 rounded-lg"></div>
+          </div>
+
+          <!-- Synopsis -->
+          <div class="space-y-2">
+            <div class="skeleton h-6 w-32 rounded mb-3"></div>
+            <div class="skeleton h-4 w-full rounded"></div>
+            <div class="skeleton h-4 w-full rounded"></div>
+            <div class="skeleton h-4 w-3/4 rounded"></div>
+          </div>
+
+          <!-- Episodes -->
+          <div>
+            <div class="skeleton h-6 w-40 rounded mb-4"></div>
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div class="skeleton h-10 rounded-lg" style={`animation-delay: ${i * 30}ms`}></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watch/Video Page Skeleton -->
+  <div id="skeleton-watch" class="skeleton-template hidden">
+    <div class="container mx-auto px-4 py-24">
+      <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Back button skeleton -->
+        <div class="flex justify-between mb-8">
+          <div class="skeleton h-10 w-40 rounded-full"></div>
+          <div class="skeleton h-8 w-20 rounded-full"></div>
+        </div>
+        
+        <!-- Video player skeleton -->
+        <div class="skeleton rounded-2xl aspect-video w-full"></div>
+        
+        <!-- Episode info skeleton -->
+        <div class="skeleton rounded-2xl p-6 space-y-3">
+          <div class="skeleton h-8 w-3/4 rounded"></div>
+          <div class="skeleton h-4 w-full rounded"></div>
+          <div class="skeleton h-4 w-2/3 rounded"></div>
+        </div>
+
+        <!-- Episode grid skeleton -->
+        <div class="skeleton rounded-2xl p-6">
+          <div class="flex justify-between mb-6">
+            <div class="skeleton h-6 w-40 rounded"></div>
+            <div class="skeleton h-6 w-24 rounded"></div>
+          </div>
+          <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div class="skeleton aspect-square rounded-lg" style={`animation-delay: ${i * 25}ms`}></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Page Skeleton -->
+  <div id="skeleton-search" class="skeleton-template hidden">
+    <div class="container mx-auto px-4 py-24">
+      <!-- Search header -->
+      <div class="mb-8 space-y-4">
+        <div class="skeleton h-12 w-full max-w-2xl mx-auto rounded-full"></div>
+        <div class="flex justify-center gap-2">
+          <div class="skeleton h-8 w-20 rounded-full"></div>
+          <div class="skeleton h-8 w-24 rounded-full"></div>
+          <div class="skeleton h-8 w-16 rounded-full"></div>
+        </div>
+      </div>
+      <!-- Results grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
+            <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
+              <div class="absolute inset-0 skeleton-shimmer-fast"></div>
+              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+                <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Page Skeleton (Trending, etc.) -->
+  <div id="skeleton-category" class="skeleton-template hidden">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="skeleton h-10 w-56 rounded-lg mb-2"></div>
+        <div class="skeleton h-5 w-80 rounded-lg"></div>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
+            <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
+              <div class="absolute inset-0 skeleton-shimmer-fast"></div>
+              <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
+              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+                <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+                <div class="h-3 w-1/2 rounded skeleton-shimmer-fast"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .skeleton-card-transition {
+    animation: skeletonCardFadeIn 0.3s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes skeletonCardFadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+
+  .skeleton-shimmer-fast {
+    background: linear-gradient(
+      135deg,
+      rgba(39, 39, 42, 0.9) 0%,
+      rgba(63, 63, 70, 0.7) 50%,
+      rgba(39, 39, 42, 0.9) 100%
+    );
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton-shimmer-fast::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.06) 45%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.06) 55%,
+      transparent 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerFast 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes shimmerFast {
+    0% {
+      background-position: 100% center;
+    }
+    100% {
+      background-position: -100% center;
+    }
+  }
+
+  .skeleton-template {
+    padding-top: 60px; /* Account for header */
+  }
+</style>
+
+<script>
+  function initPageTransitionSkeleton() {
+    const skeletonContainer = document.getElementById('page-transition-skeleton');
+    if (!skeletonContainer) return;
+
+    const templates = {
+      home: document.getElementById('skeleton-home'),
+      category: document.getElementById('skeleton-category'),
+      detail: document.getElementById('skeleton-detail'),
+      watch: document.getElementById('skeleton-watch'),
+      search: document.getElementById('skeleton-search'),
+    };
+
+    let isNavigating = false;
+    let showSkeletonTimeout: ReturnType<typeof setTimeout>;
+    let targetUrl = '';
+
+    // Determine which skeleton to show based on URL
+    function getSkeletonType(url: string): string {
+      const path = new URL(url, window.location.origin).pathname;
+      
+      if (path.startsWith('/watch/')) return 'watch';
+      if (path.startsWith('/movie/')) return 'detail';
+      if (path === '/search' || path.startsWith('/search')) return 'search';
+      if (path.startsWith('/category/')) return 'category';
+      if (path === '/' || path === '') return 'home';
+      
+      return 'category'; // Default to category for other list pages
+    }
+
+    // Show the appropriate skeleton template
+    function showSkeleton(type: string) {
+      // Hide all templates first
+      Object.values(templates).forEach(t => t?.classList.add('hidden'));
+      
+      // Show the matching template
+      const template = templates[type as keyof typeof templates];
+      if (template) {
+        template.classList.remove('hidden');
+      }
+    }
+
+    // Show skeleton when navigation starts
+    document.addEventListener('astro:before-preparation', (e: any) => {
+      isNavigating = true;
+      targetUrl = e.to?.href || '';
+      
+      // Only show skeleton after a small delay to avoid flash on fast navigations
+      showSkeletonTimeout = setTimeout(() => {
+        if (isNavigating && targetUrl) {
+          const skeletonType = getSkeletonType(targetUrl);
+          showSkeleton(skeletonType);
+          
+          skeletonContainer.classList.remove('hidden');
+          requestAnimationFrame(() => {
+            skeletonContainer.classList.add('opacity-100');
+            skeletonContainer.classList.remove('opacity-0');
+          });
+        }
+      }, 100); // Show after 100ms delay
+    });
+
+    // Hide skeleton when page is ready
+    document.addEventListener('astro:page-load', () => {
+      isNavigating = false;
+      clearTimeout(showSkeletonTimeout);
+      
+      skeletonContainer.classList.add('opacity-0');
+      skeletonContainer.classList.remove('opacity-100');
+      
+      setTimeout(() => {
+        skeletonContainer.classList.add('hidden');
+        // Hide all templates
+        Object.values(templates).forEach(t => t?.classList.add('hidden'));
+      }, 200);
+    });
+
+    // Also hide on swap complete
+    document.addEventListener('astro:after-swap', () => {
+      isNavigating = false;
+      clearTimeout(showSkeletonTimeout);
+    });
+  }
+
+  // Initialize immediately
+  initPageTransitionSkeleton();
+  
+  // Re-initialize on page load (for View Transitions)
+  document.addEventListener('astro:page-load', initPageTransitionSkeleton);
+</script>

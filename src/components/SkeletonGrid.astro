@@ -1,0 +1,83 @@
+---
+interface Props {
+  count?: number;
+}
+
+const { count = 6 } = Astro.props;
+---
+
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+  {Array.from({ length: count }).map((_, i) => (
+    <div class="skeleton-card" style={`animation-delay: ${i * 100}ms`}>
+      <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3]">
+        {/* Poster skeleton */}
+        <div class="absolute inset-0 skeleton-shimmer"></div>
+        
+        {/* Badge skeleton */}
+        <div class="absolute top-2 right-2 w-8 h-4 rounded bg-zinc-800/80 skeleton-shimmer"></div>
+        
+        {/* Text content skeleton */}
+        <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+          <div class="h-4 w-3/4 rounded bg-zinc-800/80 skeleton-shimmer"></div>
+          <div class="h-3 w-1/2 rounded bg-zinc-800/60 skeleton-shimmer"></div>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .skeleton-card {
+    animation: skeletonFadeIn 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes skeletonFadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+      135deg,
+      rgba(39, 39, 42, 0.8) 0%,
+      rgba(63, 63, 70, 0.6) 50%,
+      rgba(39, 39, 42, 0.8) 100%
+    );
+  }
+
+  .skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.03) 45%,
+      rgba(255, 255, 255, 0.08) 48%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.08) 52%,
+      rgba(255, 255, 255, 0.03) 55%,
+      transparent 60%,
+      transparent 100%
+    );
+    background-size: 250% 100%;
+    animation: shimmerWave 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes shimmerWave {
+    0% {
+      background-position: 150% center;
+    }
+    100% {
+      background-position: -150% center;
+    }
+  }
+</style>

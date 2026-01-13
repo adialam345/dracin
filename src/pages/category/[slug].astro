@@ -44,13 +44,15 @@ if (slug) {
 
     {dramas.length > 0 ? (
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-        {dramas.map((drama: any) => (
+        {dramas.map((drama: any, index: number) => (
           <MovieCard
             bookId={drama.id}
             title={drama.title}
             posterUrl={drama.cover}
             description={drama.description}
             source={drama.source}
+            loading={index < 6 ? "eager" : "lazy"}
+            priority={index < 6 ? "high" : "auto"}
           />
         ))}
       </div>

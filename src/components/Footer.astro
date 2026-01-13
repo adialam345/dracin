@@ -28,8 +28,38 @@ const currentYear = new Date().getFullYear();
       <div class="flex items-center gap-4 text-sm text-zinc-500">
         <span>&copy; {currentYear} DramaIn</span>
         <span>•</span>
-        <span>Made By Antarixa</span>
+        <a href="https://www.instagram.com/kidiepie_/" target="_blank" rel="noopener noreferrer" class="hover:scale-105 transition-transform duration-300 font-bold">
+          <span>Made By <span class="animate-text-gradient">Antarixa</span></span>
+        </a>
       </div>
     </div>
   </div>
 </footer>
+
+<style>
+  @media (max-width: 767px) {
+    footer {
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  .animate-text-gradient {
+    background: linear-gradient(
+      to right,
+      #ef4444,
+      #f59e0b,
+      #ef4444
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: textGradient 3s linear infinite;
+  }
+
+  @keyframes textGradient {
+    to {
+      background-position: 200% center;
+    }
+  }
+</style>
+

@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import MovieCard from '../components/MovieCard.astro';
 import ProviderMarquee from '../components/ProviderMarquee.astro';
 import InfoPopup from '../components/InfoPopup.astro';
+import SkeletonGrid from '../components/SkeletonGrid.astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -36,8 +37,9 @@ try {
     
     {/* Clean Hero Section */}
     <section class="mb-12 text-center max-w-5xl mx-auto">
-      <h1 class="text-5xl md:text-7xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500 tracking-tight animate-fade-in-up">
-        DramaIn
+      <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight animate-fade-in-up hero-title relative">
+        <span class="hero-title-text">DramaIn</span>
+        <span class="hero-shimmer" aria-hidden="true"></span>
       </h1>
       <p class="text-xl md:text-2xl text-zinc-400 mb-5 font-light leading-relaxed animate-fade-in-up delay-100">
         Akses semua drama dari <span class="text-white font-semibold">17 Platform</span> dalam satu website.<br />
@@ -126,15 +128,47 @@ try {
       )}
 
       {forYouDramas.length === 0 && trendingDramas.length === 0 && latestDramas.length === 0 && (
-        <div class="text-center py-20 bg-zinc-900/40 rounded-3xl border border-white/5 backdrop-blur-sm">
-           <div id="initial-loader" class="mb-4">
-               <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto"></div>
-               <p class="text-zinc-500 mt-2 text-sm">Sedang mencoba memuat konten lainnya...</p>
-           </div>
-           <p class="text-zinc-400 mb-6 hidden" id="error-msg">Gagal memuat data drama. Silakan coba segarkan halaman.</p>
-           <button onclick="window.location.reload()" class="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-colors hidden" id="refresh-btn">
-             Segarkan
-           </button>
+        <div id="skeleton-loading-state" class="space-y-16">
+          {/* Skeleton Section 1 */}
+          <section class="opacity-0 animate-fade-in-up delay-300 fill-mode-forwards">
+            <div class="flex items-end justify-between mb-8 px-2">
+              <div class="space-y-2">
+                <div class="skeleton h-8 w-64 rounded-lg"></div>
+              </div>
+              <div class="skeleton h-1 w-20 rounded-full"></div>
+            </div>
+            <SkeletonGrid count={6} />
+          </section>
+
+          {/* Skeleton Section 2 */}
+          <section class="opacity-0 animate-fade-in-up delay-[400ms] fill-mode-forwards">
+            <div class="flex items-end justify-between mb-8 px-2">
+              <div class="space-y-2">
+                <div class="skeleton h-8 w-48 rounded-lg"></div>
+              </div>
+              <div class="skeleton h-1 w-20 rounded-full"></div>
+            </div>
+            <SkeletonGrid count={6} />
+          </section>
+
+          {/* Skeleton Section 3 */}
+          <section class="opacity-0 animate-fade-in-up delay-[500ms] fill-mode-forwards">
+            <div class="flex items-end justify-between mb-8 px-2">
+              <div class="space-y-2">
+                <div class="skeleton h-8 w-40 rounded-lg"></div>
+              </div>
+              <div class="skeleton h-1 w-20 rounded-full"></div>
+            </div>
+            <SkeletonGrid count={6} />
+          </section>
+
+          {/* Error State (hidden by default) */}
+          <div id="error-state" class="hidden text-center py-20 bg-zinc-900/40 rounded-3xl border border-white/5 backdrop-blur-sm">
+            <p class="text-zinc-400 mb-6" id="error-msg">Gagal memuat data drama. Silakan coba segarkan halaman.</p>
+            <button onclick="window.location.reload()" class="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-colors" id="refresh-btn">
+              Segarkan
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -232,10 +266,13 @@ try {
        if (loader) loader.style.display = 'none';
     } catch (e) {
        console.error('[Home] Fetch failed:', e);
-       if (loader) {
-           loader.style.display = 'none';
-           document.getElementById('error-msg')?.classList.remove('hidden');
-           document.getElementById('refresh-btn')?.classList.remove('hidden');
+       // Hide skeleton and show error state
+       const skeletonState = document.getElementById('skeleton-loading-state');
+       const errorState = document.getElementById('error-state');
+       if (skeletonState && errorState) {
+         skeletonState.innerHTML = '';
+         skeletonState.appendChild(errorState);
+         errorState.classList.remove('hidden');
        }
     }
   };
@@ -243,4 +280,114 @@ try {
   // Run on every View Transition navigation (including initial load)
   document.addEventListener('astro:page-load', initHome);
 </script>
+
+<style>
+  .hero-title {
+    display: inline-block;
+    position: relative;
+  }
+
+  .hero-title-text {
+    display: inline-block;
+    background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #e4e4e7 25%,
+      #a1a1aa 50%,
+      #71717a 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))
+            drop-shadow(0 8px 25px rgba(0, 0, 0, 0.3));
+  }
+
+  .hero-shimmer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 35%,
+      rgba(255, 255, 255, 0.15) 40%,
+      rgba(255, 255, 255, 0.5) 45%,
+      rgba(255, 255, 255, 0.9) 48%,
+      #ffffff 50%,
+      rgba(255, 255, 255, 0.9) 52%,
+      rgba(255, 255, 255, 0.5) 55%,
+      rgba(255, 255, 255, 0.15) 60%,
+      transparent 65%,
+      transparent 100%
+    );
+    background-size: 250% 100%;
+    animation: shimmer3D 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    pointer-events: none;
+    z-index: 2;
+    /* Clip shimmer to the text shape */
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+  }
+
+  .hero-shimmer::before {
+    content: 'DramaIn';
+  }
+
+  @keyframes shimmer3D {
+    0% {
+      background-position: 150% center;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      background-position: -150% center;
+      opacity: 0;
+    }
+  }
+
+  /* Subtle ambient glow behind the title */
+  .hero-title::before {
+    content: 'DramaIn';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #a1a1aa 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: blur(35px);
+    opacity: 0.4;
+    z-index: 0;
+    animation: glowPulse 5s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.02);
+    }
+  }
+</style>
 </Layout>

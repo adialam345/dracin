@@ -117,6 +117,24 @@ const providers = [
        {/* Cards injected by JS */}
     </div>
 
+    {/* Skeleton Loading Grid - shown while searching */}
+    {query && (
+      <div id="skeleton-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10 animate-fade-in-up delay-200 transition-opacity duration-300">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div class="skeleton-card" style={`animation-delay: ${i * 60}ms`}>
+            <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3]">
+              <div class="absolute inset-0 skeleton"></div>
+              <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton"></div>
+              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+                <div class="h-4 w-3/4 rounded skeleton"></div>
+                <div class="h-3 w-1/2 rounded skeleton"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
     {/* Empty State (Hidden by default) */}
     <div id="empty-state" class="hidden text-center py-24 animate-fade-in-up">
         <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-zinc-900/50 border border-white/5 mb-6">
@@ -173,9 +191,22 @@ const providers = [
       const grid = document.getElementById('results-grid');
       const statusArea = document.getElementById('status-area');
       const emptyState = document.getElementById('empty-state');
+      const skeletonGrid = document.getElementById('skeleton-grid');
       let totalFound = 0;
       const seenIds = new Set();
       let searchDone = false;
+      let skeletonHidden = false;
+
+      // Hide skeleton when first result arrives or search is done
+      function hideSkeleton() {
+        if (!skeletonHidden && skeletonGrid) {
+          skeletonGrid.classList.add('opacity-0', 'pointer-events-none');
+          setTimeout(() => {
+            skeletonGrid.classList.add('hidden');
+          }, 300);
+          skeletonHidden = true;
+        }
+      }
 
       const sourceLabels = {
         dramabox: { label: 'DB', color: 'bg-red-600/90' },
@@ -204,6 +235,7 @@ const providers = [
           if (event.data === '[DONE]') {
               evtSource.close();
               searchDone = true;
+              hideSkeleton();
               updateStatus();
               if (totalFound === 0) {
                   emptyState.classList.remove('hidden');
@@ -268,6 +300,7 @@ const providers = [
                       // Append as HTML
                       grid.insertAdjacentHTML('beforeend', cardHtml);
                   });
+                  hideSkeleton();
                   updateStatus();
               }
           } catch(e) {

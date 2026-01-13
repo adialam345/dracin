@@ -7,6 +7,7 @@ import ContinueWatching from '../components/ContinueWatching.astro';
 import SearchModal from '../components/SearchModal.astro';
 import AnalyticsTracker from '../components/AnalyticsTracker.astro';
 import MaintenanceNotice from '../components/MaintenanceNotice.astro';
+import PageTransitionSkeleton from '../components/PageTransitionSkeleton.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -96,6 +97,7 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <SearchModal />
     <AnalyticsTracker />
     <MaintenanceNotice />
+    <PageTransitionSkeleton />
     {/* Global Loading Bar */}
     <div id="loading-bar" class="loading-bar"></div>
 

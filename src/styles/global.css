@@ -45,6 +45,44 @@
   .fill-mode-forwards {
     animation-fill-mode: forwards;
   }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Skeleton Loading Utilities */
+  .skeleton {
+    @apply bg-zinc-800/60 rounded;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.04) 45%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.04) 55%,
+      transparent 60%,
+      transparent 100%
+    );
+    background-size: 250% 100%;
+    animation: skeletonShimmer 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 150% center;
+  }
+  100% {
+    background-position: -150% center;
+  }
 }
 
 @keyframes fadeInUp {

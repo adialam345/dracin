@@ -24,28 +24,38 @@ const sourceLabels = {
   freeshort: { label: 'FS', color: 'bg-indigo-600/90' },
   hishort: { label: 'HS', color: 'bg-fuchsia-600/90' },
   goodshort: { label: 'GS', color: 'bg-teal-500/90' },
-  dotdrama: { label: 'DTD', color: 'bg-rose-600/90' }, // DotDrama
-  stardusttv: { label: 'SD', color: 'bg-sky-500/90' }, // StardustTV
-  reelife: { label: 'RL', color: 'bg-orange-600/90' }, // ReelLife
-  meloshort: { label: 'MS', color: 'bg-rose-500/90' }, // Meloshort - using slightly different color from DotDrama/DB
-  vigloo: { label: 'VG', color: 'bg-black/90' }, // Vigloo - using black for variety
-
+  dotdrama: { label: 'DTD', color: 'bg-rose-600/90' },
+  stardusttv: { label: 'SD', color: 'bg-sky-500/90' },
+  reelife: { label: 'RL', color: 'bg-orange-600/90' },
+  meloshort: { label: 'MS', color: 'bg-rose-500/90' },
+  vigloo: { label: 'VG', color: 'bg-black/90' },
 };
 
 const badge = source ? sourceLabels[source] : null;
+const isEager = loading === 'eager';
 ---
 
 <a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative" data-astro-prefetch>
   <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] transition-all duration-500 ease-out group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
-    <img
-      src={posterUrl}
-      alt={title}
-      loading={loading}
-      fetchpriority={priority}
-      class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 opacity-0"
-      onload="this.classList.remove('opacity-0')"
-      onerror="window.handleImageError?.(this)"
-    />
+    {isEager ? (
+      <img
+        src={posterUrl}
+        alt={title}
+        loading="eager"
+        fetchpriority={priority}
+        class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 opacity-0"
+        onload="this.classList.remove('opacity-0')"
+        onerror="window.handleImageError?.(this)"
+      />
+    ) : (
+      <img
+        data-src={posterUrl}
+        alt={title}
+        class="w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 opacity-0 lazy-image"
+        onload="this.classList.remove('opacity-0')"
+        onerror="window.handleImageError?.(this)"
+      />
+    )}
 
     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
 
@@ -78,7 +88,7 @@ const badge = source ? sourceLabels[source] : null;
 </a>
 
 <script is:inline>
-  // Handle image load errors (e.g., HEIC format not supported)
+  // Handle image load errors
   if (!window.handleImageError) {
     window.handleImageError = function(img) {
       img.style.display = 'none';
@@ -99,4 +109,36 @@ const badge = source ? sourceLabels[source] : null;
       }
     };
   }
+
+  // Intersection Observer for lazy loading
+  if (!window.lazyImageObserver) {
+    window.lazyImageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const src = img.dataset.src;
+          if (src) {
+            img.src = src;
+            img.removeAttribute('data-src');
+            img.classList.remove('lazy-image');
+          }
+          observer.unobserve(img);
+        }
+      });
+    }, {
+      rootMargin: '200px 0px', // Start loading 200px before entering viewport
+      threshold: 0.01
+    });
+  }
+
+  // Observe all lazy images
+  function observeLazyImages() {
+    document.querySelectorAll('img.lazy-image[data-src]').forEach(img => {
+      window.lazyImageObserver.observe(img);
+    });
+  }
+
+  // Run on page load and View Transitions
+  observeLazyImages();
+  document.addEventListener('astro:page-load', observeLazyImages);
 </script>
