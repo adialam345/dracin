@@ -16,8 +16,8 @@ interface Props {
 }
 
 const {
-  title = 'DramaIn - Platform Streaming Drama Terbaik',
-  description = 'Nonton drama gratis dari DramaBox, NetShort, RadReel, ShortMax, StarShort, DramaWave, Melolo, FlickReels, GoodShort, HiShort, FreeShort, dan DramaDash. Platform streaming modern, cepat, dan ringan.',
+  title = 'DramaIn - Nonton Dracin & Drama Asia Gratis Sub Indo',
+  description = 'Nonton drama china (dracin), drama korea, dan drama asia lainnya gratis sub indo. Akses dari DramaBox, ShortMax, StarShort, dan 14+ platform lainnya tanpa biaya.',
   image = '/og-image.png',
   hideFooter = false
 } = Astro.props;
@@ -67,6 +67,7 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "DramaIn",
+      "alternateName": "Nontonin",
       "url": "https://nontonin.site",
       "potentialAction": {
         "@type": "SearchAction",
@@ -74,6 +75,8 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
         "query-input": "required name=search_term_string"
       }
     })} />
+
+    <slot name="head" />
 
     {/* Mobile Web App Meta Tags */}
     <meta name="theme-color" content="#09090b" />

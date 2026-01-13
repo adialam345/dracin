@@ -5,6 +5,7 @@ export const VIDEO_PROXIES = [
     'https://video-proxy.mrxnexsus.workers.dev/',
     'https://video.adialam347.workers.dev',
     'https://video.thinkaboutzuu.workers.dev',
+    'https://old-leaf-1ebb.olirmais.workers.dev',
 ];
 
 export const VPS_PROXY = '/api/proxy';
