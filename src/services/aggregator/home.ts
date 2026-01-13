@@ -3,7 +3,7 @@ import { withCache } from '../utils';
 import { Providers, safeExecute, shuffle, dramaDetailsCache } from './common';
 
 export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], trending: UnifiedDrama[], latest: UnifiedDrama[] }> {
-    return withCache('aggregated_home_final', async () => {
+    return withCache('aggregated_home_v2', async () => {
         const {
             Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
             ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
@@ -42,7 +42,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
             safeExecute(withCache('sm_home', () => ShortMax.getShortMaxForYou()), 'ShortMax ForYou'),
             safeExecute(withCache('ss_home', () => StarShort.getStarShortForYou()), 'StarShort ForYou'),
             safeExecute(withCache('fs_home', () => FreeShort.getFreeShortForYou()), 'FreeShort ForYou'),
-            safeExecute(withCache('hs_home', () => HiShort.getHiShortHome()), 'HiShort ForYou'),
+            safeExecute(withCache('hs_home_v2', () => HiShort.getHiShortHome()), 'HiShort ForYou'),
             safeExecute(withCache('gs_home', () => GoodShort.getGoodShortHome()), 'GoodShort ForYou'),
             safeExecute(withCache('dotd_home', () => DotDrama.getDotDramaForYou()), 'DotDrama ForYou'),
             safeExecute(withCache('sdtv_home', () => StardustTV.getStardustTVForYou()), 'StardustTV ForYou'),

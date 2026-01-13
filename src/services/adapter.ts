@@ -181,12 +181,12 @@ export function normalizeShortMax(data: any): UnifiedDrama {
 
 export function normalizeHiShort(data: any): UnifiedDrama {
     return {
-        id: String(data.slug || data.drama_id || data.id || ''),
-        title: data.title || data.name || '',
-        cover: wrapProxyImage(data.cover || data.poster),
-        description: data.description || data.synopsis || '',
+        id: String(data.vidId || data.slug || data.drama_id || data.id || ''),
+        title: data.vidName || data.title || data.name || '',
+        cover: wrapProxyImage(data.coverUrl || data.cover || data.poster),
+        description: data.vidDescribe || data.description || data.synopsis || '',
         source: 'hishort',
-        chapterCount: data.total_episodes || data.episodes_count || 0,
+        chapterCount: data.totalNum || data.total_episodes || data.episodes_count || 0,
         raw: data
     };
 }

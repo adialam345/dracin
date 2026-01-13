@@ -32,6 +32,10 @@ export function getProxyHeaders(targetUrl: string, incomingHeaders: Headers): Re
         headers['Origin'] = 'https://www.vividshort.com';
         headers['Referer'] = 'https://www.vividshort.com/';
     }
+    else if (targetUrl.includes('hishorttv.com')) {
+        headers['Origin'] = 'https://www.hishorttv.com';
+        headers['Referer'] = 'https://www.hishorttv.com/';
+    }
     else if (targetUrl.includes('netshort.com')) {
         headers['Referer'] = 'https://www.netshort.com/';
         headers['Accept'] = '*/*';

@@ -179,7 +179,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             const parts = episodeId.split('_');
             const episodeNum = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
 
-            videoUrl = await withCache(`sm_video_${bookId}_${episodeNum}`, () => ShortMax.getShortMaxVideoUrl(bookId, episodeNum), 45 * 60 * 1000);
+            videoUrl = await withCache(`sm_video_${bookId}_${episodeNum}`, () => ShortMax.getShortMaxVideoUrl(bookId, episodeNum), 5 * 60 * 1000);
 
             if (!videoUrl) {
                 const result = await ShortMax.getShortMaxDetail(bookId);

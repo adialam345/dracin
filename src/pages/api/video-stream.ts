@@ -39,13 +39,16 @@ export const GET: APIRoute = async ({ url, request }) => {
         const videoUrl = await fetchVideoUrl(source, bookId, episodeId);
 
         // Return JSON directly - the real video URL is hidden because it goes through /api/proxy
-        // The videoUrl returned here is either already a proxy URL or will be proxied by the player
+        // Token-based providers should have short or no cache to avoid expiry issues
+        const sensitiveProviders = ['shortmax', 'hishort', 'starshort', 'freeshort', 'dramawave'];
+        const ttl = sensitiveProviders.includes(source) ? 60 : 3600; // 1 min for sensitive, 1 hour for others
+
         return new Response(JSON.stringify({ videoUrl }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=7200, s-maxage=7200',
-                'Cloudflare-CDN-Cache-Control': 'max-age=7200'
+                'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
+                'Cloudflare-CDN-Cache-Control': `max-age=${ttl}`
             }
         });
     } catch (error) {

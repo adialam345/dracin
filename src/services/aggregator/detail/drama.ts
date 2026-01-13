@@ -24,7 +24,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
         // Generative fallback for simple providers
         if (['meloshort', 'dotdrama', 'vigloo', 'shortmax', 'freeshort', 'hishort', 'goodshort'].includes(source)) {
             const episodes = Array.from({ length: cached.chapterCount || 0 }, (_, i) => ({
-                id: source === 'shortmax' ? `${id}_${i + 1}` : String(i + 1),
+                id: ['shortmax', 'hishort', 'freeshort'].includes(source) ? `${id}_${i + 1}` : String(i + 1),
                 name: 'Episode ' + (i + 1),
                 index: i,
                 unlock: true,
