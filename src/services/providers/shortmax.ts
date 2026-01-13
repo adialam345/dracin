@@ -58,6 +58,24 @@ async function callShortMaxApi(endpoint: string, params: any = {}) {
  * Get Homepage / Trending
  * Updated to use /app/cmsShortPlay/queryPage which includes covers!
  */
+export async function getShortMaxTrending(): Promise<UnifiedDrama[]> {
+    try {
+        const response = await fetch('https://dramabos.asia/api/shortmax/api/v1/foryou?lang=id&page=1');
+        if (!response.ok) return [];
+        const json = await response.json();
+        if (!json || !json.data || !Array.isArray(json.data)) return [];
+        return json.data.map((item: any) => normalizeShortMax({
+            id: String(item.code || item.id),
+            title: item.name,
+            cover: item.cover,
+            description: item.summary,
+            raw: item
+        }));
+    } catch (e) {
+        return [];
+    }
+}
+
 export async function getShortMaxForYou(): Promise<UnifiedDrama[]> {
     try {
         // Endpoint baru dengan valid cover images

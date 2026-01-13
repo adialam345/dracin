@@ -1,37 +1,60 @@
 import type { UnifiedDrama } from '../adapter';
 import { withCache } from '../utils';
-import { Providers, shuffle, dramaDetailsCache } from './common';
+import { Providers, shuffle, dramaDetailsCache, safeExecute } from './common';
 
 export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDrama[]> {
-    const { Dramabox, Melolo, DramaWave, ShortMax, FlickReels, Netshort, Vigloo } = Providers;
+    const {
+        Dramabox, Melolo, DramaWave, ShortMax, FlickReels, Netshort,
+        Vigloo, RadReel, StarShort, ReelLife, Meloshort
+    } = Providers;
     let list: UnifiedDrama[] = [];
 
-    if (slug === 'trending') {
-        const [db, ml] = await Promise.all([Dramabox.getDramaboxTrending(), Melolo.getMeloloTrending()]);
-        list = [...db, ...ml];
-    } else if (slug === 'terbaru') {
-        const [db, ml] = await Promise.all([Dramabox.getDramaboxLatest(), Melolo.getMeloloLatest()]);
-        list = [...db, ...ml];
-    } else if (slug === 'vip') {
-        // Collect VIP/Premium content from multiple providers
-        const [dw, sm, fr, db, v] = await Promise.all([
-            withCache('dw_home', () => DramaWave.getDramaWaveForYou()),
-            withCache('sm_home', () => ShortMax.getShortMaxForYou()),
-            withCache('fr_home', () => FlickReels.getFlickReelsForYou()),
-            Dramabox.getDramaboxForYou(),
-            withCache('v_home', () => Vigloo.getViglooHome())
-        ]);
-        list = [...dw, ...sm, ...fr, ...db, ...v];
-    } else {
-        // Fallback
-        const [db, ns, v] = await Promise.all([
-            Dramabox.getDramaboxForYou(),
-            Netshort.getNetshortForYou(),
-            withCache('v_home', () => Vigloo.getViglooHome())
-        ]);
-        list = [...db, ...ns, ...v];
+    try {
+        if (slug === 'trending') {
+            const results = await Promise.all([
+                safeExecute(Dramabox.getDramaboxTrending(), 'DramaboxTrending'),
+                safeExecute(Melolo.getMeloloTrending(), 'MeloloTrending'),
+                safeExecute(RadReel.getRadReelTrending(), 'RadReelTrending'),
+                safeExecute(FlickReels.getFlickReelsTrending(), 'FlickReelsTrending'),
+                safeExecute(Netshort.getNetshortTrending(), 'NetshortTrending'),
+                safeExecute(ShortMax.getShortMaxTrending(), 'ShortMaxTrending'),
+                safeExecute(StarShort.getStarShortTrending(), 'StarShortTrending'),
+                safeExecute(DramaWave.getDramaWaveTrending(), 'DramaWaveTrending'),
+                safeExecute(Vigloo.getViglooHome(), 'ViglooTrending'),
+                safeExecute(Meloshort.getMeloshortTrending(), 'MeloshortTrending'),
+                safeExecute(ReelLife.getReelLifeTrending(), 'ReelLifeTrending'),
+            ]);
+            list = results.flat();
+        } else if (slug === 'terbaru') {
+            const results = await Promise.all([
+                safeExecute(Dramabox.getDramaboxLatest(), 'DramaboxLatest'),
+                safeExecute(Melolo.getMeloloLatest(), 'MeloloLatest')
+            ]);
+            list = results.flat();
+        } else if (slug === 'vip') {
+            const results = await Promise.all([
+                safeExecute(withCache('dw_home', () => DramaWave.getDramaWaveForYou()), 'DramaWaveVIP'),
+                safeExecute(withCache('sm_home', () => ShortMax.getShortMaxForYou()), 'ShortMaxVIP'),
+                safeExecute(withCache('fr_home', () => FlickReels.getFlickReelsForYou()), 'FlickReelsVIP'),
+                safeExecute(Dramabox.getDramaboxForYou(), 'DramaboxVIP'),
+                safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'ViglooVIP')
+            ]);
+            list = results.flat();
+        } else {
+            const results = await Promise.all([
+                safeExecute(Dramabox.getDramaboxForYou(), 'DramaboxHome'),
+                safeExecute(Netshort.getNetshortForYou(), 'NetshortHome'),
+                safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'ViglooHome')
+            ]);
+            list = results.flat();
+        }
+    } catch (e) {
+        console.error(`[Aggregator] Fatal error fetching category ${slug}:`, e);
     }
 
-    list.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
+    if (!Array.isArray(list)) list = [];
+    list.forEach(i => {
+        if (i && i.id) dramaDetailsCache.set(i.source + '_' + i.id, i);
+    });
     return shuffle(list);
 }

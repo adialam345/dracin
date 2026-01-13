@@ -24,6 +24,21 @@ async function fetchMeloshort(url: string): Promise<any> {
 /**
  * Get Meloshort Homepage / For You
  */
+/**
+ * Get Meloshort Trending
+ */
+export async function getMeloshortTrending(): Promise<UnifiedDrama[]> {
+    try {
+        const json = await fetchMeloshort(BERANDA_API);
+        if (json && json.code === 0 && json.data?.list) {
+            return json.data.list.map(normalizeMeloshort);
+        }
+        return [];
+    } catch (e) {
+        return [];
+    }
+}
+
 export async function getMeloshortForYou(): Promise<UnifiedDrama[]> {
     try {
         const json = await fetchMeloshort(BERANDA_API);

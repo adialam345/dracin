@@ -158,9 +158,9 @@ export function normalizeDramaDash(data: any): UnifiedDrama {
 export function normalizeFlickReels(data: any): UnifiedDrama {
     return {
         id: String(data.playlet_id || ''),
-        title: data.title || '',
+        title: data.playlet_title || data.title || '',
         cover: wrapProxyImage(data.cover),
-        description: data.introduce || '',
+        description: data.introduce || data.description || '',
         source: 'dramaflickreels',
         chapterCount: data.upload_num ? parseInt(data.upload_num) : 0,
         raw: data

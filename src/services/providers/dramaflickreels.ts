@@ -73,6 +73,18 @@ function getWebHeaders(sign: string) {
 
 // --- EXPORTED FUNCTIONS ---
 
+export async function getFlickReelsTrending(): Promise<UnifiedDrama[]> {
+    try {
+        const response = await fetch('https://dramabos.asia/api/flick/trending');
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (!data || !data.data) return [];
+        return (data.data as any[]).map(item => normalizeFlickReels(item)).filter(i => i.id);
+    } catch (e) {
+        return [];
+    }
+}
+
 export async function getFlickReelsForYou(): Promise<UnifiedDrama[]> {
     try {
         const body = { ...DEFAULT_MOB_BODY, navigation_id: "78" };

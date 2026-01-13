@@ -19,6 +19,31 @@ async function fetchReelLife(url: string): Promise<any> {
 /**
  * Get ReelLife Homepage / For You
  */
+export async function getReelLifeTrending(): Promise<UnifiedDrama[]> {
+    try {
+        const json = await fetchReelLife('https://dramabos.asia/api/reelife/v1/rank');
+        if (!json || !json.ranks) return [];
+
+        let allPrograms: any[] = [];
+        json.ranks.forEach((rank: any) => {
+            if (rank.programs && Array.isArray(rank.programs)) {
+                allPrograms.push(...rank.programs);
+            }
+        });
+
+        const unique = new Map();
+        for (const item of allPrograms) {
+            if (item.id && !unique.has(item.id)) {
+                unique.set(item.id, item);
+            }
+        }
+
+        return Array.from(unique.values()).map(normalizeReelLife);
+    } catch (e) {
+        return [];
+    }
+}
+
 export async function getReelLifeForYou(): Promise<UnifiedDrama[]> {
     try {
         const json = await fetchReelLife(REELLIFE_HOME_API);

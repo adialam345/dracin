@@ -29,6 +29,12 @@ export async function fetchRadReel(endpoint: string): Promise<any> {
     return null;
 }
 
+export async function getRadReelTrending(): Promise<UnifiedDrama[]> {
+    const data = await fetchRadReel('https://dramabos.asia/api/radreel/api/v1/rank?type=1&page=1&lang=id');
+    if (!data || !data.compilationsInfoList) return [];
+    return data.compilationsInfoList.map((item: any) => normalizeRadReel(item)).filter((i: any) => i.id);
+}
+
 export async function getRadReelForYou(): Promise<UnifiedDrama[]> {
     const data = await fetchRadReel('https://cdp.wolftv.online/cdp/compilations_recommend_slot/for_you_recommended?index=0');
     const list = extractList(data);

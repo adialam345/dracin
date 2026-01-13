@@ -23,6 +23,12 @@ export async function fetchStarShort(endpoint: string): Promise<any> {
     return fetchCached(url);
 }
 
+export async function getStarShortTrending(): Promise<UnifiedDrama[]> {
+    const data = await fetchStarShort('/rank?lang=4');
+    if (!data || !data.data) return [];
+    return extractList(data.data);
+}
+
 export async function getStarShortForYou(): Promise<UnifiedDrama[]> {
     const data = await fetchStarShort('/home?lang=4');
 

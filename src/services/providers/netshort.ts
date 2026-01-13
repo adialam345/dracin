@@ -1,6 +1,11 @@
 import { fetchCached, API_BASE } from '../utils';
 import { normalizeAny, type UnifiedDrama } from '../adapter';
 
+export async function getNetshortTrending(): Promise<UnifiedDrama[]> {
+    const data = await fetchCached('https://dramabos.asia/api/netshort/api/drama/discover');
+    return extractList(data);
+}
+
 export async function getNetshortForYou(): Promise<UnifiedDrama[]> {
     const data = await fetchCached(API_BASE + '/netshort/foryou?page=1&size=10');
     return extractList(data);
