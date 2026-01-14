@@ -44,21 +44,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 videoUrl = videoUrl.replace('http://', 'https://');
             }
         } else if (source === 'netshort') {
-            const data = await fetchCached(API_BASE + '/netshort/allepisode?shortPlayId=' + bookId);
-            if (!data) return '';
-            const ep = (data.shortPlayEpisodeInfos || []).find((e: any) => e.episodeId === episodeId);
-            videoUrl = ep?.playVoucher || '';
-
-            if (ep && ep.subtitleList && Array.isArray(ep.subtitleList) && ep.subtitleList.length > 0) {
-                return JSON.stringify({
-                    videoUrl: videoUrl,
-                    subtitles: ep.subtitleList.map((sub: any) => ({
-                        label: sub.subtitleLanguage === 'id_ID' ? 'Indonesia' : sub.subtitleLanguage,
-                        lang: sub.subtitleLanguage || 'id-ID',
-                        url: sub.url
-                    }))
-                });
-            }
+            videoUrl = await Netshort.getNetshortVideoUrl(bookId, episodeId);
         } else if (source === 'radreel') {
             if (episodeId === '0') {
                 const cached = dramaDetailsCache.get('radreel_' + bookId);

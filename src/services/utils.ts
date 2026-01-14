@@ -178,6 +178,10 @@ export async function fetchCached(url: string, retries: number = 3, headers: any
 }
 
 export async function fetchFromEndpoint(url: string, retries: number = 3, delay: number = 300, headers: any = {}): Promise<any> {
+    // Skip proxy for dramabos.asia - it's already our proxy!
+    // But we'll still use the retry logic below for robustness
+    const isDirect = url.includes('dramabos.asia');
+
     // Reset dead proxies every hour
     if (Date.now() - lastDeadReset > 3600000) {
         DEAD_PROXIES.clear();
@@ -203,11 +207,14 @@ export async function fetchFromEndpoint(url: string, retries: number = 3, delay:
         }
 
         const currentProxy = availableProxies[i % availableProxies.length];
+        const isFirstAttempt = i === 0;
 
         try {
-            const targetUrl = currentProxy
-                ? `${currentProxy}?url=${encodeURIComponent(url)}`
-                : url;
+            // Priority: Direct for dramabos.asia on 1st attempt, or if no proxies available
+            const shouldFetchDirect = (isDirect && isFirstAttempt) || !currentProxy;
+            const targetUrl = shouldFetchDirect
+                ? url
+                : `${currentProxy}?url=${encodeURIComponent(url)}`;
 
             const text = await httpsRequest(targetUrl, headers);
 

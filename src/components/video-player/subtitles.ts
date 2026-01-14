@@ -35,7 +35,13 @@ export const addSubtitleTracks = (videoElement: HTMLVideoElement, source: string
         }
 
         // Auto-select ID
-        if (!defaultSet && (sub.lang === 'id-ID' || sub.lang === 'id' || sub.label.includes('Indonesia'))) {
+        const isIndonesian = sub.lang === 'id-ID' ||
+            sub.lang === 'id_ID' ||
+            sub.lang === 'id' ||
+            sub.label.toLowerCase().includes('indonesia') ||
+            sub.label.toLowerCase().includes('indo');
+
+        if (!defaultSet && isIndonesian) {
             track.default = true;
             defaultSet = true;
             console.log('[VideoPlayer] Auto-selecting External Subtitle:', sub.label);
@@ -44,7 +50,10 @@ export const addSubtitleTracks = (videoElement: HTMLVideoElement, source: string
 
         // Force track to show if it is default (needed for some browsers)
         if (track.default) {
-            (track as any).track.mode = 'showing';
+            // Some browsers require a small delay after appending
+            setTimeout(() => {
+                if (track.track) track.track.mode = 'showing';
+            }, 100);
         }
     });
 

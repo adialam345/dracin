@@ -38,7 +38,7 @@ export const getAllProxyOptions = (url: string, source: string): string[] => {
     const proxyProviders = [
         'dramawave', 'dramaflickreels', 'radreel', 'melolo', 'dramadash',
         'dramabox', 'shortmax', 'freeshort', 'stardusttv', 'dotdrama',
-        'reelife', 'meloshort', 'starshort', 'vividshort', 'shorttv', 'dashshort'
+        'reelife', 'meloshort', 'starshort', 'vividshort', 'shorttv', 'dashshort', 'netshort'
     ];
 
     if (proxyProviders.includes(source) || url.includes('dramaboxdb.com') || url.includes('wolftv.online')) {

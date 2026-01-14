@@ -145,6 +145,7 @@ const breadcrumbSchema = {
                     <a
                       href={`/watch/${source}/${bookId}/${episode.id}`}
                       data-episode-id={episode.id}
+                      data-astro-prefetch="false"
                       class={`group relative flex items-center justify-center aspect-square rounded-lg text-sm font-semibold transition-all duration-300 border ${
                         isActive
                           ? 'bg-cyan-500 border-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-105 z-10'

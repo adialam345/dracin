@@ -275,10 +275,12 @@ export async function initPlayer() {
                         }
 
                         if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
-                            const idSub = hls.subtitleTracks.findIndex((t: any) =>
-                                (t.lang && (t.lang.toLowerCase() === 'id' || t.lang.toLowerCase().includes('indo'))) ||
-                                (t.name && t.name.toLowerCase().includes('indo'))
-                            );
+                            const idSub = hls.subtitleTracks.findIndex((t: any) => {
+                                const lang = (t.lang || '').toLowerCase();
+                                const name = (t.name || '').toLowerCase();
+                                return lang === 'id' || lang === 'id_id' || lang === 'id-id' ||
+                                    lang.includes('indo') || name.includes('indo') || name.includes('indonesia');
+                            });
                             if (idSub !== -1) {
                                 console.log('[VideoPlayer] Auto-selecting HLS Subtitle:', hls.subtitleTracks[idSub].name);
                                 hls.subtitleTrack = idSub;
