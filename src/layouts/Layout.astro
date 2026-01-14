@@ -41,10 +41,19 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
     
-    {/* Optimized Font Connection */}
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    {/* Resource Hints for APIs and Content */}
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://images.weserv.nl" />
+    <link rel="dns-prefetch" href="https://dramabos.asia" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://images.weserv.nl" crossorigin />
+
+    {/* Optimized Font Connection */}
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
     <ViewTransitions />
 
     <title>{title}</title>
@@ -97,20 +106,33 @@ Astro.response.headers.set('Strict-Transport-Security', 'max-age=31536000; inclu
     <SearchModal />
     <AnalyticsTracker />
     <MaintenanceNotice />
-    <PageTransitionSkeleton />
+    <PageTransitionSkeleton transition:persist />
     {/* Global Loading Bar */}
-    <div id="loading-bar" class="loading-bar"></div>
+    <div id="loading-bar" class="loading-bar" transition:persist></div>
 
     <script>
       // Global Page Transition Loading Bar
       document.addEventListener('astro:before-preparation', () => {
         const bar = document.getElementById('loading-bar');
-        if (bar) bar.classList.add('loading-bar-animate');
+        if (bar) {
+          bar.classList.remove('is-finished');
+          bar.classList.add('is-loading');
+        }
       });
 
       document.addEventListener('astro:page-load', () => {
         const bar = document.getElementById('loading-bar');
-        if (bar) bar.classList.remove('loading-bar-animate');
+        if (bar) {
+          bar.classList.remove('is-loading');
+          bar.classList.add('is-finished');
+          
+          // Reset bar after animation finished
+          setTimeout(() => {
+            if (!bar.classList.contains('is-loading')) {
+              bar.classList.remove('is-finished');
+            }
+          }, 800);
+        }
       });
     </script>
   </body>

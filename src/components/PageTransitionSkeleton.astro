@@ -6,7 +6,7 @@
 ---
 
 <!-- Page Transition Skeleton Overlay -->
-<div id="page-transition-skeleton" class="fixed inset-0 z-[100] bg-zinc-950 pointer-events-none opacity-0 transition-opacity duration-200 hidden overflow-y-auto">
+<div id="page-transition-skeleton" class="fixed inset-0 z-[100] bg-zinc-950 pointer-events-none opacity-0 transition-opacity duration-500 hidden overflow-y-auto">
   
   <!-- Home/Grid Skeleton (default) -->
   <div id="skeleton-home" class="skeleton-template hidden">
@@ -49,14 +49,11 @@
             <div class="skeleton h-1 w-20 rounded-full"></div>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
-                <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
-                  <div class="absolute inset-0 skeleton-shimmer-fast"></div>
-                  <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
-                  <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
-                    <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
-                    <div class="h-3 w-1/2 rounded skeleton-shimmer-fast"></div>
+            {Array.from({ length: 4 }).map((_, i) => (
+            <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] skeleton">
+                  <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2 z-10">
+                    <div class="h-4 w-3/4 rounded bg-white/5"></div>
                   </div>
                 </div>
               </div>
@@ -71,13 +68,11 @@
             <div class="skeleton h-1 w-20 rounded-full"></div>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div class="skeleton-card-transition" style={`animation-delay: ${(i + 6) * 50}ms`}>
-                <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
-                  <div class="absolute inset-0 skeleton-shimmer-fast"></div>
-                  <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div class="skeleton-card-transition" style={`animation-delay: ${(i + 4) * 50}ms`}>
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] skeleton">
                   <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
-                    <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+                    <div class="h-4 w-3/4 rounded bg-white/5"></div>
                   </div>
                 </div>
               </div>
@@ -142,7 +137,7 @@
           <div>
             <div class="skeleton h-6 w-40 rounded mb-4"></div>
             <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-              {Array.from({ length: 24 }).map((_, i) => (
+              {Array.from({ length: 12 }).map((_, i) => (
                 <div class="skeleton h-10 rounded-lg" style={`animation-delay: ${i * 30}ms`}></div>
               ))}
             </div>
@@ -179,7 +174,7 @@
             <div class="skeleton h-6 w-24 rounded"></div>
           </div>
           <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
-            {Array.from({ length: 24 }).map((_, i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <div class="skeleton aspect-square rounded-lg" style={`animation-delay: ${i * 25}ms`}></div>
             ))}
           </div>
@@ -202,12 +197,11 @@
       </div>
       <!-- Results grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
-            <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
-              <div class="absolute inset-0 skeleton-shimmer-fast"></div>
-              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
-                <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
+            <div class="relative overflow-hidden rounded-2xl aspect-[2/3] skeleton">
+              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2 z-10">
+                <div class="h-4 w-3/4 rounded bg-white/5"></div>
               </div>
             </div>
           </div>
@@ -227,14 +221,11 @@
 
       <!-- Grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div class="skeleton-card-transition" style={`animation-delay: ${i * 50}ms`}>
-            <div class="relative overflow-hidden rounded-2xl aspect-[2/3]">
-              <div class="absolute inset-0 skeleton-shimmer-fast"></div>
-              <div class="absolute top-2 right-2 w-8 h-4 rounded skeleton-shimmer-fast"></div>
-              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2">
-                <div class="h-4 w-3/4 rounded skeleton-shimmer-fast"></div>
-                <div class="h-3 w-1/2 rounded skeleton-shimmer-fast"></div>
+            <div class="relative overflow-hidden rounded-2xl aspect-[2/3] skeleton">
+              <div class="absolute bottom-0 left-0 right-0 p-5 space-y-2 z-10">
+                <div class="h-4 w-3/4 rounded bg-white/5"></div>
               </div>
             </div>
           </div>
@@ -257,42 +248,16 @@
     }
   }
 
-  .skeleton-shimmer-fast {
-    background: linear-gradient(
-      135deg,
-      rgba(39, 39, 42, 0.9) 0%,
-      rgba(63, 63, 70, 0.7) 50%,
-      rgba(39, 39, 42, 0.9) 100%
-    );
-    position: relative;
-    overflow: hidden;
+  /* Ensure skeleton container doesn't stop child animations during opacity transition */
+  #page-transition-skeleton {
+    will-change: opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0); /* Force GPU layer */
   }
 
-  .skeleton-shimmer-fast::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      105deg,
-      transparent 0%,
-      transparent 40%,
-      rgba(255, 255, 255, 0.06) 45%,
-      rgba(255, 255, 255, 0.15) 50%,
-      rgba(255, 255, 255, 0.06) 55%,
-      transparent 60%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmerFast 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-
-  @keyframes shimmerFast {
-    0% {
-      background-position: 100% center;
-    }
-    100% {
-      background-position: -100% center;
-    }
+  /* Keep all skeleton animations running even during parent fade */
+  #page-transition-skeleton .skeleton::after {
+    animation-play-state: running !important;
   }
 
   .skeleton-template {
@@ -301,17 +266,14 @@
 </style>
 
 <script>
-  function initPageTransitionSkeleton() {
-    const skeletonContainer = document.getElementById('page-transition-skeleton');
-    if (!skeletonContainer) return;
-
-    const templates = {
-      home: document.getElementById('skeleton-home'),
-      category: document.getElementById('skeleton-category'),
-      detail: document.getElementById('skeleton-detail'),
-      watch: document.getElementById('skeleton-watch'),
-      search: document.getElementById('skeleton-search'),
-    };
+  /**
+   * Refined Page Transition Skeleton Controller
+   * Handles the visibility and template selection of the persisted skeleton
+   */
+  (function() {
+    // Only initialize once globally
+    if ((window as any)._skeletonInitialized) return;
+    (window as any)._skeletonInitialized = true;
 
     let isNavigating = false;
     let showSkeletonTimeout: ReturnType<typeof setTimeout>;
@@ -319,74 +281,134 @@
 
     // Determine which skeleton to show based on URL
     function getSkeletonType(url: string): string {
-      const path = new URL(url, window.location.origin).pathname;
-      
-      if (path.startsWith('/watch/')) return 'watch';
-      if (path.startsWith('/movie/')) return 'detail';
-      if (path === '/search' || path.startsWith('/search')) return 'search';
-      if (path.startsWith('/category/')) return 'category';
-      if (path === '/' || path === '') return 'home';
-      
-      return 'category'; // Default to category for other list pages
-    }
-
-    // Show the appropriate skeleton template
-    function showSkeleton(type: string) {
-      // Hide all templates first
-      Object.values(templates).forEach(t => t?.classList.add('hidden'));
-      
-      // Show the matching template
-      const template = templates[type as keyof typeof templates];
-      if (template) {
-        template.classList.remove('hidden');
+      try {
+        const path = new URL(url, window.location.origin).pathname;
+        
+        if (path.startsWith('/watch/')) return 'watch';
+        if (path.startsWith('/movie/')) return 'detail';
+        if (path.startsWith('/search')) return 'search';
+        if (path === '/category' || path.startsWith('/category/')) return 'category';
+        if (path === '/info') return 'category';
+        if (path === '/' || path === '') return 'home';
+        
+        return 'category';
+      } catch(e) {
+        return 'category';
       }
     }
 
     // Show skeleton when navigation starts
     document.addEventListener('astro:before-preparation', (e: any) => {
+      const skeletonContainer = document.getElementById('page-transition-skeleton');
+      if (!skeletonContainer) return;
+
       isNavigating = true;
       targetUrl = e.to?.href || '';
       
-      // Only show skeleton after a small delay to avoid flash on fast navigations
+      // Clean up previous timeout
+      if (showSkeletonTimeout) clearTimeout(showSkeletonTimeout);
+
+      // Show skeleton after a small delay to avoid flash on fast navigations
       showSkeletonTimeout = setTimeout(() => {
         if (isNavigating && targetUrl) {
-          const skeletonType = getSkeletonType(targetUrl);
-          showSkeleton(skeletonType);
+          const type = getSkeletonType(targetUrl);
+          
+          // Show the matching template
+          const templates = skeletonContainer.querySelectorAll('.skeleton-template');
+          templates.forEach(t => t.classList.add('hidden'));
+          
+          const targetTemplate = skeletonContainer.querySelector(`#skeleton-${type}`);
+          if (targetTemplate) targetTemplate.classList.remove('hidden');
           
           skeletonContainer.classList.remove('hidden');
           requestAnimationFrame(() => {
-            skeletonContainer.classList.add('opacity-100');
             skeletonContainer.classList.remove('opacity-0');
+            skeletonContainer.classList.add('opacity-100');
           });
         }
-      }, 100); // Show after 100ms delay
+      }, 30);
     });
 
-    // Hide skeleton when page is ready
+    // Hide skeleton when page is ready - ONLY after content is actually rendered
     document.addEventListener('astro:page-load', () => {
       isNavigating = false;
-      clearTimeout(showSkeletonTimeout);
+      if (showSkeletonTimeout) clearTimeout(showSkeletonTimeout);
       
-      skeletonContainer.classList.add('opacity-0');
-      skeletonContainer.classList.remove('opacity-100');
+      const skeletonContainer = document.getElementById('page-transition-skeleton');
+      if (!skeletonContainer) return;
+
+      // Critical: Wait for content to actually appear before hiding skeleton
+      // This prevents the "freeze" where skeleton stops but content isn't visible yet
+      const startTime = Date.now();
+      const maxWaitTime = 2000; // Maximum 2 seconds wait
       
-      setTimeout(() => {
-        skeletonContainer.classList.add('hidden');
-        // Hide all templates
-        Object.values(templates).forEach(t => t?.classList.add('hidden'));
-      }, 200);
+      const isElementVisible = (el: Element | null): boolean => {
+        if (!el) return false;
+        const style = window.getComputedStyle(el);
+        return style.opacity !== '0' && style.display !== 'none' && style.visibility !== 'hidden';
+      };
+      
+      const waitForContent = () => {
+        // Check if REAL content has rendered AND is visible (not skeleton elements)
+        const movieCards = document.querySelectorAll('main a[href*="/movie/"]');
+        const visibleMovieCard = Array.from(movieCards).find(el => isElementVisible(el));
+        
+        const sections = document.querySelectorAll('main section');
+        const visibleSection = Array.from(sections).find(el => {
+          const hasContent = el.querySelector('a[href*="/movie/"], h2, h3');
+          return hasContent && isElementVisible(el);
+        });
+        
+        // Also check that we're not just seeing skeleton elements
+        const onlySkeletons = document.querySelector('#skeleton-loading-state');
+        const timeElapsed = Date.now() - startTime;
+        
+        const hasVisibleContent = visibleMovieCard || visibleSection;
+        
+        if ((hasVisibleContent && !onlySkeletons) || timeElapsed > maxWaitTime) {
+          // Content is ready (or timeout reached)! Now we can safely fade out skeleton
+          requestAnimationFrame(() => {
+            skeletonContainer.classList.remove('opacity-100');
+            skeletonContainer.classList.add('opacity-0');
+            
+            // Wait for CSS transition to complete before hiding
+            setTimeout(() => {
+              if (!isNavigating) {
+                skeletonContainer.classList.add('hidden');
+                const templates = skeletonContainer.querySelectorAll('.skeleton-template');
+                templates.forEach(t => t.classList.add('hidden'));
+              }
+            }, 500);
+          });
+        } else {
+          // Content not ready yet, check again soon
+          // Keep skeleton animating while we wait
+          requestAnimationFrame(() => setTimeout(waitForContent, 75));
+        }
+      };
+
+      // Start checking for content after a small delay
+      setTimeout(waitForContent, 50);
     });
 
-    // Also hide on swap complete
+    // Emergency cleanup on swap error or completion
     document.addEventListener('astro:after-swap', () => {
-      isNavigating = false;
-      clearTimeout(showSkeletonTimeout);
+      // If we are already on the new page but skeleton is still there, 
+      // it might have been missed by page-load in some race conditions
+      if (!isNavigating) {
+        const skeletonContainer = document.getElementById('page-transition-skeleton');
+        if (skeletonContainer && skeletonContainer.classList.contains('opacity-100')) {
+          skeletonContainer.classList.remove('opacity-100');
+          skeletonContainer.classList.add('opacity-0');
+          setTimeout(() => skeletonContainer.classList.add('hidden'), 500);
+        }
+      }
     });
-  }
 
-  // Initialize immediately
-  initPageTransitionSkeleton();
-  
-  // Re-initialize on page load (for View Transitions)
-  document.addEventListener('astro:page-load', initPageTransitionSkeleton);
+    // Handle back/forward buttons
+    window.addEventListener('popstate', () => {
+      isNavigating = false;
+      if (showSkeletonTimeout) clearTimeout(showSkeletonTimeout);
+    });
+  })();
 </script>
