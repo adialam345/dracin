@@ -37,7 +37,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
         }
     }
 
-    const cacheKey = `unified_detail_v2_${source}_${id}`;
+    const cacheKey = `unified_detail_v3_${source}_${id}`;
     const ttl = 30 * 60 * 1000; // 30 minutes
 
     const result = await withCache(cacheKey, async () => {

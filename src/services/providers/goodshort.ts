@@ -70,42 +70,43 @@ export async function searchGoodShort(query: string): Promise<UnifiedDrama[]> {
 }
 
 export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDrama, episodes: any[], videoUrl?: string } | null> {
-    const data = await fetchApi(`/book/${id}`);
+    // 1. Fetch basic info from /book/{id}
+    const bookRes = await fetchApi(`/book/${id}`);
+    const bookInfo = bookRes?.data?.book;
 
-    if (data && data.data && data.data.book) {
-        const info = data.data.book;
-        const chapters = data.data.list || [];
+    if (!bookInfo) return null;
 
-        const drama = normalizeGoodShort(info);
+    const drama = normalizeGoodShort(bookInfo);
 
-        const episodes = chapters.map((ch: any, idx: number) => ({
-            id: ch.id?.toString(),
-            name: ch.chapterName || `Episode ${idx + 1}`,
-            index: idx,
-            unlock: ch.price === 0,
-            raw: ch
-        }));
+    // 2. Fetch full episode list from /chapters/{id}
+    const chaptersRes = await fetchApi(`/chapters/${id}`);
+    let chapters = chaptersRes?.data?.list || chaptersRes?.data || [];
 
-        return { drama, episodes };
+    // Fallback to bookRes's 3 items if /chapters fails
+    if (!Array.isArray(chapters) || chapters.length === 0) {
+        chapters = bookRes?.data?.list || [];
     }
 
-    return null;
+    const episodes = chapters.map((ch: any, idx: number) => ({
+        id: ch.id?.toString(),
+        name: ch.chapterName || `Episode ${idx + 1}`,
+        index: idx,
+        unlock: ch.price === 0,
+        raw: ch
+    }));
+
+    return { drama, episodes };
 }
 
 export async function getGoodShortVideoUrl(bookId: string, episodeId: string): Promise<string> {
-    const data = await fetchApi(`/book/${bookId}`);
+    const data = await fetchApi(`/play/${episodeId}`, { bookId });
 
-    if (data && data.data && data.data.list) {
-        const ep = data.data.list.find((e: any) => String(e.id) === String(episodeId));
-        if (ep) {
-            // Check cdnList or multiVideos
-            if (ep.cdnList && ep.cdnList.length > 0 && ep.cdnList[0].videoPath) {
-                return ep.cdnList[0].videoPath;
-            }
-            if (ep.multiVideos && ep.multiVideos.length > 0 && ep.multiVideos[0].filePath) {
-                return ep.multiVideos[0].filePath;
-            }
-            if (ep.cdn) return ep.cdn;
+    if (data && data.data && data.data.multiVideos) {
+        const videos = data.data.multiVideos;
+        // Prefer 720p or 1080p if available
+        const video = videos.find((v: any) => v.type === '720p') || videos.find((v: any) => v.type === '1080p') || videos[0];
+        if (video && video.filePath) {
+            return video.filePath;
         }
     }
 
