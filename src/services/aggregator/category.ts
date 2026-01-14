@@ -5,7 +5,7 @@ import { Providers, shuffle, dramaDetailsCache, safeExecute } from './common';
 export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDrama[]> {
     const {
         Dramabox, Melolo, DramaWave, ShortMax, FlickReels, Netshort,
-        Vigloo, RadReel, StarShort, ReelLife, Meloshort
+        Vigloo, RadReel, StarShort, ReelLife, Meloshort, GoodShort
     } = Providers;
     let list: UnifiedDrama[] = [];
 
@@ -23,6 +23,7 @@ export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDram
                 safeExecute(Vigloo.getViglooHome(), 'ViglooTrending'),
                 safeExecute(Meloshort.getMeloshortTrending(), 'MeloshortTrending'),
                 safeExecute(ReelLife.getReelLifeTrending(), 'ReelLifeTrending'),
+                safeExecute(GoodShort.getGoodShortTrending(), 'GoodShortTrending'),
             ]);
             list = results.flat();
         } else if (slug === 'terbaru') {

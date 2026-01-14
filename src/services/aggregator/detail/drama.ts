@@ -23,14 +23,17 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
 
         // Generative fallback for simple providers
         if (['meloshort', 'dotdrama', 'vigloo', 'shortmax', 'freeshort', 'hishort', 'goodshort'].includes(source)) {
-            const episodes = Array.from({ length: cached.chapterCount || 0 }, (_, i) => ({
-                id: ['shortmax', 'hishort', 'freeshort'].includes(source) ? `${id}_${i + 1}` : String(i + 1),
-                name: 'Episode ' + (i + 1),
-                index: i,
-                unlock: true,
-                raw: source === 'meloshort' ? { dramaId: id, episodeNum: i + 1 } : { id, episodeNum: i + 1 }
-            }));
-            return { drama: cached, episodes };
+            const count = (cached.chapterCount || 0) > 0 ? (cached.chapterCount as number) : (source === 'hishort' ? 1 : 0);
+            if (count > 0) {
+                const episodes = Array.from({ length: count }, (_, i) => ({
+                    id: ['shortmax', 'hishort', 'freeshort'].includes(source) ? `${id}_${i + 1}` : String(i + 1),
+                    name: 'Episode ' + (i + 1),
+                    index: i,
+                    unlock: true,
+                    raw: source === 'meloshort' ? { dramaId: id, episodeNum: i + 1 } : { id, episodeNum: i + 1 }
+                }));
+                return { drama: cached, episodes };
+            }
         }
     }
 
@@ -114,7 +117,35 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             case 'freeshort':
                 return (await FreeShort.getFreeShortDetail(id)) || { drama: null, episodes: [] };
             case 'hishort':
-                return (await HiShort.getHiShortDetail(id)) || { drama: null, episodes: [] };
+                const hsResult = await HiShort.getHiShortDetail(id);
+                // Merge with cached data to preserve title/cover from home/search
+                const finalHsDrama = hsResult?.drama ? {
+                    ...hsResult.drama,
+                    title: hsResult.drama.title || (cached?.title) || 'HiShort Drama',
+                    cover: hsResult.drama.cover || (cached?.cover) || '',
+                    description: hsResult.drama.description || (cached?.description) || '',
+                    chapterCount: hsResult.drama.chapterCount || (cached?.chapterCount) || 0
+                } : (cached ? { ...cached, source: 'hishort' } : {
+                    id: id,
+                    title: 'HiShort Drama',
+                    cover: '',
+                    description: '',
+                    chapterCount: 0,
+                    source: 'hishort'
+                });
+                let hsEpisodes = hsResult?.episodes || [];
+
+                if (hsEpisodes.length === 0 && finalHsDrama) {
+                    const count = (finalHsDrama.chapterCount || 0) > 0 ? finalHsDrama.chapterCount : 1;
+                    hsEpisodes = Array.from({ length: count || 0 }, (_, i) => ({
+                        id: `${id}_${i + 1}`,
+                        name: 'Episode ' + (i + 1),
+                        index: i,
+                        unlock: true,
+                        raw: { id, episodeNum: i + 1 }
+                    }));
+                }
+                return { drama: finalHsDrama, episodes: hsEpisodes };
             case 'goodshort':
                 const gsResult = await GoodShort.getGoodShortDetail(id);
                 if ((!gsResult || !gsResult.drama) && cached) {

@@ -5,6 +5,10 @@ import { fetchUnifiedDramaData } from '../../../services/aggregator';
 
 const { source, bookId } = Astro.params;
 
+if (source === 'hishort') {
+  return Astro.redirect(`/watch/${source}/${bookId}/${bookId}_1`);
+}
+
 const { drama, episodes } = await fetchUnifiedDramaData(source!, bookId!);
 
 if (!drama) {

@@ -1,47 +1,39 @@
 
 import { normalizeHiShort, type UnifiedDrama } from '../adapter';
+import { fetchCached } from '../utils';
 
 const API_BASE = 'https://dramabos.asia/api/hishort/api/v1';
 
 async function fetchFromApi(endpoint: string) {
     const url = `${API_BASE}${endpoint}`;
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'Referer': 'https://dramabos.asia/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            signal: AbortSignal.timeout(10000)
-        });
-
-        if (!response.ok) {
-            console.error(`[HiShort] API Error ${response.status} for ${url}`);
-            return null;
-        }
-        return await response.json();
-    } catch (e: any) {
-        console.error(`[HiShort] Fetch error for ${url}:`, e.message || e);
-        return null;
-    }
+    return fetchCached(url, 3, {
+        'Accept': 'application/json',
+        'Referer': 'https://dramabos.asia/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
 }
 
 export async function getHiShortHome(): Promise<UnifiedDrama[]> {
-    const data = await fetchFromApi('/modules?tab=4');
-
-    if (!data) return [];
-
-    // Handle both array response and wrapped response (just in case)
-    const modules = Array.isArray(data) ? data : (data.value || data.data || []);
-
-    if (!Array.isArray(modules)) return [];
+    const [data1, data2] = await Promise.all([
+        fetchFromApi('/modules?tab=4'),
+        fetchFromApi('/home?module=12&page=1')
+    ]);
 
     let list: any[] = [];
-    modules.forEach((module: any) => {
-        if (module.videoInfoList && Array.isArray(module.videoInfoList)) {
-            list = [...list, ...module.videoInfoList];
-        } else if (module.list && Array.isArray(module.list)) {
-            list = [...list, ...module.list];
+
+    [data1, data2].forEach(data => {
+        if (!data) return;
+        const items = Array.isArray(data) ? data : (data.value || data.data || data.source || []);
+        if (Array.isArray(items)) {
+            items.forEach((item: any) => {
+                if (item.videoInfoList && Array.isArray(item.videoInfoList)) {
+                    list = [...list, ...item.videoInfoList];
+                } else if (item.vidId) {
+                    list.push(item);
+                } else if (item.list && Array.isArray(item.list)) {
+                    list = [...list, ...item.list];
+                }
+            });
         }
     });
 
@@ -66,15 +58,49 @@ export async function searchHiShort(query: string): Promise<UnifiedDrama[]> {
 }
 
 export async function getHiShortDetail(id: string): Promise<{ drama: UnifiedDrama, episodes: any[] } | null> {
-    // We try to fetch the first episode to verify it exists
+    // 1. Verify existence and get basic status
     const data = await fetchFromApi(`/video/${id}?ep=1`);
 
-    if (!data || !data.playUrl) return null;
+    // If not found or error code returned, return null
+    if (!data || data.code !== undefined || data.message !== undefined) return null;
 
-    // Use placeholder drama object (aggregator will likely override from cache)
-    const drama = normalizeHiShort({ vidId: id });
+    // Check home pages for metadata
+    let meta = null;
+    const homeResponses = await Promise.all([
+        fetchFromApi('/modules?tab=4'),
+        fetchFromApi('/home?module=12&page=1')
+    ]);
 
-    // We don't have an episodes list API, so we return empty and let aggregator generate it from chapterCount
+    for (const homeData of homeResponses) {
+        if (!homeData) continue;
+        const items = Array.isArray(homeData) ? homeData : (homeData.source || homeData.value || homeData.data || []);
+        if (Array.isArray(items)) {
+            // Flatten if needed (modules?tab=4 returns list of modules)
+            for (const item of items) {
+                if (item.videoInfoList && Array.isArray(item.videoInfoList)) {
+                    meta = item.videoInfoList.find((s: any) => String(s.vidId || s.id) === String(id));
+                } else if (String(item.vidId || item.id) === String(id)) {
+                    meta = item;
+                }
+                if (meta) break;
+            }
+        }
+        if (meta) break;
+    }
+
+    // If still not found, try search by ID (very reliable for specific IDs)
+    if (!meta) {
+        const searchResults = await searchHiShort(id);
+        if (searchResults && searchResults.length > 0) {
+            // Find exact match or take first
+            const match = searchResults.find(r => String(r.id) === String(id));
+            if (match) return { drama: match, episodes: [] };
+        }
+    }
+
+    const drama = normalizeHiShort(meta || { vidId: id, totalNum: data.totalNum || 0 });
+
+    // HiShort doesn't have a reliable episode list API, so aggregator will generate it
     return { drama, episodes: [] };
 }
 
@@ -93,9 +119,17 @@ export async function getHiShortVideoUrl(episodeId: string): Promise<string> {
         ep = parseInt(parts[1]) || 1;
     }
 
+    // Try multiple times if playUrl is missing (some episodes might need a moment or different params)
     const data = await fetchFromApi(`/video/${dramaId}?ep=${ep}`);
 
-    if (!data || !data.playUrl) return '';
+    if (!data || !data.playUrl) {
+        // Fallback: try without ep param if it's episode 1
+        if (ep === 1) {
+            const data2 = await fetchFromApi(`/video/${dramaId}`);
+            if (data2 && data2.playUrl) return data2.playUrl;
+        }
+        return '';
+    }
 
     return data.playUrl;
 }

@@ -33,9 +33,10 @@ const sourceLabels = {
 
 const badge = source ? sourceLabels[source] : null;
 const isEager = loading === 'eager';
+const watchUrl = source === 'hishort' ? `/watch/${source}/${bookId}/${bookId}_1` : `/movie/${source || 'dramabox'}/${bookId}`;
 ---
 
-<a href={`/movie/${source || 'dramabox'}/${bookId}`} class="group block relative" data-astro-prefetch>
+<a href={watchUrl} class="group block relative" data-astro-prefetch>
   <div class="relative overflow-hidden rounded-2xl bg-zinc-900/50 aspect-[2/3] transition-all duration-500 ease-out group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
     {isEager ? (
       <img

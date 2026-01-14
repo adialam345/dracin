@@ -1,4 +1,4 @@
-import CryptoJS from 'crypto-js';
+import * as CryptoJS from 'crypto-js';
 
 // 🔑 KEY INI YANG BERHASIL (WEB KEY)
 export const SECRET_KEY = 'shortwebapiaesen';
