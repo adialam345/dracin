@@ -80,15 +80,23 @@ export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDr
 
     // 2. Fetch full episode list from /chapters/{id}
     const chaptersRes = await fetchApi(`/chapters/${id}`);
-    let chapters = chaptersRes?.data?.list || chaptersRes?.data || [];
+    let chapters = chaptersRes?.data?.list || (Array.isArray(chaptersRes?.data) ? chaptersRes.data : []);
 
-    // Fallback to bookRes's 3 items if /chapters fails
-    if (!Array.isArray(chapters) || chapters.length === 0) {
+    // Fallback 1: Try /play/1 if /chapters fails or is empty (often contains full downloadList)
+    if (chapters.length === 0) {
+        const playRes = await fetchApi(`/play/1`, { bookId: id });
+        if (playRes?.data?.downloadList) {
+            chapters = playRes.data.downloadList;
+        }
+    }
+
+    // Fallback 2: to bookRes's 3 items if still empty
+    if (chapters.length === 0) {
         chapters = bookRes?.data?.list || [];
     }
 
     const episodes = chapters.map((ch: any, idx: number) => ({
-        id: ch.id?.toString(),
+        id: ch.id?.toString() || String(idx + 1),
         name: ch.chapterName || `Episode ${idx + 1}`,
         index: idx,
         unlock: ch.price === 0,
@@ -101,12 +109,32 @@ export async function getGoodShortDetail(id: string): Promise<{ drama: UnifiedDr
 export async function getGoodShortVideoUrl(bookId: string, episodeId: string): Promise<string> {
     const data = await fetchApi(`/play/${episodeId}`, { bookId });
 
-    if (data && data.data && data.data.multiVideos) {
-        const videos = data.data.multiVideos;
-        // Prefer 720p or 1080p if available
-        const video = videos.find((v: any) => v.type === '720p') || videos.find((v: any) => v.type === '1080p') || videos[0];
-        if (video && video.filePath) {
-            return video.filePath;
+    if (data && data.data) {
+        // Standard case: real chapter ID used, multiVideos is at top level
+        if (data.data.multiVideos) {
+            const videos = data.data.multiVideos;
+            // Prefer 720p or 1080p if available
+            const video = videos.find((v: any) => v.type === '720p') || videos.find((v: any) => v.type === '1080p') || videos[0];
+            if (video && video.filePath) {
+                return video.filePath;
+            }
+        }
+
+        // Fallback case: index (like 1, 2, 3) used, or API returned full book data in downloadList
+        if (data.data.downloadList && Array.isArray(data.data.downloadList)) {
+            const index = parseInt(episodeId);
+            // Try to find by chapter ID first (if episodeId was actually a real ID but API returned downloadList)
+            // Or find by index if it's a small number
+            const chapter = data.data.downloadList.find((ch: any) => String(ch.id) === episodeId) ||
+                (index > 0 && index <= data.data.downloadList.length ? data.data.downloadList[index - 1] : null);
+
+            if (chapter && chapter.multiVideos) {
+                const videos = chapter.multiVideos;
+                const video = videos.find((v: any) => v.type === '720p') || videos.find((v: any) => v.type === '1080p') || videos[0];
+                if (video && video.filePath) {
+                    return video.filePath;
+                }
+            }
         }
     }
 

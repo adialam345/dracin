@@ -22,7 +22,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
         }
 
         // Generative fallback for simple providers
-        if (['meloshort', 'dotdrama', 'vigloo', 'shortmax', 'freeshort', 'hishort', 'goodshort'].includes(source)) {
+        if (['meloshort', 'dotdrama', 'vigloo', 'shortmax', 'freeshort', 'hishort'].includes(source)) {
             const count = (cached.chapterCount || 0) > 0 ? (cached.chapterCount as number) : (source === 'hishort' ? 1 : 0);
             if (count > 0) {
                 const episodes = Array.from({ length: count }, (_, i) => ({
