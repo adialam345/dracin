@@ -71,6 +71,14 @@ function getWebHeaders(sign: string) {
     };
 }
 
+// --- HELPER ---
+const fetchWithTimeout = (url: string, options: any = {}, timeout = 8000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(id));
+};
+
 // --- EXPORTED FUNCTIONS ---
 
 export async function getFlickReelsTrending(): Promise<UnifiedDrama[]> {
@@ -90,7 +98,7 @@ export async function getFlickReelsForYou(): Promise<UnifiedDrama[]> {
         const body = { ...DEFAULT_MOB_BODY, navigation_id: "78" };
         const sign = generateSign(body);
 
-        const response = await fetch(FLICKREELS_MOB_API + '/navigationColumn', {
+        const response = await fetchWithTimeout(FLICKREELS_MOB_API + '/navigationColumn', {
             method: 'POST',
             headers: { ...FLICKREELS_MOB_HEADERS, 'Sign': sign },
             body: JSON.stringify(body)
@@ -169,7 +177,7 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
     let dramaInfo: any = {};
 
     try {
-        const listRes = await fetch(webListEndpoint, {
+        const listRes = await fetchWithTimeout(webListEndpoint, {
             method: 'POST',
             headers: listHeaders,
             body: JSON.stringify(listBody)
@@ -177,7 +185,10 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
 
         if (listRes.ok) {
             const listData = await listRes.json();
-            if (listData && listData.data && listData.data.list) {
+            if (listData && listData.code === 2019) {
+                console.warn('[FlickReels] Detail Token expired (Code 2019).');
+            }
+            if (listData && listData.data && Array.isArray(listData.data.list)) {
                 const info = listData.data;
                 episodes = info.list.map((ep: any) => ({
                     id: String(ep.chapter_id),
@@ -226,7 +237,7 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
             // Let's use current timestamp
             const timestamp = Math.floor(Date.now() / 1000).toString();
 
-            const downRes = await fetch(FLICKREELS_MOB_API + '/downUrl', {
+            const downRes = await fetchWithTimeout(FLICKREELS_MOB_API + '/downUrl', {
                 method: 'POST',
                 headers: {
                     ...FLICKREELS_MOB_HEADERS,
@@ -238,7 +249,7 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
 
             if (downRes.ok) {
                 const downData = await downRes.json();
-                if (downData.data && downData.data.list) {
+                if (downData.data && Array.isArray(downData.data.list)) {
                     const downList = downData.data.list;
                     // Merge!
                     episodes = episodes.map(ep => {
@@ -270,6 +281,38 @@ export async function getFlickReelsDetail(id: string): Promise<{ drama: any, epi
         }
     }
 
+    // 3. Fallback to aggregator if direct fetch failed significantly
+    if (!dramaInfo.title || episodes.length === 0) {
+        try {
+            const fallbackRes = await fetchWithTimeout(`https://dramabos.asia/api/flick/detail?id=${id}`);
+            if (fallbackRes.ok) {
+                const fbData = await fallbackRes.json();
+                if (fbData && fbData.data) {
+                    const fbDrama = normalizeFlickReels(fbData.data);
+                    dramaInfo = {
+                        title: fbDrama.title,
+                        cover: fbDrama.cover,
+                        description: fbDrama.description || dramaInfo.description,
+                        chapterCount: fbData.data.chapters?.length || fbDrama.chapterCount,
+                        labels: [],
+                        source: 'dramaflickreels'
+                    };
+                    if (fbData.data.chapters && episodes.length === 0) {
+                        episodes = fbData.data.chapters.map((ch: any, idx: number) => ({
+                            id: String(ch.id || ch.chapter_id),
+                            name: ch.title || ch.chapter_title || `Episode ${idx + 1}`,
+                            index: idx,
+                            unlock: true,
+                            raw: { hls_url: ch.url || ch.hls_url || ch.down_url }
+                        }));
+                    }
+                }
+            }
+        } catch (fbErr) {
+            // Ignore fallback error
+        }
+    }
+
     return { drama: dramaInfo, episodes };
 }
 
@@ -283,7 +326,7 @@ export async function searchFlickReels(query: string): Promise<UnifiedDrama[]> {
         const sign = generateSign(body);
         const timestamp = Math.floor(Date.now() / 1000).toString();
 
-        const response = await fetch(FLICKREELS_SEARCH_API + '/search', {
+        const response = await fetchWithTimeout(FLICKREELS_SEARCH_API + '/search', {
             method: 'POST',
             headers: {
                 ...FLICKREELS_MOB_HEADERS,

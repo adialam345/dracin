@@ -29,8 +29,8 @@ export const GET: APIRoute = async ({ url, request }) => {
     try {
         const headers = getProxyHeaders(targetUrl, request.headers);
 
-        // Special handling for NetShort (uses node:https for stability)
-        if (targetUrl.includes('netshort.com')) {
+        // Special handling for NetShort & FlickReels (uses node:https for stability)
+        if (targetUrl.includes('netshort.com') || targetUrl.includes('farsunpteltd.com')) {
             return handleNetShortProxy(targetUrl, headers);
         }
 
@@ -89,7 +89,15 @@ export const GET: APIRoute = async ({ url, request }) => {
 
         // Default Response Assembly (Binary/Generic data)
         if (!response.ok) {
-            return new Response(`Proxy error status:${response.status}`, { status: 500 });
+            const errorText = await response.text().catch(() => '');
+            console.error(`Proxy upstream error: ${response.status} for ${targetUrl}`, errorText.slice(0, 100));
+            return new Response(`Proxy error status:${response.status}`, {
+                status: response.status === 403 || response.status === 429 ? response.status : 500,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'X-Upstream-Status': response.status.toString()
+                }
+            });
         }
 
         return assembleProxyResponse(response, targetUrl);
