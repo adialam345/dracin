@@ -28,7 +28,8 @@ export const getAllProxyOptions = (url: string, source: string): string[] => {
 
     // Rule 1: Priority VPS Proxy for sensitive providers
     const mustUseVps = (source === 'netshort' && shouldUseFallback(url, source)) ||
-        (source === 'vigloo' && url.includes('cloudfront.net'));
+        (source === 'vigloo' && url.includes('cloudfront.net')) ||
+        (source === 'dramaflickreels');
 
     if (mustUseVps) {
         options.push(`${VPS_PROXY}?q=${encryptedQ}`);

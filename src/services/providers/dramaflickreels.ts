@@ -10,11 +10,13 @@ const FLICKREELS_MOB_HEADERS = {
     'bundleIdentifier': 'com.farsun.shortplay',
     'Version': '2.2.2.0',
     'Token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJfIiwiYXVkIjoiXyIsImlhdCI6MTc2NzI5NTM2OSwiZGF0YSI6eyJtZW1iZXJfaWQiOjQ1MTMwNTUwLCJwYWNrYWdlX2lkIjoiMSIsIm1haW5fcGFja2FnZV9pZCI6IjEwMCJ9fQ.U2HoYm4QEZfZ_QU9eGkzOzzQZRPGfeLKIc3qzefchQQ',
-    'Sign': '', // Will be generated dynamically
+    'Sign': '',
     'Content-Type': 'application/json',
     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
     'Accept-Language': 'id-ID;q=1.0',
-    'Timezone': 'Asia/Jakarta'
+    'Timezone': 'Asia/Jakarta',
+    'Origin': 'https://www.flickreels.net',
+    'Referer': 'https://www.flickreels.net/'
 };
 
 const DEFAULT_MOB_BODY = {
@@ -72,7 +74,7 @@ function getWebHeaders(sign: string) {
 }
 
 // --- HELPER ---
-const fetchWithTimeout = (url: string, options: any = {}, timeout = 8000) => {
+const fetchWithTimeout = (url: string, options: any = {}, timeout = 4000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     return fetch(url, { ...options, signal: controller.signal })
@@ -83,7 +85,7 @@ const fetchWithTimeout = (url: string, options: any = {}, timeout = 8000) => {
 
 export async function getFlickReelsTrending(): Promise<UnifiedDrama[]> {
     try {
-        const response = await fetch('https://dramabos.asia/api/flick/trending');
+        const response = await fetchWithTimeout('https://dramabos.asia/api/flick/trending');
         if (!response.ok) return [];
         const data = await response.json();
         if (!data || !data.data) return [];
