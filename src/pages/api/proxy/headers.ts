@@ -77,6 +77,21 @@ export function getProxyHeaders(targetUrl: string, incomingHeaders: Headers): Re
         headers['Origin'] = 'https://www.dramabox.com';
         headers['Referer'] = 'https://www.dramabox.com/';
     }
+    else if (targetUrl.includes('shortime.app')) {
+        headers['Origin'] = 'https://www.shortime.app';
+        headers['Referer'] = 'https://www.shortime.app/';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+        headers['Accept'] = '*/*';
+
+        // Extract _stcookie if present
+        try {
+            const url = new URL(targetUrl);
+            const stCookie = url.searchParams.get('_stcookie');
+            if (stCookie) {
+                headers['Cookie'] = stCookie;
+            }
+        } catch (e) { /* ignore */ }
+    }
     else {
         try {
             headers['Referer'] = new URL(targetUrl).origin + '/';

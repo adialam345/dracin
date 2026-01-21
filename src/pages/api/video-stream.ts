@@ -40,7 +40,7 @@ export const GET: APIRoute = async ({ url, request }) => {
 
         // Return JSON directly - the real video URL is hidden because it goes through /api/proxy
         // Token-based providers should have short or no cache to avoid expiry issues
-        const sensitiveProviders = ['shortmax', 'hishort', 'starshort', 'freeshort', 'dramawave'];
+        const sensitiveProviders = ['shortmax', 'hishort', 'starshort', 'freeshort', 'dramawave', 'shorttime'];
         const ttl = sensitiveProviders.includes(source) ? 60 : 3600; // 1 min for sensitive, 1 hour for others
 
         return new Response(JSON.stringify({ videoUrl }), {

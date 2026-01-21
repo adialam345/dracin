@@ -25,7 +25,7 @@ export const addSubtitleTracks = (videoElement: HTMLVideoElement, source: string
 
         // Use proxy for SRT conversion (DramaWave/FreeShort) OR if non-VTT
         const isSrt = sub.url.includes('.srt');
-        if (isSrt || source === 'dramawave' || source === 'freeshort') {
+        if (isSrt || source === 'dramawave' || source === 'freeshort' || source === 'shorttime') {
             track.src = VPS_PROXY + '?url=' + encodeURIComponent(sub.url) + '&_t=' + Math.random();
         } else if (source === 'netshort') {
             // NetShort: Use VPS proxy for SSL compatibility

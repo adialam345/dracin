@@ -10,7 +10,10 @@ export const VIDEO_PROXIES = [
 
 export const VPS_PROXY = '/api/proxy';
 
-const isAlreadyProxied = (url: string) => VIDEO_PROXIES.some(p => url.includes(p)) || url.includes(VPS_PROXY);
+const isAlreadyProxied = (url: string) =>
+    VIDEO_PROXIES.some(p => url.includes(p)) ||
+    url.includes(VPS_PROXY) ||
+    url.includes('dramabos.asia/api/shortime/proxy');
 
 export const shouldUseFallback = (url: string, source: string) => {
     // NetShort from awscdn.netshort.com often has SSL issues with Cloudflare
@@ -29,7 +32,8 @@ export const getAllProxyOptions = (url: string, source: string): string[] => {
     // Rule 1: Priority VPS Proxy for sensitive providers
     const mustUseVps = (source === 'netshort' && shouldUseFallback(url, source)) ||
         (source === 'vigloo' && url.includes('cloudfront.net')) ||
-        (source === 'dramaflickreels');
+        (source === 'dramaflickreels') ||
+        (source === 'shorttime');
 
     if (mustUseVps) {
         options.push(`${VPS_PROXY}?q=${encryptedQ}`);

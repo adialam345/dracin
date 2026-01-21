@@ -5,7 +5,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
     const {
         Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
-        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
+        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo, ShortTime
     } = Providers;
 
     try {
@@ -196,6 +196,39 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
             videoUrl = await Meloshort.getMeloshortVideoUrl(bookId, parseInt(episodeId) || 1);
         } else if (source === 'vigloo') {
             videoUrl = await Vigloo.getViglooVideoUrl(bookId, parseInt(episodeId) || 1);
+        } else if (source === 'shorttime') {
+            const data = await ShortTime.getShortTimeVideoUrl(episodeId);
+            let finalVideoUrl = data.videoUrl;
+
+            // Force HLS if it's DASH (ShortTime often provides both in the same structure)
+            if (finalVideoUrl.includes('/drm/dash/video.mpd')) {
+                finalVideoUrl = finalVideoUrl.replace('/drm/dash/video.mpd', '/hls/video.m3u8');
+            }
+
+            // If it's a direct CDN URL, append our internal cookie management param
+            if (finalVideoUrl.includes('shortime.app') && !finalVideoUrl.includes('dramabos.asia')) {
+                if (data.cookie) {
+                    finalVideoUrl += (finalVideoUrl.includes('?') ? '&' : '?') + '_stcookie=' + encodeURIComponent(data.cookie);
+                }
+            }
+
+            if (data.subtitles && data.subtitles.length > 0) {
+                return JSON.stringify({
+                    videoUrl: finalVideoUrl,
+                    subtitles: data.subtitles.map((sub: any) => {
+                        let subUrl = sub.src;
+                        if (data.cookie && subUrl.includes('shortime.app')) {
+                            subUrl += (subUrl.includes('?') ? '&' : '?') + '_stcookie=' + encodeURIComponent(data.cookie);
+                        }
+                        return {
+                            label: sub.label || sub.lang_code,
+                            lang: sub.lang_code,
+                            url: subUrl
+                        };
+                    })
+                });
+            }
+            videoUrl = finalVideoUrl;
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));

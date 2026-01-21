@@ -29,12 +29,22 @@ export const GET: APIRoute = async ({ url, request }) => {
     try {
         const headers = getProxyHeaders(targetUrl, request.headers);
 
-        // Special handling for NetShort & FlickReels (uses node:https for stability)
-        if (targetUrl.includes('netshort.com') || targetUrl.includes('farsunpteltd.com')) {
-            return handleNetShortProxy(targetUrl, headers);
+        // Prepare clean URL for upstream fetch (remove internal params like _stcookie)
+        let fetchUrl = targetUrl;
+        if (fetchUrl.includes('_stcookie=')) {
+            try {
+                const urlObj = new URL(fetchUrl);
+                urlObj.searchParams.delete('_stcookie');
+                fetchUrl = urlObj.toString();
+            } catch (e) { /* fallback */ }
         }
 
-        const response = await fetch(targetUrl, { headers });
+        // Special handling for NetShort & FlickReels (uses node:https for stability)
+        if (targetUrl.includes('netshort.com') || targetUrl.includes('farsunpteltd.com')) {
+            return handleNetShortProxy(fetchUrl, headers);
+        }
+
+        const response = await fetch(fetchUrl, { headers });
 
         // Handle 304 Not Modified from Upstream
         if (response.status === 304) return handle304Response(response);
@@ -42,7 +52,7 @@ export const GET: APIRoute = async ({ url, request }) => {
         const contentType = response.headers.get('content-type') || '';
         const isM3U8 = contentType.toLowerCase().includes('mpegurl') ||
             contentType.toLowerCase().includes('hls') ||
-            targetUrl.includes('.m3u8');
+            fetchUrl.includes('.m3u8');
 
         // Detect Origin (Handle Forwarded Headers)
         let origin = new URL(request.url).origin;

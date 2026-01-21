@@ -18,6 +18,7 @@ import * as StardustTV from '../providers/stardusttv';
 import * as ReelLife from '../providers/reelife';
 import * as Meloshort from '../providers/meloshort';
 import * as Vigloo from '../providers/vigloo';
+import * as ShortTime from '../providers/shorttime';
 
 export const Providers = {
     Dramabox,
@@ -36,7 +37,8 @@ export const Providers = {
     StardustTV,
     ReelLife,
     Meloshort,
-    Vigloo
+    Vigloo,
+    ShortTime
 };
 
 // Caches dengan limit ukuran untuk hemat RAM

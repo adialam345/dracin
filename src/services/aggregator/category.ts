@@ -6,7 +6,7 @@ export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDram
     return withCache(`aggregated_category_${slug}_v1`, async () => {
         const {
             Dramabox, Melolo, DramaWave, ShortMax, FlickReels, Netshort,
-            Vigloo, RadReel, StarShort, ReelLife, Meloshort, GoodShort
+            Vigloo, RadReel, StarShort, ReelLife, Meloshort, GoodShort, ShortTime
         } = Providers;
         let list: UnifiedDrama[] = [];
 
@@ -46,7 +46,8 @@ export async function fetchAggregatedCategory(slug: string): Promise<UnifiedDram
                 const results = await Promise.all([
                     safeExecute(Dramabox.getDramaboxForYou(), 'DramaboxHome'),
                     safeExecute(Netshort.getNetshortForYou(), 'NetshortHome'),
-                    safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'ViglooHome')
+                    safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'ViglooHome'),
+                    safeExecute(withCache('st_home_1', () => ShortTime.getShortTimeHome(1)), 'ShortTimeHome')
                 ]);
                 list = results.flat();
             }

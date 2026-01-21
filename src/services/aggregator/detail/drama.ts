@@ -6,7 +6,7 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
     const {
         Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
-        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo
+        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo, ShortTime
     } = Providers;
     // Try to get cached metadata for fallback
     const cached = dramaDetailsCache.get(source + '_' + id);
@@ -196,6 +196,8 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
             case 'vigloo':
                 const vRes = await Vigloo.getViglooDetail(id);
                 return vRes || { drama: null, episodes: [] };
+            case 'shorttime':
+                return ShortTime.getShortTimeDetail(id);
             default:
                 return { drama: null, episodes: [] };
         }
@@ -206,5 +208,5 @@ export async function fetchUnifiedDramaData(source: string, id: string): Promise
         result.drama.cover = wrapProxyImage(result.drama.cover);
     }
 
-    return result;
+    return result || { drama: null, episodes: [] };
 }

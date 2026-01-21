@@ -7,7 +7,7 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
         const {
             Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
             ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
-            StardustTV, ReelLife, Meloshort, Vigloo
+            StardustTV, ReelLife, Meloshort, Vigloo, ShortTime
         } = Providers;
 
         const [
@@ -28,7 +28,10 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
             rlForYou,
             msForYou,
             vForYou,
-            gsTrending
+            gsTrending,
+            stForYou1,
+            stForYou2,
+            stForYou3
         ] = await Promise.all([
             safeExecute(Dramabox.getDramaboxForYou(), 'Dramabox ForYou'),
             safeExecute(Dramabox.getDramaboxTrending(), 'Dramabox Trending'),
@@ -50,14 +53,19 @@ export async function fetchAggregatedHome(): Promise<{ forYou: UnifiedDrama[], t
             safeExecute(withCache('rl_home', () => ReelLife.getReelLifeForYou()), 'ReelLife ForYou'),
             safeExecute(withCache('ms_home', () => Meloshort.getMeloshortForYou()), 'Meloshort ForYou'),
             safeExecute(withCache('v_home', () => Vigloo.getViglooHome()), 'Vigloo ForYou'),
-            safeExecute(withCache('gs_trending', () => GoodShort.getGoodShortTrending()), 'GoodShort Trending')
+            safeExecute(withCache('gs_trending', () => GoodShort.getGoodShortTrending()), 'GoodShort Trending'),
+            safeExecute(withCache('st_home_1', () => ShortTime.getShortTimeHome(1)), 'ShortTime Home P1'),
+            safeExecute(withCache('st_home_2', () => ShortTime.getShortTimeHome(2)), 'ShortTime Home P2'),
+            safeExecute(withCache('st_home_3', () => ShortTime.getShortTimeHome(3)), 'ShortTime Home P3')
         ]);
+
+        const stForYou = [...(stForYou1 || []), ...(stForYou2 || []), ...(stForYou3 || [])];
 
         // Cache items for Detail fallback
         const cacheItems = (items: UnifiedDrama[]) => items.forEach(i => dramaDetailsCache.set(i.source + '_' + i.id, i));
-        [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou, gsTrending].forEach(list => cacheItems(list || []));
+        [dbForYou, dbTrending, dbLatest, nsForYou, mlTrending, mlLatest, rrForYou, dwForYou, frForYou, ddForYou, smForYou, ssForYou, fsForYou, hsForYou, gsForYou, dotdForYou, sdtvForYou, rlForYou, msForYou, vForYou, gsTrending, stForYou].forEach(list => cacheItems(list || []));
 
-        const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou]);
+        const allForYou = shuffle([...dbForYou, ...nsForYou.slice(0, 5), ...rrForYou, ...dwForYou, ...frForYou, ...ddForYou, ...smForYou, ...ssForYou, ...fsForYou, ...hsForYou, ...gsForYou, ...dotdForYou, ...sdtvForYou, ...rlForYou, ...msForYou, ...vForYou, ...stForYou]);
         const allTrending = shuffle([...dbTrending, ...mlTrending, ...gsTrending]);
         const allLatest = shuffle([...dbLatest, ...mlLatest]);
 
