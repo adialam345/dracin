@@ -52,7 +52,7 @@ export function getSearchTasks(query: string, providerFilter?: string) {
     const {
         Dramabox, Netshort, Melolo, RadReel, DramaWave, FlickReels, DramaDash,
         ShortMax, StarShort, FreeShort, HiShort, GoodShort, DotDrama,
-        StardustTV, ReelLife, Meloshort, Vigloo, ShortTime
+        StardustTV, ReelLife, Meloshort, Vigloo, ShortTime, NontonDrama
     } = Providers;
 
     const allTasks = [
@@ -73,7 +73,8 @@ export function getSearchTasks(query: string, providerFilter?: string) {
         { id: 'reelife', name: 'ReelLife', task: () => safeExecute(ReelLife.searchReelLife(query), 'ReelLife') },
         { id: 'meloshort', name: 'Meloshort', task: () => safeExecute(Meloshort.searchMeloshort(query), 'Meloshort') },
         { id: 'vigloo', name: 'Vigloo', task: () => safeExecute(Vigloo.searchVigloo(query), 'Vigloo') },
-        { id: 'shorttime', name: 'ShortTime', task: () => safeExecute(ShortTime.searchShortTime(query), 'ShortTime') }
+        { id: 'shorttime', name: 'ShortTime', task: () => safeExecute(ShortTime.searchShortTime(query), 'ShortTime') },
+        { id: 'nontondrama', name: 'NontonDrama', task: () => safeExecute(NontonDrama.searchNontonDrama(query), 'NontonDrama') }
     ];
 
     if (providerFilter && providerFilter !== 'all') {

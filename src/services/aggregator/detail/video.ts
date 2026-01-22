@@ -5,7 +5,7 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
     const {
         Dramabox, Netshort, Melolo, RadReel, FlickReels, DramaWave,
         DramaDash, ShortMax, StarShort, FreeShort, HiShort, GoodShort,
-        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo, ShortTime
+        DotDrama, StardustTV, ReelLife, Meloshort, Vigloo, ShortTime, NontonDrama
     } = Providers;
 
     try {
@@ -229,6 +229,13 @@ export async function fetchVideoUrl(source: string, bookId: string, episodeId: s
                 });
             }
             videoUrl = finalVideoUrl;
+        } else if (source === 'nontondrama') {
+            const streams = await NontonDrama.getNontonDramaStream(episodeId);
+            if (streams && streams.length > 0) {
+                // Try to find a direct video URL or use the first one
+                const stream = streams.find((s: any) => s.url && (s.url.includes('.m3u8') || s.url.includes('.mp4'))) || streams[0];
+                videoUrl = stream?.url || stream?.link || '';
+            }
         }
 
         console.log('[Aggregator] Video URL for ' + source + '/' + bookId + '/' + episodeId + ': ' + (videoUrl ? 'FOUND' : 'NOT FOUND'));

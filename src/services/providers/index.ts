@@ -10,4 +10,4 @@ export * from './starshort';
 export * from './freeshort';
 export * from './hishort';
 export * from './shorttime';
-
+export * from './nontondrama';

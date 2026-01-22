@@ -19,6 +19,7 @@ import * as ReelLife from '../providers/reelife';
 import * as Meloshort from '../providers/meloshort';
 import * as Vigloo from '../providers/vigloo';
 import * as ShortTime from '../providers/shorttime';
+import * as NontonDrama from '../providers/nontondrama';
 
 export const Providers = {
     Dramabox,
@@ -38,7 +39,8 @@ export const Providers = {
     ReelLife,
     Meloshort,
     Vigloo,
-    ShortTime
+    ShortTime,
+    NontonDrama
 };
 
 // Caches dengan limit ukuran untuk hemat RAM
@@ -64,7 +66,7 @@ export const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
 export async function safeExecute<T>(promise: Promise<T[]>, name: string): Promise<T[]> {
     const timeoutMsg = 'AGGREGATOR_TIMEOUT';
     const timeout = new Promise<T[]>((_, reject) =>
-        setTimeout(() => reject(new Error(timeoutMsg)), 6000)
+        setTimeout(() => reject(new Error(timeoutMsg)), 10000)
     );
 
     try {
